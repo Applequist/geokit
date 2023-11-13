@@ -66,7 +66,7 @@ pub struct Geodetic2DCrs {
 pub struct TopocentricCrs {
     /// The base 3D geodetic CRS.
     base_crs: Geodetic3DCrs,
-    /// The origin of the 3D cartesian frame. The axes are derive from the base CRS at the given
+    /// The origin of the 3D cartesian frame given in the base CRS. The axes are derive from the base CRS at the given
     /// location.
     origin: Coord3D,
     /// The length unit used for the coordinates in this CRS.
