@@ -40,7 +40,7 @@ impl Crs for GeocentricCrs {
         &self.datum
     }
 
-    fn lower(&self, transformation: LowerTransformation) -> Option<(Box<dyn Crs>, String)> {
+    fn lower(&self, _transformation: LowerTransformation) -> Option<(Box<dyn Crs>, String)> {
         None
     }
 }
