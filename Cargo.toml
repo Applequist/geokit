@@ -2,9 +2,4 @@
 
 resolver = "2"
 
-members = [
-  "geokit",
-]
-
-[dependencies]
-derive_more = "0.99.17"
+members = ["geokit"]
