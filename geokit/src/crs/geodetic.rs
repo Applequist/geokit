@@ -2,6 +2,7 @@ use super::geocentric::GeocentricCrs;
 use super::{Crs, LowerTransformation};
 use crate::coord::CoordSpace;
 use crate::geodesy::GeodeticDatum;
+use crate::id::Id;
 use std::fmt::*;
 
 /// Defines the ordering and direction of the axes of a 3D geodetic CRS.
@@ -24,7 +25,7 @@ pub enum Geodetic3DAxes {
 /// and units.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Geodetic3DCrs {
-    id: String,
+    id: Id,
     datum: GeodeticDatum,
     axes: Geodetic3DAxes,
     angle_unit: f64,
@@ -32,15 +33,15 @@ pub struct Geodetic3DCrs {
 }
 
 impl Geodetic3DCrs {
-    pub fn new<S: Into<String>>(
-        id: S,
+    pub fn new(
+        id: Id,
         datum: GeodeticDatum,
         axes: Geodetic3DAxes,
         angle_unit: f64,
         height_unit: f64,
     ) -> Self {
         Self {
-            id: id.into(),
+            id,
             datum,
             axes,
             angle_unit,
@@ -50,7 +51,7 @@ impl Geodetic3DCrs {
 }
 
 impl Crs for Geodetic3DCrs {
-    fn id(&self) -> &str {
+    fn id(&self) -> &Id {
         &self.id
     }
 
@@ -71,7 +72,10 @@ impl Crs for Geodetic3DCrs {
             LowerTransformation::TO => String::from("Normalization + norm_geod3d to norm_geoc"),
             LowerTransformation::FROM => String::from("norm_geoc to norm_geod3d + Denormalization"),
         };
-        Some((Box::new(GeocentricCrs::new("n/a", self.datum.clone())), t))
+        Some((
+            Box::new(GeocentricCrs::new(Id::name("n/a"), self.datum.clone())),
+            t,
+        ))
     }
 }
 
@@ -90,7 +94,7 @@ pub enum Geodetic2DAxes {
 /// coordinates are given by longitude and latitude in various order, direction
 /// and units.
 pub struct Geodetic2DCrs {
-    id: String,
+    id: Id,
     datum: GeodeticDatum,
     axes: Geodetic2DAxes,
     angle_unit: f64,
@@ -98,14 +102,9 @@ pub struct Geodetic2DCrs {
 
 impl Geodetic2DCrs {
     /// Create a new 2D geodetic CRS.
-    pub fn new<S: Into<String>>(
-        id: S,
-        datum: GeodeticDatum,
-        axes: Geodetic2DAxes,
-        angle_unit: f64,
-    ) -> Self {
+    pub fn new(id: Id, datum: GeodeticDatum, axes: Geodetic2DAxes, angle_unit: f64) -> Self {
         Self {
-            id: id.into(),
+            id,
             datum,
             axes,
             angle_unit,
@@ -114,7 +113,7 @@ impl Geodetic2DCrs {
 }
 
 impl Crs for Geodetic2DCrs {
-    fn id(&self) -> &str {
+    fn id(&self) -> &Id {
         &self.id
     }
 
@@ -135,6 +134,9 @@ impl Crs for Geodetic2DCrs {
             LowerTransformation::TO => String::from("Normalization + norm_geod2d to norm_geoc"),
             LowerTransformation::FROM => String::from("norm_geoc to norm_geod2d + Denormalization"),
         };
-        Some((Box::new(GeocentricCrs::new("n/a", self.datum.clone())), t))
+        Some((
+            Box::new(GeocentricCrs::new(Id::name("n/a"), self.datum.clone())),
+            t,
+        ))
     }
 }

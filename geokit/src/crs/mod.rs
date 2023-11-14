@@ -1,5 +1,6 @@
 use crate::coord::CoordSpace;
 use crate::geodesy::GeodeticDatum;
+use crate::id::Id;
 
 pub enum LowerTransformation {
     TO,
@@ -22,7 +23,7 @@ pub trait Crs {
     /// <authority> := String
     /// <code> := String
     /// ```
-    fn id(&self) -> &str;
+    fn id(&self) -> &Id;
 
     /// Returns the coordinates dimension of this CRS.
     fn dim(&self) -> usize;

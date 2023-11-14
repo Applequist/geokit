@@ -5,7 +5,7 @@ pub type Coord3D = (f64, f64, f64);
 /// Which one is less than the other has to do with **transformation path**: coordinates are
 /// usually converted to the lowest CRS kind comparable to both source and destination CRS, then a
 /// datum transformation is performed if necessary.
-#[derive(PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub enum CoordSpace {
     Geocentric,
     Geodetic,

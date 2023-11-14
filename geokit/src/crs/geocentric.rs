@@ -1,5 +1,6 @@
 use crate::crs::{CoordSpace, Crs, LowerTransformation};
 use crate::geodesy::GeodeticDatum;
+use crate::id::Id;
 
 /// A `GeocentricCrs` is a **3D cartesian coordinates reference system** in which
 /// coordinates are given by distance **in meters** along the following axes:
@@ -9,22 +10,19 @@ use crate::geodesy::GeodeticDatum;
 /// - Z: axis from the center of the datum's ellipsoid through the north pole.
 #[derive(Debug, Clone, PartialEq)]
 pub struct GeocentricCrs {
-    id: String,
+    id: Id,
     datum: GeodeticDatum,
 }
 
 impl GeocentricCrs {
     /// Creates a new [`GeocentricCrs`].
-    pub fn new<S: Into<String>>(id: S, datum: GeodeticDatum) -> Self {
-        Self {
-            id: id.into(),
-            datum,
-        }
+    pub fn new(id: Id, datum: GeodeticDatum) -> Self {
+        Self { id, datum }
     }
 }
 
 impl Crs for GeocentricCrs {
-    fn id(&self) -> &str {
+    fn id(&self) -> &Id {
         &self.id
     }
 
@@ -47,7 +45,7 @@ impl Crs for GeocentricCrs {
 
 impl Default for GeocentricCrs {
     fn default() -> Self {
-        GeocentricCrs::new("WGS 84 (geocentric)", GeodeticDatum::default())
+        GeocentricCrs::new(Id::name("WGS 84 (geocentric)"), GeodeticDatum::default())
     }
 }
 
@@ -56,7 +54,7 @@ mod tests {
 
     use super::*;
     use crate::geodesy::*;
-
+    use crate::id::Id;
     #[test]
     fn clone() {
         let geoc = GeocentricCrs::default();
@@ -72,12 +70,16 @@ mod tests {
         assert!(!geoc.ne(&cpy));
 
         let mut different_id = geoc.clone();
-        different_id.id = String::from("WGS 84.1");
+        different_id.id = Id::name("WGS 84.1");
         assert_ne!(geoc, different_id);
 
         let mut different_datum = geoc.clone();
-        different_datum.datum =
-            GeodeticDatum::new("WGS 84.1", Ellipsoid::default(), PrimeMeridian::default());
+        different_datum.datum = GeodeticDatum::new(
+            Id::name("WGS 84.1"),
+            Ellipsoid::default(),
+            PrimeMeridian::default(),
+            None,
+        );
         assert_ne!(geoc, different_datum);
     }
 }

@@ -1,11 +1,12 @@
 use crate::coord::{Coord3D, CoordSpace};
 use crate::crs::{geocentric::GeocentricCrs, geodetic::Geodetic3DCrs, Crs, LowerTransformation};
 use crate::geodesy::GeodeticDatum;
+use crate::id::Id;
 
 /// A `TopocentricCrs` is a **3D cartesian coordinates reference system** whose origin is specified
 /// as a geodetic location in a base 3D geodetic CRS and axes are derived from the base CRS.
 pub struct TopocentricCrs {
-    id: String,
+    id: Id,
     /// The base 3D geodetic CRS.
     base_crs: Geodetic3DCrs,
     /// The origin of the 3D cartesian frame given in the base CRS. The axes are derive from the base CRS at the given
@@ -17,14 +18,9 @@ pub struct TopocentricCrs {
 
 impl TopocentricCrs {
     /// Create a new 3D topocentric CRS.
-    pub fn new<S: Into<String>>(
-        id: S,
-        base_crs: Geodetic3DCrs,
-        origin: Coord3D,
-        length_unit: f64,
-    ) -> Self {
+    pub fn new(id: Id, base_crs: Geodetic3DCrs, origin: Coord3D, length_unit: f64) -> Self {
         Self {
-            id: id.into(),
+            id,
             base_crs,
             origin,
             length_unit,
@@ -33,7 +29,7 @@ impl TopocentricCrs {
 }
 
 impl Crs for TopocentricCrs {
-    fn id(&self) -> &str {
+    fn id(&self) -> &Id {
         &self.id
     }
 
@@ -55,7 +51,10 @@ impl Crs for TopocentricCrs {
             LowerTransformation::FROM => String::from("norm_geoc to norm_topo + Denormalization"),
         };
         Some((
-            Box::new(GeocentricCrs::new("n/a", self.base_crs.datum().clone())),
+            Box::new(GeocentricCrs::new(
+                Id::name("n/a"),
+                self.base_crs.datum().clone(),
+            )),
             t,
         ))
     }
