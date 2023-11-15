@@ -1,6 +1,7 @@
-use crate::crs::{CoordSpace, Crs, LowerTransformation};
+use crate::crs::{CoordSpace, Crs};
 use crate::geodesy::GeodeticDatum;
 use crate::id::Id;
+use crate::transformation::InversibleTransformation;
 
 /// A `GeocentricCrs` is a **3D cartesian coordinates reference system** in which
 /// coordinates are given by distance **in meters** along the following axes:
@@ -38,7 +39,7 @@ impl Crs for GeocentricCrs {
         &self.datum
     }
 
-    fn lower(&self, _transformation: LowerTransformation) -> Option<(Box<dyn Crs>, String)> {
+    fn lower(&self) -> Option<(Box<dyn Crs>, Box<dyn InversibleTransformation>)> {
         None
     }
 }

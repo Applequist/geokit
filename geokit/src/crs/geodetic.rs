@@ -1,8 +1,9 @@
 use super::geocentric::GeocentricCrs;
-use super::{Crs, LowerTransformation};
+use super::Crs;
 use crate::coord::CoordSpace;
 use crate::geodesy::GeodeticDatum;
 use crate::id::Id;
+use crate::transformation::{Identity, InversibleTransformation};
 use std::fmt::*;
 
 /// Defines the ordering and direction of the axes of a 3D geodetic CRS.
@@ -67,14 +68,11 @@ impl Crs for Geodetic3DCrs {
         &self.datum
     }
 
-    fn lower(&self, transformation: LowerTransformation) -> Option<(Box<dyn Crs>, String)> {
-        let t = match transformation {
-            LowerTransformation::TO => String::from("Normalization + norm_geod3d to norm_geoc"),
-            LowerTransformation::FROM => String::from("norm_geoc to norm_geod3d + Denormalization"),
-        };
+    fn lower(&self) -> Option<(Box<dyn Crs>, Box<dyn InversibleTransformation>)> {
         Some((
             Box::new(GeocentricCrs::new(Id::name("n/a"), self.datum.clone())),
-            t,
+            // FIX: Replace with proper transformation
+            Box::new(Identity),
         ))
     }
 }
@@ -129,14 +127,100 @@ impl Crs for Geodetic2DCrs {
         &self.datum
     }
 
-    fn lower(&self, transformation: LowerTransformation) -> Option<(Box<dyn Crs>, String)> {
-        let t = match transformation {
-            LowerTransformation::TO => String::from("Normalization + norm_geod2d to norm_geoc"),
-            LowerTransformation::FROM => String::from("norm_geoc to norm_geod2d + Denormalization"),
-        };
+    fn lower(&self) -> Option<(Box<dyn Crs>, Box<dyn InversibleTransformation>)> {
         Some((
             Box::new(GeocentricCrs::new(Id::name("n/a"), self.datum.clone())),
-            t,
+            // FIX: Replace with proper transformation
+            Box::new(Identity),
         ))
     }
+}
+
+#[cfg(test)]
+mod tests {
+    mod geodetic3d {
+        use crate::{
+            crs::geodetic::{Geodetic3DAxes, Geodetic3DCrs},
+            geodesy::{Ellipsoid, GeodeticDatum, PrimeMeridian},
+            id::Id,
+        };
+
+        #[test]
+        fn partial_eq() {
+            let geod3d = Geodetic3DCrs::new(
+                Id::name("WGS 84 (geodetic3d)"),
+                GeodeticDatum::default(),
+                Geodetic3DAxes::EastNorthUp,
+                1.,
+                1.,
+            );
+
+            let different_id = Geodetic3DCrs::new(
+                Id::name("WGS 84.1 (geodetic3d)"),
+                GeodeticDatum::default(),
+                Geodetic3DAxes::EastNorthUp,
+                1.,
+                1.,
+            );
+            assert!(!geod3d.eq(&different_id));
+            assert!(geod3d.ne(&different_id));
+            assert!(!different_id.eq(&geod3d));
+            assert!(different_id.ne(&geod3d));
+
+            let different_datum = Geodetic3DCrs::new(
+                Id::name("WGS 84 (geodetic3d)"),
+                GeodeticDatum::new(
+                    Id::name("WGS 84.1"),
+                    Ellipsoid::default(),
+                    PrimeMeridian::default(),
+                    None,
+                ),
+                Geodetic3DAxes::EastNorthUp,
+                1.,
+                1.,
+            );
+            assert!(!geod3d.eq(&different_datum));
+            assert!(geod3d.ne(&different_datum));
+            assert!(!different_datum.eq(&geod3d));
+            assert!(different_datum.ne(&geod3d));
+
+            let different_axes = Geodetic3DCrs::new(
+                Id::name("WGS 84 (geodetic3d)"),
+                GeodeticDatum::default(),
+                Geodetic3DAxes::NorthEastUp,
+                1.,
+                1.,
+            );
+            assert!(!geod3d.eq(&different_axes));
+            assert!(geod3d.ne(&different_axes));
+            assert!(!different_axes.eq(&geod3d));
+            assert!(different_axes.ne(&geod3d));
+
+            let different_angle_unit = Geodetic3DCrs::new(
+                Id::name("WGS 84 (geodetic3d)"),
+                GeodeticDatum::default(),
+                Geodetic3DAxes::NorthEastUp,
+                1.0_f64.to_radians(), // degres
+                1.,
+            );
+            assert!(!geod3d.eq(&different_angle_unit));
+            assert!(geod3d.ne(&different_angle_unit));
+            assert!(!different_angle_unit.eq(&geod3d));
+            assert!(different_angle_unit.ne(&geod3d));
+
+            let different_height_unit = Geodetic3DCrs::new(
+                Id::name("WGS 84 (geodetic3d)"),
+                GeodeticDatum::default(),
+                Geodetic3DAxes::NorthEastUp,
+                1.,   // degres
+                0.29, // approx feet
+            );
+            assert!(!geod3d.eq(&different_angle_unit));
+            assert!(geod3d.ne(&different_angle_unit));
+            assert!(!different_angle_unit.eq(&geod3d));
+            assert!(different_angle_unit.ne(&geod3d));
+        }
+    }
+
+    mod geodetic2d {}
 }

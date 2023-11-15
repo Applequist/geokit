@@ -1,11 +1,7 @@
 use crate::coord::CoordSpace;
 use crate::geodesy::GeodeticDatum;
 use crate::id::Id;
-
-pub enum LowerTransformation {
-    TO,
-    FROM,
-}
+use crate::transformation::InversibleTransformation;
 
 /// [`Crs`] defines common attributes of CRS and methods to find **coordinates transformation
 /// pathes** between them.
@@ -41,8 +37,7 @@ pub trait Crs {
     /// * `transformation`: determine the *direction* of the returned transformation:
     ///   * [`LowerTransformation::TO`] returns the to-lower tranformation,
     ///   * [`LowerTransformation::FROM`] returns the from-lower transformation.
-    /// FIX: Replace String in the return type by a Box<dyn Transformation> once the transformation path finding algorithm works
-    fn lower(&self, transformation: LowerTransformation) -> Option<(Box<dyn Crs>, String)>;
+    fn lower(&self) -> Option<(Box<dyn Crs>, Box<dyn InversibleTransformation>)>;
 }
 
 pub mod geocentric;

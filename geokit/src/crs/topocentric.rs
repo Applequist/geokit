@@ -1,7 +1,8 @@
 use crate::coord::{Coord3D, CoordSpace};
-use crate::crs::{geocentric::GeocentricCrs, geodetic::Geodetic3DCrs, Crs, LowerTransformation};
+use crate::crs::{geocentric::GeocentricCrs, geodetic::Geodetic3DCrs, Crs};
 use crate::geodesy::GeodeticDatum;
 use crate::id::Id;
+use crate::transformation::{Identity, InversibleTransformation};
 
 /// A `TopocentricCrs` is a **3D cartesian coordinates reference system** whose origin is specified
 /// as a geodetic location in a base 3D geodetic CRS and axes are derived from the base CRS.
@@ -45,17 +46,14 @@ impl Crs for TopocentricCrs {
         self.base_crs.datum()
     }
 
-    fn lower(&self, transformation: LowerTransformation) -> Option<(Box<dyn Crs>, String)> {
-        let t = match transformation {
-            LowerTransformation::TO => String::from("Normalization + norm_topo to norm_geoc"),
-            LowerTransformation::FROM => String::from("norm_geoc to norm_topo + Denormalization"),
-        };
+    fn lower(&self) -> Option<(Box<dyn Crs>, Box<dyn InversibleTransformation>)> {
         Some((
             Box::new(GeocentricCrs::new(
                 Id::name("n/a"),
                 self.base_crs.datum().clone(),
             )),
-            t,
+            // FIX: Replace with proper transformation
+            Box::new(Identity),
         ))
     }
 }
