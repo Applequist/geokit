@@ -174,4 +174,19 @@ mod tests {
         assert!(!different_height_unit.eq(&geod3d));
         assert!(different_height_unit.ne(&geod3d));
     }
+
+    #[test]
+    fn clone() {
+        let geod = GeodeticCrs::new(
+            Id::name("WGS 84 (geodetic2d)"),
+            GeodeticDatum::default(),
+            GeodeticAxes::EastNorthUp {
+                angle_unit: 1.,
+                height_unit: 1.,
+            },
+        );
+
+        let cpy = geod.clone();
+        assert_eq!(geod, cpy);
+    }
 }
