@@ -1,7 +1,7 @@
 use crate::coord::CoordSpace;
 use crate::geodesy::GeodeticDatum;
 use crate::id::Id;
-use crate::transformation::InversibleTransformation;
+use crate::transformation::InvertibleTransformation;
 
 /// [`Crs`] defines common attributes of CRS and methods to find **coordinates transformation
 /// pathes** between them.
@@ -37,7 +37,7 @@ pub trait Crs {
     /// * `transformation`: determine the *direction* of the returned transformation:
     ///   * [`LowerTransformation::TO`] returns the to-lower tranformation,
     ///   * [`LowerTransformation::FROM`] returns the from-lower transformation.
-    fn lower(&self) -> Option<(Box<dyn Crs>, Box<dyn InversibleTransformation>)>;
+    fn lower(&self) -> Option<(Box<dyn Crs>, Box<dyn InvertibleTransformation>)>;
 }
 
 pub mod geocentric;

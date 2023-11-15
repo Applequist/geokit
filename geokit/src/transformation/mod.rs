@@ -9,9 +9,9 @@ pub trait Transformation: Debug {
     fn boxed_clone(&self) -> Box<dyn Transformation>;
 }
 
-pub trait InversibleTransformation: Transformation {
-    fn inverse(&self) -> Box<dyn InversibleTransformation>;
-    fn boxed_clone(&self) -> Box<dyn InversibleTransformation>;
+pub trait InvertibleTransformation: Transformation {
+    fn inverse(&self) -> Box<dyn InvertibleTransformation>;
+    fn boxed_clone(&self) -> Box<dyn InvertibleTransformation>;
 }
 
 impl Clone for Box<dyn Transformation> {
@@ -20,9 +20,9 @@ impl Clone for Box<dyn Transformation> {
     }
 }
 
-impl Clone for Box<dyn InversibleTransformation> {
-    fn clone(&self) -> Box<dyn InversibleTransformation> {
-        InversibleTransformation::boxed_clone(&**self)
+impl Clone for Box<dyn InvertibleTransformation> {
+    fn clone(&self) -> Box<dyn InvertibleTransformation> {
+        InvertibleTransformation::boxed_clone(&**self)
     }
 }
 
@@ -39,12 +39,12 @@ impl Transformation for Identity {
     }
 }
 
-impl InversibleTransformation for Identity {
-    fn inverse(&self) -> Box<dyn InversibleTransformation> {
+impl InvertibleTransformation for Identity {
+    fn inverse(&self) -> Box<dyn InvertibleTransformation> {
         Box::new(Identity)
     }
 
-    fn boxed_clone(&self) -> Box<dyn InversibleTransformation> {
+    fn boxed_clone(&self) -> Box<dyn InvertibleTransformation> {
         Box::new(Identity)
     }
 }
@@ -61,8 +61,8 @@ mod tests {
         let p = _cloned_as_transfo.apply(&(1., 2., 3.)).unwrap();
         assert_eq!(p, (1., 2., 3.));
 
-        let boxed_inv_transfo: Box<dyn InversibleTransformation> = Box::new(Identity);
-        let _cloned_as_inv_transfo: Box<dyn InversibleTransformation> = boxed_inv_transfo.clone();
+        let boxed_inv_transfo: Box<dyn InvertibleTransformation> = Box::new(Identity);
+        let _cloned_as_inv_transfo: Box<dyn InvertibleTransformation> = boxed_inv_transfo.clone();
         let inv_t = _cloned_as_inv_transfo.inverse();
         assert_eq!(inv_t.apply(&p).unwrap(), (1., 2., 3.));
     }

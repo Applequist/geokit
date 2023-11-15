@@ -1,7 +1,7 @@
 use super::{ellipsoid::Ellipsoid, prime_meridian::PrimeMeridian};
 use crate::coord::CoordSpace;
 use crate::id::Id;
-use crate::transformation::InversibleTransformation;
+use crate::transformation::InvertibleTransformation;
 
 /// A `datum` is the information required to fix a coordinate system to an object.
 /// A `GeodeticDatum` is a `datum` describing the relationship of an ellipsoidal model of the Earth
@@ -12,7 +12,7 @@ pub struct GeodeticDatum {
     id: Id,
     ellipsoid: Ellipsoid,
     prime_meridian: PrimeMeridian,
-    to_ref: Option<(CoordSpace, Id, Box<dyn InversibleTransformation>)>,
+    to_ref: Option<(CoordSpace, Id, Box<dyn InvertibleTransformation>)>,
 }
 
 impl GeodeticDatum {
@@ -21,7 +21,7 @@ impl GeodeticDatum {
         id: Id,
         ellipsoid: Ellipsoid,
         prime_meridian: PrimeMeridian,
-        to_ref: Option<(CoordSpace, Id, Box<dyn InversibleTransformation>)>,
+        to_ref: Option<(CoordSpace, Id, Box<dyn InvertibleTransformation>)>,
     ) -> Self {
         Self {
             id,
