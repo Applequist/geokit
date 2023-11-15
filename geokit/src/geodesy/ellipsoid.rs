@@ -1,5 +1,3 @@
-use crate::coord::Coord3D;
-
 /// An `Ellipsoid` is a mathematical surface used as a model of the Earth surface.
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub struct Ellipsoid {
@@ -79,7 +77,7 @@ impl Ellipsoid {
 
     /// Convert **normalized geodetic coordinates** (lon in rad, lat in rad, height in meters)
     /// into **normalized geocentric coordinates** (x, y, z) all in meters.
-    pub fn llh_to_xyz(&self, &(lon, lat, h): &Coord3D) -> Coord3D {
+    pub fn llh_to_xyz(&self, &(lon, lat, h): &(f64, f64, f64)) -> (f64, f64, f64) {
         let v = self.prime_vertical_radius(lat);
         let (sin_lon, cos_lon) = lon.sin_cos();
         let (sin_lat, cos_lat) = lat.sin_cos();
@@ -93,7 +91,7 @@ impl Ellipsoid {
     /// Convert **normalized geocentric coordinates** (x, y, z) in meters
     /// into **normalized geodetic coordinates** (lon in rad, lat in rad, height in meters)
     /// using Heiskanen and Moritz iterative method.
-    pub fn xyz_to_llh(&self, &(x, y, z): &Coord3D) -> Coord3D {
+    pub fn xyz_to_llh(&self, &(x, y, z): &(f64, f64, f64)) -> (f64, f64, f64) {
         let a2 = self.a_sq();
         let b2 = self.b_sq();
         let e2 = self.e_sq();

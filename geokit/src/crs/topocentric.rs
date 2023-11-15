@@ -1,5 +1,4 @@
-use crate::coord::{Coord3D, CoordSpace};
-use crate::crs::{geocentric::GeocentricCrs, geodetic::GeodeticCrs, Crs};
+use crate::crs::{geocentric::GeocentricCrs, geodetic::GeodeticCrs, CoordSpace, Crs};
 use crate::geodesy::GeodeticDatum;
 use crate::id::Id;
 use crate::transformation::{Identity, InvertibleTransformation};
@@ -12,14 +11,14 @@ pub struct TopocentricCrs {
     base_crs: GeodeticCrs,
     /// The origin of the 3D cartesian frame given in the base CRS. The axes are derive from the base CRS at the given
     /// location.
-    origin: Coord3D,
+    origin: (f64, f64, f64),
     /// The length unit used for the coordinates in this CRS.
     length_unit: f64,
 }
 
 impl TopocentricCrs {
     /// Create a new 3D topocentric CRS.
-    pub fn new(id: Id, base_crs: GeodeticCrs, origin: Coord3D, length_unit: f64) -> Self {
+    pub fn new(id: Id, base_crs: GeodeticCrs, origin: (f64, f64, f64), length_unit: f64) -> Self {
         Self {
             id,
             base_crs,
@@ -55,5 +54,15 @@ impl Crs for TopocentricCrs {
             // FIX: Replace with proper transformation
             Box::new(Identity),
         ))
+    }
+
+    fn normalization(&self) -> Box<dyn InvertibleTransformation> {
+        // FIX: Replace with proper transformation
+        Box::new(Identity)
+    }
+
+    fn denormalization(&self) -> Box<dyn InvertibleTransformation> {
+        // FIX: Repleace with proper transformation
+        Box::new(Identity)
     }
 }

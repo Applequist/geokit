@@ -1,11 +1,10 @@
-use crate::coord::Coord3D;
 use std::fmt::Debug;
 
 #[derive(Debug)]
 pub enum TransformationError {}
 
 pub trait Transformation: Debug {
-    fn apply(&self, input: &Coord3D) -> Result<Coord3D, TransformationError>;
+    fn apply(&self, input: &[f64], output: &mut [f64]) -> Result<(), TransformationError>;
     fn boxed_clone(&self) -> Box<dyn Transformation>;
 }
 
@@ -30,8 +29,9 @@ impl Clone for Box<dyn InvertibleTransformation> {
 pub struct Identity;
 
 impl Transformation for Identity {
-    fn apply(&self, input: &Coord3D) -> Result<Coord3D, TransformationError> {
-        Ok(*input)
+    fn apply(&self, input: &[f64], output: &mut [f64]) -> Result<(), TransformationError> {
+        output.copy_from_slice(input);
+        Ok(())
     }
 
     fn boxed_clone(&self) -> Box<dyn Transformation> {
@@ -56,14 +56,23 @@ mod tests {
 
     #[test]
     fn box_clone() {
+        let mut out = [0.; 3];
+
         let boxed_transfo: Box<dyn Transformation> = Box::new(Identity);
         let _cloned_as_transfo: Box<dyn Transformation> = boxed_transfo.clone();
-        let p = _cloned_as_transfo.apply(&(1., 2., 3.)).unwrap();
-        assert_eq!(p, (1., 2., 3.));
+        _cloned_as_transfo.apply(&[1., 2., 3.], &mut out).unwrap();
+        assert_eq!(
+            out,
+            [1., 2., 3.],
+            "Expected {:?}. Got {:?}.",
+            [1., 2., 3.],
+            out
+        );
 
         let boxed_inv_transfo: Box<dyn InvertibleTransformation> = Box::new(Identity);
         let _cloned_as_inv_transfo: Box<dyn InvertibleTransformation> = boxed_inv_transfo.clone();
         let inv_t = _cloned_as_inv_transfo.inverse();
-        assert_eq!(inv_t.apply(&p).unwrap(), (1., 2., 3.));
+        inv_t.apply(&[0., 0., 0.], &mut out).unwrap();
+        assert_eq!(out, [0.; 3], "Expected {:?}. Got {:?}", [0.; 3], out);
     }
 }

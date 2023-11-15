@@ -1,5 +1,5 @@
 use super::{ellipsoid::Ellipsoid, prime_meridian::PrimeMeridian};
-use crate::coord::CoordSpace;
+use crate::crs::CoordSpace;
 use crate::id::Id;
 use crate::transformation::InvertibleTransformation;
 

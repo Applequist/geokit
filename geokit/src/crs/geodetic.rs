@@ -1,6 +1,5 @@
 use super::geocentric::GeocentricCrs;
-use super::Crs;
-use crate::coord::CoordSpace;
+use super::{CoordSpace, Crs};
 use crate::geodesy::GeodeticDatum;
 use crate::id::Id;
 use crate::transformation::{Identity, InvertibleTransformation};
@@ -82,6 +81,16 @@ impl Crs for GeodeticCrs {
             // FIX: Replace with proper transformation
             Box::new(Identity),
         ))
+    }
+
+    fn normalization(&self) -> Box<dyn InvertibleTransformation> {
+        // FIX: Replace with proper transformation
+        Box::new(Identity)
+    }
+
+    fn denormalization(&self) -> Box<dyn InvertibleTransformation> {
+        // FIX: Replace with proper transformation
+        Box::new(Identity)
     }
 }
 
