@@ -79,18 +79,18 @@ impl Crs for GeodeticCrs {
                 self.datum.clone(),
             )),
             // FIX: Replace with proper transformation
-            Box::new(Identity),
+            Box::new(Identity::<3>),
         ))
     }
 
     fn normalization(&self) -> Box<dyn InvertibleTransformation> {
         // FIX: Replace with proper transformation
-        Box::new(Identity)
+        Box::new(Identity::<3>)
     }
 
     fn denormalization(&self) -> Box<dyn InvertibleTransformation> {
         // FIX: Replace with proper transformation
-        Box::new(Identity)
+        Box::new(Identity::<3>)
     }
 }
 

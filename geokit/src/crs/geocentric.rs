@@ -44,11 +44,11 @@ impl Crs for GeocentricCrs {
     }
 
     fn normalization(&self) -> Box<dyn InvertibleTransformation> {
-        Box::new(Identity)
+        Box::new(Identity::<3>)
     }
 
     fn denormalization(&self) -> Box<dyn InvertibleTransformation> {
-        Box::new(Identity)
+        Box::new(Identity::<3>)
     }
 }
 

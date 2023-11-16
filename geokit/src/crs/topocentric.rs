@@ -52,17 +52,17 @@ impl Crs for TopocentricCrs {
                 self.base_crs.datum().clone(),
             )),
             // FIX: Replace with proper transformation
-            Box::new(Identity),
+            Box::new(Identity::<3>),
         ))
     }
 
     fn normalization(&self) -> Box<dyn InvertibleTransformation> {
         // FIX: Replace with proper transformation
-        Box::new(Identity)
+        Box::new(Identity::<3>)
     }
 
     fn denormalization(&self) -> Box<dyn InvertibleTransformation> {
         // FIX: Repleace with proper transformation
-        Box::new(Identity)
+        Box::new(Identity::<3>)
     }
 }
