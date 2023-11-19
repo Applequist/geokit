@@ -1,6 +1,6 @@
 use crate::geodesy::GeodeticDatum;
 use crate::id::Id;
-use crate::transformation::InvertibleTransformation;
+use crate::transformation::{InvertibleTransformation, Transformation};
 
 /// A [`CoordSpace`] determines a class of coordinates, eg geocentric, geodetic...
 /// Each [`CoordSpace`] has **normalized coordinates**:
@@ -84,20 +84,15 @@ pub trait Crs {
     /// Returns the datum used by this CRS.
     fn datum(&self) -> &GeodeticDatum;
 
-    /// Returns the lower CRS derived from this one if any and the tranformation to or from it.
-    ///
-    /// # Arguments
-    ///
-    /// * `transformation`: determine the *direction* of the returned transformation:
-    ///   * [`LowerTransformation::TO`] returns the to-lower tranformation,
-    ///   * [`LowerTransformation::FROM`] returns the from-lower transformation.
+    /// Returns the lower CRS derived from this one if any and the tranformation to convert
+    /// **normalized coordinates** to it.
     fn lower(&self) -> Option<(Box<dyn Crs>, Box<dyn InvertibleTransformation>)>;
 
-    /// Convert coordinates in this CRS into the CRS's [`CoordSpace`] normalized coordinates.
-    fn normalization(&self) -> Box<dyn InvertibleTransformation>;
+    /// Convert coordinates in this CRS into **normalized coordinates**.
+    fn normalization(&self) -> Box<dyn Transformation>;
 
-    /// Convert normalized coordinates into coordinates in this CRS.
-    fn denormalization(&self) -> Box<dyn InvertibleTransformation>;
+    /// Convert **normalized coordinates** into coordinates in this CRS.
+    fn denormalization(&self) -> Box<dyn Transformation>;
 }
 
 pub mod geocentric;

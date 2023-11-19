@@ -1,7 +1,7 @@
 use crate::crs::{geocentric::GeocentricCrs, geodetic::GeodeticCrs, CoordSpace, Crs};
 use crate::geodesy::GeodeticDatum;
 use crate::id::Id;
-use crate::transformation::{Identity, InvertibleTransformation};
+use crate::transformation::{Identity, InvertibleTransformation, Transformation};
 
 /// A `TopocentricCrs` is a **3D cartesian coordinates reference system** whose origin is specified
 /// as a geodetic location in a base 3D geodetic CRS and axes are derived from the base CRS.
@@ -56,12 +56,12 @@ impl Crs for TopocentricCrs {
         ))
     }
 
-    fn normalization(&self) -> Box<dyn InvertibleTransformation> {
+    fn normalization(&self) -> Box<dyn Transformation> {
         // FIX: Replace with proper transformation
         Box::new(Identity::<3>)
     }
 
-    fn denormalization(&self) -> Box<dyn InvertibleTransformation> {
+    fn denormalization(&self) -> Box<dyn Transformation> {
         // FIX: Repleace with proper transformation
         Box::new(Identity::<3>)
     }

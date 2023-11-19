@@ -2,7 +2,7 @@ use super::geocentric::GeocentricCrs;
 use super::{CoordSpace, Crs};
 use crate::geodesy::GeodeticDatum;
 use crate::id::Id;
-use crate::transformation::{Identity, InvertibleTransformation};
+use crate::transformation::{Identity, InvertibleTransformation, Transformation};
 use std::fmt::*;
 
 /// Defines the ordering and direction of the axes of a 3D geodetic CRS.
@@ -83,12 +83,12 @@ impl Crs for GeodeticCrs {
         ))
     }
 
-    fn normalization(&self) -> Box<dyn InvertibleTransformation> {
+    fn normalization(&self) -> Box<dyn Transformation> {
         // FIX: Replace with proper transformation
         Box::new(Identity::<3>)
     }
 
-    fn denormalization(&self) -> Box<dyn InvertibleTransformation> {
+    fn denormalization(&self) -> Box<dyn Transformation> {
         // FIX: Replace with proper transformation
         Box::new(Identity::<3>)
     }
