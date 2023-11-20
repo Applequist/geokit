@@ -1,7 +1,7 @@
 use super::{ellipsoid::Ellipsoid, prime_meridian::PrimeMeridian};
 use crate::crs::CoordSpace;
 use crate::id::Id;
-use crate::transformation::InvertibleTransformation;
+use crate::transformation::Transformation;
 
 /// A `datum` is the information required to fix a coordinate system to an object.
 /// A `GeodeticDatum` is a `datum` describing the relationship of an ellipsoidal model of the Earth
@@ -12,8 +12,15 @@ pub struct GeodeticDatum {
     id: Id,
     ellipsoid: Ellipsoid,
     prime_meridian: PrimeMeridian,
-    to_ref: Option<(CoordSpace, Id, Box<dyn InvertibleTransformation>)>,
+    to_ref: Option<DatumTransformation>,
 }
+
+pub type DatumTransformation = (
+    CoordSpace,
+    Id,
+    Box<dyn Transformation>,
+    Box<dyn Transformation>,
+);
 
 impl GeodeticDatum {
     /// Creates a new [`GeodeticDatum`].
@@ -21,7 +28,7 @@ impl GeodeticDatum {
         id: Id,
         ellipsoid: Ellipsoid,
         prime_meridian: PrimeMeridian,
-        to_ref: Option<(CoordSpace, Id, Box<dyn InvertibleTransformation>)>,
+        to_ref: Option<DatumTransformation>,
     ) -> Self {
         Self {
             id,
@@ -30,6 +37,34 @@ impl GeodeticDatum {
             to_ref,
         }
     }
+
+    pub fn id(&self) -> &Id {
+        &self.id
+    }
+
+    pub fn ellipsoid(&self) -> Ellipsoid {
+        self.ellipsoid
+    }
+
+    pub fn prime_meridian(&self) -> PrimeMeridian {
+        self.prime_meridian
+    }
+
+    pub fn to_ref(&self) -> &Option<DatumTransformation> {
+        &self.to_ref
+    }
+}
+
+impl Default for GeodeticDatum {
+    /// Return the WGS 84 datum (epsg:6326) as default GeodeticDatum.
+    fn default() -> Self {
+        GeodeticDatum::new(
+            Id::full("WGS_1984", "EPSG", 6326),
+            Ellipsoid::default(),
+            PrimeMeridian::default(),
+            None,
+        )
+    }
 }
 
 impl PartialEq for GeodeticDatum {
@@ -37,18 +72,6 @@ impl PartialEq for GeodeticDatum {
         self.id == other.id
             && self.ellipsoid == other.ellipsoid
             && self.prime_meridian == other.prime_meridian
-    }
-}
-
-impl Default for GeodeticDatum {
-    /// Returns the WGS 84 datum (epsg:6326) as default GeodeticDatum.
-    fn default() -> Self {
-        GeodeticDatum::new(
-            Id::name("WGS 84"),
-            Ellipsoid::default(),
-            PrimeMeridian::default(),
-            None,
-        )
     }
 }
 
@@ -116,7 +139,12 @@ mod tests {
     #[test]
     fn default() {
         let wgs84 = GeodeticDatum::default();
-        assert_eq!(wgs84.id, Id::name("WGS 84"));
+        assert_eq!(
+            wgs84.id,
+            Id::full("WGS_1984", "EPSG", 6326),
+            "Expected 'WGS 84'. Got {}",
+            wgs84.id()
+        );
         assert_eq!(wgs84.ellipsoid, Ellipsoid::default());
         assert_eq!(wgs84.prime_meridian, PrimeMeridian::default());
     }

@@ -1,10 +1,11 @@
 use crate::crs::{geocentric::GeocentricCrs, geodetic::GeodeticCrs, CoordSpace, Crs};
-use crate::geodesy::GeodeticDatum;
+use crate::geodesy::{GeodeticDatum, PrimeMeridian};
 use crate::id::Id;
-use crate::transformation::{Identity, InvertibleTransformation, Transformation};
+use crate::transformation::{Identity, Transformation};
 
 /// A `TopocentricCrs` is a **3D cartesian coordinates reference system** whose origin is specified
 /// as a geodetic location in a base 3D geodetic CRS and axes are derived from the base CRS.
+#[derive(Debug, Clone, PartialEq)]
 pub struct TopocentricCrs {
     id: Id,
     /// The base geodetic CRS.
@@ -45,24 +46,41 @@ impl Crs for TopocentricCrs {
         self.base_crs.datum()
     }
 
-    fn lower(&self) -> Option<(Box<dyn Crs>, Box<dyn InvertibleTransformation>)> {
+    fn normalized(
+        &self,
+    ) -> (
+        Box<dyn Crs>,
+        Box<dyn Transformation>,
+        Box<dyn Transformation>,
+    ) {
+        // FIX: replace with proper values
+        (
+            Box::<GeocentricCrs>::default(),
+            Identity::<3>.boxed(),
+            Identity::<3>.boxed(),
+        )
+    }
+
+    fn lowered(
+        &self,
+    ) -> Option<(
+        Box<dyn Crs>,
+        Box<dyn Transformation>,
+        Box<dyn Transformation>,
+    )> {
         Some((
             Box::new(GeocentricCrs::new(
-                Id::name("n/a"),
-                self.base_crs.datum().clone(),
+                Id::name(format!("Lowered from {}", self.id())),
+                GeodeticDatum::new(
+                    Id::name(format!("Derived from {}", self.datum().id())),
+                    self.datum().ellipsoid(),
+                    PrimeMeridian::default(),
+                    None,
+                ),
             )),
             // FIX: Replace with proper transformation
-            Box::new(Identity::<3>),
+            Identity::<3>.boxed(),
+            Identity::<3>.boxed(),
         ))
-    }
-
-    fn normalization(&self) -> Box<dyn Transformation> {
-        // FIX: Replace with proper transformation
-        Box::new(Identity::<3>)
-    }
-
-    fn denormalization(&self) -> Box<dyn Transformation> {
-        // FIX: Repleace with proper transformation
-        Box::new(Identity::<3>)
     }
 }

@@ -1,7 +1,7 @@
 use crate::crs::{CoordSpace, Crs};
 use crate::geodesy::GeodeticDatum;
 use crate::id::Id;
-use crate::transformation::{Identity, InvertibleTransformation, Transformation};
+use crate::transformation::{Identity, Transformation};
 
 /// A `GeocentricCrs` is a **3D cartesian coordinates reference system** in which
 /// coordinates are given by distance **in meters** along the following axes:
@@ -17,8 +17,24 @@ pub struct GeocentricCrs {
 
 impl GeocentricCrs {
     /// Creates a new [`GeocentricCrs`].
+    /// FIX: enforce use of Greenwich prime meridian in datum
     pub fn new(id: Id, datum: GeodeticDatum) -> Self {
         Self { id, datum }
+    }
+
+    #[inline]
+    pub fn datum(&self) -> &GeodeticDatum {
+        &self.datum
+    }
+}
+
+impl Default for GeocentricCrs {
+    /// The default WGS84 geocentric CRS (epsg:4328)
+    fn default() -> Self {
+        GeocentricCrs::new(
+            Id::full("WGS 84 (geocentric)", "epsg", 4328),
+            GeodeticDatum::default(),
+        )
     }
 }
 
@@ -36,25 +52,31 @@ impl Crs for GeocentricCrs {
     }
 
     fn datum(&self) -> &GeodeticDatum {
-        &self.datum
+        self.datum()
     }
 
-    fn lower(&self) -> Option<(Box<dyn Crs>, Box<dyn InvertibleTransformation>)> {
+    fn normalized(
+        &self,
+    ) -> (
+        Box<dyn Crs>,
+        Box<dyn Transformation>,
+        Box<dyn Transformation>,
+    ) {
+        (
+            Box::new(self.clone()),
+            Identity::<3>.boxed(),
+            Identity::<3>.boxed(),
+        )
+    }
+
+    fn lowered(
+        &self,
+    ) -> Option<(
+        Box<dyn Crs>,
+        Box<dyn Transformation>,
+        Box<dyn Transformation>,
+    )> {
         None
-    }
-
-    fn normalization(&self) -> Box<dyn Transformation> {
-        Box::new(Identity::<3>)
-    }
-
-    fn denormalization(&self) -> Box<dyn Transformation> {
-        Box::new(Identity::<3>)
-    }
-}
-
-impl Default for GeocentricCrs {
-    fn default() -> Self {
-        GeocentricCrs::new(Id::name("WGS 84 (geocentric)"), GeodeticDatum::default())
     }
 }
 

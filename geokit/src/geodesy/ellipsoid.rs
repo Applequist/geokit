@@ -77,21 +77,28 @@ impl Ellipsoid {
 
     /// Convert **normalized geodetic coordinates** (lon in rad, lat in rad, height in meters)
     /// into **normalized geocentric coordinates** (x, y, z) all in meters.
-    pub fn llh_to_xyz(&self, &(lon, lat, h): &(f64, f64, f64)) -> (f64, f64, f64) {
+    pub fn llh_to_xyz(&self, llh: &[f64], xyz: &mut [f64]) {
+        let lon = llh[0];
+        let lat = llh[1];
+        let h = llh[2];
+
         let v = self.prime_vertical_radius(lat);
         let (sin_lon, cos_lon) = lon.sin_cos();
         let (sin_lat, cos_lat) = lat.sin_cos();
-        (
-            (v + h) * cos_lat * cos_lon,
-            (v + h) * cos_lat * sin_lon,
-            (v * (1.0 - self.e_sq()) + h) * sin_lat,
-        )
+
+        xyz[0] = (v + h) * cos_lat * cos_lon;
+        xyz[1] = (v + h) * cos_lat * sin_lon;
+        xyz[2] = (v * (1.0 - self.e_sq()) + h) * sin_lat;
     }
 
     /// Convert **normalized geocentric coordinates** (x, y, z) in meters
     /// into **normalized geodetic coordinates** (lon in rad, lat in rad, height in meters)
     /// using Heiskanen and Moritz iterative method.
-    pub fn xyz_to_llh(&self, &(x, y, z): &(f64, f64, f64)) -> (f64, f64, f64) {
+    pub fn xyz_to_llh(&self, xyz: &[f64], llh: &mut [f64]) {
+        let x = xyz[0];
+        let y = xyz[1];
+        let z = xyz[2];
+
         let a2 = self.a_sq();
         let b2 = self.b_sq();
         let e2 = self.e_sq();
@@ -117,7 +124,9 @@ impl Ellipsoid {
             }
         }
 
-        (lon, lat, h)
+        llh[0] = lon;
+        llh[1] = lat;
+        llh[2] = h;
     }
 }
 

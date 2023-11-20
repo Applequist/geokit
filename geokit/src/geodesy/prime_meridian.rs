@@ -24,6 +24,20 @@ impl PrimeMeridian {
             greenwich_longitude,
         }
     }
+
+    pub fn greenwich_lon(&self) -> f64 {
+        self.greenwich_longitude
+    }
+
+    pub fn to_greenwich(&self, lon: f64) -> f64 {
+        // FIX: What if we cross the anti-meridian
+        lon + self.greenwich_longitude
+    }
+
+    pub fn from_greenwich(&self, lon: f64) -> f64 {
+        // FIX: What if we cross the anti-meridian
+        lon - self.greenwich_longitude
+    }
 }
 
 impl Default for PrimeMeridian {

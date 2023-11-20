@@ -1,3 +1,4 @@
+use smallvec::SmallVec;
 use std::fmt::Debug;
 use thiserror::Error;
 
@@ -59,23 +60,55 @@ pub trait Transformation: Debug {
         Ok(index)
     }
 
-    fn boxed_clone(&self) -> Box<dyn Transformation>;
+    fn and_then<T>(self, t: T) -> Chain<Self, T>
+    where
+        T: Transformation,
+        Self: Sized,
+    {
+        Chain {
+            first: self,
+            then: t,
+        }
+    }
+
+    fn boxed(&self) -> Box<dyn Transformation>;
 }
 
-pub trait InvertibleTransformation: Transformation {
-    fn inverse(&self) -> Box<dyn InvertibleTransformation>;
-    fn boxed_clone(&self) -> Box<dyn InvertibleTransformation>;
+/// A chained [`Transformation`].
+#[derive(Debug)]
+pub struct Chain<A, B> {
+    first: A,
+    then: B,
+}
+
+impl<A: Transformation + Clone + 'static, B: Transformation + Clone + 'static> Transformation
+    for Chain<A, B>
+{
+    fn in_dim(&self) -> usize {
+        self.first.in_dim()
+    }
+
+    fn out_dim(&self) -> usize {
+        self.then.out_dim()
+    }
+
+    fn apply(&self, input: &[f64], output: &mut [f64]) -> Result<()> {
+        let mut middle: SmallVec<[f64; 3]> = SmallVec::from_elem(0., self.first.out_dim());
+        self.first.apply(input, &mut middle)?;
+        self.then.apply(&middle, output)
+    }
+
+    fn boxed(&self) -> Box<dyn Transformation> {
+        Box::new(Chain {
+            first: self.first.clone(),
+            then: self.then.clone(),
+        })
+    }
 }
 
 impl Clone for Box<dyn Transformation> {
     fn clone(&self) -> Box<dyn Transformation> {
-        Transformation::boxed_clone(&**self)
-    }
-}
-
-impl Clone for Box<dyn InvertibleTransformation> {
-    fn clone(&self) -> Box<dyn InvertibleTransformation> {
-        InvertibleTransformation::boxed_clone(&**self)
+        Transformation::boxed(&**self)
     }
 }
 
@@ -96,17 +129,7 @@ impl<const N: usize> Transformation for Identity<N> {
         Ok(())
     }
 
-    fn boxed_clone(&self) -> Box<dyn Transformation> {
-        Box::new(Identity::<N>)
-    }
-}
-
-impl<const N: usize> InvertibleTransformation for Identity<N> {
-    fn inverse(&self) -> Box<dyn InvertibleTransformation> {
-        Box::new(Identity::<N>)
-    }
-
-    fn boxed_clone(&self) -> Box<dyn InvertibleTransformation> {
+    fn boxed(&self) -> Box<dyn Transformation> {
         Box::new(Identity::<N>)
     }
 }
@@ -144,7 +167,7 @@ mod tests {
             }
         }
 
-        fn boxed_clone(&self) -> Box<dyn Transformation> {
+        fn boxed(&self) -> Box<dyn Transformation> {
             Box::new(Dummy::<N> {
                 max: self.max,
                 count: Cell::new(0),
@@ -205,11 +228,5 @@ mod tests {
             [1., 2., 3.],
             out
         );
-
-        let boxed_inv_transfo: Box<dyn InvertibleTransformation> = Box::new(Identity::<3>);
-        let _cloned_as_inv_transfo: Box<dyn InvertibleTransformation> = boxed_inv_transfo.clone();
-        let inv_t = _cloned_as_inv_transfo.inverse();
-        inv_t.apply(&[0., 0., 0.], &mut out).unwrap();
-        assert_eq!(out, [0.; 3], "Expected {:?}. Got {:?}", [0.; 3], out);
     }
 }

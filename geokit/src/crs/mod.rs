@@ -1,6 +1,6 @@
 use crate::geodesy::GeodeticDatum;
 use crate::id::Id;
-use crate::transformation::{InvertibleTransformation, Transformation};
+use crate::transformation::Transformation;
 
 /// A [`CoordSpace`] determines a class of coordinates, eg geocentric, geodetic...
 /// Each [`CoordSpace`] has **normalized coordinates**:
@@ -57,6 +57,12 @@ impl PartialOrd for CoordSpace {
     }
 }
 
+pub type LoweringTransformation = (
+    Box<dyn Crs>,
+    Box<dyn Transformation>,
+    Box<dyn Transformation>,
+);
+
 /// [`Crs`] defines common attributes of CRS and methods to find **coordinates transformation
 /// pathes** between them.
 /// For the latter, CRS are partially ordered based on their kind: 2 CRS are comparable if and only
@@ -65,7 +71,7 @@ impl PartialOrd for CoordSpace {
 /// a CRS that is less or equal than both source and target CRS and for which there exist a datum
 /// transformation between the source and target datum or to and from a common reference datum.
 pub trait Crs {
-    /// Returns unique identifier of this CRS.
+    /// Return unique identifier of this CRS.
     /// The returned `id` has the following format:
     ///
     /// ```ignore
@@ -75,24 +81,28 @@ pub trait Crs {
     /// ```
     fn id(&self) -> &Id;
 
-    /// Returns the coordinates dimension of this CRS.
+    /// Return the coordinates dimension of this CRS.
     fn dim(&self) -> usize;
 
-    /// Returns the kind of this CRS.
+    /// Return the kind of this CRS.
     fn kind(&self) -> CoordSpace;
 
-    /// Returns the datum used by this CRS.
+    /// Return the datum used by this CRS.
     fn datum(&self) -> &GeodeticDatum;
 
-    /// Returns the lower CRS derived from this one if any and the tranformation to convert
-    /// **normalized coordinates** to it.
-    fn lower(&self) -> Option<(Box<dyn Crs>, Box<dyn InvertibleTransformation>)>;
+    /// Return the **normalized CRS** and the **conversions** to convert coordinates in
+    /// this CRS to/from this normalized CRS.
+    fn normalized(
+        &self,
+    ) -> (
+        Box<dyn Crs>,
+        Box<dyn Transformation>,
+        Box<dyn Transformation>,
+    );
 
-    /// Convert coordinates in this CRS into **normalized coordinates**.
-    fn normalization(&self) -> Box<dyn Transformation>;
-
-    /// Convert **normalized coordinates** into coordinates in this CRS.
-    fn denormalization(&self) -> Box<dyn Transformation>;
+    /// Return the **normalized CRS** derived from this one with a lower [`CoordSpace`] if any
+    /// and the conversions to convert coordinates from this CRS to and from the lowered CRS.
+    fn lowered(&self) -> Option<LoweringTransformation>;
 }
 
 pub mod geocentric;
