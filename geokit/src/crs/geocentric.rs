@@ -17,11 +17,13 @@ pub struct GeocentricCrs {
 
 impl GeocentricCrs {
     /// Creates a new [`GeocentricCrs`].
-    /// FIX: enforce use of Greenwich prime meridian in datum
+    /// TODO: Should we enforce the use of Greenwich prime meridian in datum or
+    /// is it implicit ?
     pub fn new(id: Id, datum: GeodeticDatum) -> Self {
         Self { id, datum }
     }
 
+    /// Return this CRS geodetic datum as a reference.
     #[inline]
     pub fn datum(&self) -> &GeodeticDatum {
         &self.datum
@@ -32,7 +34,7 @@ impl Default for GeocentricCrs {
     /// The default WGS84 geocentric CRS (epsg:4328)
     fn default() -> Self {
         GeocentricCrs::new(
-            Id::full("WGS 84 (geocentric)", "epsg", 4328),
+            Id::full("WGS 84 (geocentric)", "EPSG", 4328),
             GeodeticDatum::default(),
         )
     }

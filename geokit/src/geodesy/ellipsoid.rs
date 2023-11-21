@@ -2,11 +2,11 @@
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub struct Ellipsoid {
     /// The semi major axis length **in meters**.
-    pub a: f64,
+    a: f64,
     /// The semi minor axis length **in meters**.
-    pub b: f64,
+    b: f64,
     /// The inverse flattening: `a / (a - b)``. INFINITY if a == b.
-    pub invf: f64,
+    invf: f64,
 }
 
 impl Ellipsoid {
@@ -40,36 +40,54 @@ impl Ellipsoid {
         }
     }
 
-    /// Returns whether the ellipsoid is actually a sphere or not.
+    /// Return whether the ellipsoid is actually a sphere or not.
     pub fn is_spherical(&self) -> bool {
         self.invf.is_infinite()
     }
 
-    /// Returns the semi major axis squared.
+    /// Return the semi-major axis length in meters.
+    #[inline]
+    pub fn a(&self) -> f64 {
+        self.a
+    }
+
+    /// Return the semi-major axis squared.
     #[inline]
     pub fn a_sq(&self) -> f64 {
         self.a * self.a
     }
 
-    /// Returns the semi minor axis squared.
+    /// Return the semi-minor axis length in meters.
+    #[inline]
+    pub fn b(&self) -> f64 {
+        self.b
+    }
+
+    /// Return the semi minor axis squared.
     #[inline]
     pub fn b_sq(&self) -> f64 {
         self.b * self.b
     }
 
-    /// Returns the first eccentricity squared: `(a*a -b*b) / a*a`
+    /// Return the inverse flattening: `a / (a - b)`.
+    #[inline]
+    pub fn invf(&self) -> f64 {
+        self.invf
+    }
+
+    /// Return the first eccentricity squared: `(a^2 -b^2) / a^2`
     #[inline]
     pub fn e_sq(&self) -> f64 {
         (self.a_sq() - self.b_sq()) / self.a_sq()
     }
 
-    /// Returns the radius of curvature **in meters** in the east-west direction
+    /// Return the radius of curvature **in meters** in the east-west direction
     /// at the given latitude **in radians**.
     pub fn prime_vertical_radius(&self, lat: f64) -> f64 {
         self.a / (1.0 - self.e_sq() * lat.sin().powi(2)).sqrt()
     }
 
-    /// Returns the radius of curvature **in meters** in the north-south direction
+    /// Return the radius of curvature **in meters** in the north-south direction
     /// at the given latitude **in radians**.
     pub fn prime_meridional_radius(&self, lat: f64) -> f64 {
         self.a * (1.0 - self.e_sq()) / (1.0 - self.e_sq() * lat.sin().powi(2)).powf(1.5)
@@ -131,7 +149,7 @@ impl Ellipsoid {
 }
 
 impl Default for Ellipsoid {
-    /// Returns the WGS84 (epsg:7030) ellipsoid as default.
+    /// Return the WGS84 (EPSG:7030) ellipsoid as default.
     fn default() -> Self {
         Ellipsoid::from_ainvf(6_378_137.0, 298.257_223_563)
     }

@@ -71,14 +71,7 @@ pub type LoweringTransformation = (
 /// a CRS that is less or equal than both source and target CRS and for which there exist a datum
 /// transformation between the source and target datum or to and from a common reference datum.
 pub trait Crs {
-    /// Return unique identifier of this CRS.
-    /// The returned `id` has the following format:
-    ///
-    /// ```ignore
-    /// <id> := [<authority> ':'] <code>
-    /// <authority> := String
-    /// <code> := String
-    /// ```
+    /// Return the identifier of this CRS.
     fn id(&self) -> &Id;
 
     /// Return the coordinates dimension of this CRS.
@@ -89,6 +82,9 @@ pub trait Crs {
 
     /// Return the datum used by this CRS.
     fn datum(&self) -> &GeodeticDatum;
+
+    // TODO: Add a method to tell if the CRS is normalized for its [`kind`][Self::kind()].
+    // fn is_normalized(&self) -> bool
 
     /// Return the **normalized CRS** and the **conversions** to convert coordinates in
     /// this CRS to/from this normalized CRS.

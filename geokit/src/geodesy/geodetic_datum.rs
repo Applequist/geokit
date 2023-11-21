@@ -15,6 +15,9 @@ pub struct GeodeticDatum {
     to_ref: Option<DatumTransformation>,
 }
 
+/// Coordinates can be transformed between different datum.
+/// A [`DatumTransformation`] specifies a direct and reverse transformations between
+/// datum.
 pub type DatumTransformation = (
     CoordSpace,
     Id,
@@ -38,25 +41,29 @@ impl GeodeticDatum {
         }
     }
 
+    /// Return this datum's id as a reference.
     pub fn id(&self) -> &Id {
         &self.id
     }
 
+    /// Return a copy of this datum's ellipsoid.
     pub fn ellipsoid(&self) -> Ellipsoid {
         self.ellipsoid
     }
 
+    /// Return a copy of this datum's prime meridian.
     pub fn prime_meridian(&self) -> PrimeMeridian {
         self.prime_meridian
     }
 
+    /// Return the option [DatumTransformation] to a reference datum.
     pub fn to_ref(&self) -> &Option<DatumTransformation> {
         &self.to_ref
     }
 }
 
 impl Default for GeodeticDatum {
-    /// Return the WGS 84 datum (epsg:6326) as default GeodeticDatum.
+    /// Return the WGS 84 datum (EPSG:6326) as default GeodeticDatum.
     fn default() -> Self {
         GeodeticDatum::new(
             Id::full("WGS_1984", "EPSG", 6326),
@@ -143,7 +150,7 @@ mod tests {
             wgs84.id,
             Id::full("WGS_1984", "EPSG", 6326),
             "Expected 'WGS 84'. Got {}",
-            wgs84.id()
+            wgs84.id
         );
         assert_eq!(wgs84.ellipsoid, Ellipsoid::default());
         assert_eq!(wgs84.prime_meridian, PrimeMeridian::default());

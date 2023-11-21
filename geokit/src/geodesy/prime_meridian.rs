@@ -3,49 +3,37 @@
 /// expressed **in radians** and positive eastward.
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub struct PrimeMeridian {
-    greenwich_longitude: f64,
+    gw_lon_rad: f64,
 }
 
 impl PrimeMeridian {
-    /// Creates a new [`PrimeMeridian`] with the given Greenwich longitude **in radians, positive
+    /// Create a new [`PrimeMeridian`] with the given Greenwich longitude **in radians, positive
     /// East of Greenwich**.
     ///
     /// # Panics
     ///
     /// Panics if the `greenwich_longitude` is not in (-pi, pi].
-    pub fn new(greenwich_longitude: f64) -> Self {
+    pub fn new(gw_lon_rad: f64) -> Self {
         assert!(
-            greenwich_longitude > -std::f64::consts::PI
-                && greenwich_longitude <= std::f64::consts::PI,
+            gw_lon_rad > -std::f64::consts::PI && gw_lon_rad <= std::f64::consts::PI,
             "Expected greenwich_longitude in (-pi, pi]. Got {}",
-            greenwich_longitude
+            gw_lon_rad
         );
-        Self {
-            greenwich_longitude,
-        }
+        Self { gw_lon_rad }
     }
 
-    pub fn greenwich_lon(&self) -> f64 {
-        self.greenwich_longitude
-    }
-
-    pub fn to_greenwich(&self, lon: f64) -> f64 {
-        // FIX: What if we cross the anti-meridian
-        lon + self.greenwich_longitude
-    }
-
-    pub fn from_greenwich(&self, lon: f64) -> f64 {
-        // FIX: What if we cross the anti-meridian
-        lon - self.greenwich_longitude
+    /// Return this prime meridian's longitude in radians, positive east of the Greenwich
+    /// prime meridian.
+    #[inline]
+    pub fn lon(&self) -> f64 {
+        self.gw_lon_rad
     }
 }
 
 impl Default for PrimeMeridian {
-    /// Returns the Greenwich prime meridian as default.
+    /// Return the Greenwich prime meridian as default.
     fn default() -> Self {
-        PrimeMeridian {
-            greenwich_longitude: 0.0,
-        }
+        PrimeMeridian { gw_lon_rad: 0.0 }
     }
 }
 
@@ -77,7 +65,7 @@ mod tests {
         let pm = PrimeMeridian::new(2.23_f64.to_radians());
         let cpy = pm;
         assert_eq!(pm, cpy);
-        let _s = cpy.greenwich_longitude;
+        let _s = cpy.gw_lon_rad;
     }
 
     #[test]
@@ -95,6 +83,6 @@ mod tests {
     #[test]
     fn default() {
         let pm = PrimeMeridian::default();
-        assert_eq!(pm.greenwich_longitude, 0.0);
+        assert_eq!(pm.gw_lon_rad, 0.0);
     }
 }

@@ -60,6 +60,8 @@ pub trait Transformation: Debug {
         Ok(index)
     }
 
+    fn boxed(&self) -> Box<dyn Transformation>;
+
     fn and_then<T>(self, t: T) -> Chain<Self, T>
     where
         T: Transformation,
@@ -70,8 +72,6 @@ pub trait Transformation: Debug {
             then: t,
         }
     }
-
-    fn boxed(&self) -> Box<dyn Transformation>;
 }
 
 /// A chained [`Transformation`].
@@ -81,8 +81,10 @@ pub struct Chain<A, B> {
     then: B,
 }
 
-impl<A: Transformation + Clone + 'static, B: Transformation + Clone + 'static> Transformation
-    for Chain<A, B>
+impl<A, B> Transformation for Chain<A, B>
+where
+    A: Transformation + Clone + 'static,
+    B: Transformation + Clone + 'static,
 {
     fn in_dim(&self) -> usize {
         self.first.in_dim()
@@ -106,13 +108,26 @@ impl<A: Transformation + Clone + 'static, B: Transformation + Clone + 'static> T
     }
 }
 
+impl<A, B> Clone for Chain<A, B>
+where
+    A: Clone,
+    B: Clone,
+{
+    fn clone(&self) -> Self {
+        Chain {
+            first: self.first.clone(),
+            then: self.then.clone(),
+        }
+    }
+}
+
 impl Clone for Box<dyn Transformation> {
     fn clone(&self) -> Box<dyn Transformation> {
         Transformation::boxed(&**self)
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct Identity<const N: usize>;
 
 impl<const N: usize> Transformation for Identity<N> {
@@ -134,13 +149,50 @@ impl<const N: usize> Transformation for Identity<N> {
     }
 }
 
+pub type ToOrd = (usize, f64);
+
+#[derive(Debug, Clone)]
+pub struct CoordScaling(pub Vec<ToOrd>);
+
+impl Transformation for CoordScaling {
+    fn in_dim(&self) -> usize {
+        self.0.len()
+    }
+
+    fn out_dim(&self) -> usize {
+        3
+    }
+
+    fn apply(&self, input: &[f64], output: &mut [f64]) -> Result<()> {
+        output.copy_from_slice(&[0.; 3]);
+        for (ox, (ix, f)) in self.0.iter().enumerate() {
+            output[ox] = input[*ix] * f;
+        }
+        Ok(())
+    }
+
+    fn boxed(&self) -> Box<dyn Transformation> {
+        Box::new(self.clone())
+    }
+}
+
+impl From<(usize, f64)> for CoordScaling {
+    fn from((dim, value): (usize, f64)) -> Self {
+        let mut ord: Vec<ToOrd> = Vec::new();
+        for ix in 0..dim {
+            ord.push((ix, value))
+        }
+        Self(ord)
+    }
+}
+
 #[cfg(test)]
 mod tests {
 
     use super::*;
     use std::cell::Cell;
 
-    #[derive(Debug)]
+    #[derive(Debug, Clone)]
     struct Dummy<const N: usize> {
         max: usize,
         count: Cell<usize>,
@@ -228,5 +280,23 @@ mod tests {
             [1., 2., 3.],
             out
         );
+    }
+
+    #[test]
+    fn chain() {
+        let first = Dummy::<2> {
+            max: 2,
+            count: Cell::new(0),
+        };
+        let then = Dummy::<2> {
+            max: 2,
+            count: Cell::new(0),
+        };
+        let chain = first.and_then(then);
+
+        let input = [0.; 4];
+        let mut output = [0.; 4];
+        let count = chain.apply_seq(&input, &mut output).unwrap();
+        assert_eq!(count, 2);
     }
 }

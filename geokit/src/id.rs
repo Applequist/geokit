@@ -24,6 +24,13 @@ impl Id {
             id: Some((authority.into(), code)),
         }
     }
+
+    pub fn renamed<S: Into<String>>(&self, rename: S) -> Self {
+        Self {
+            name: rename.into(),
+            id: self.id.clone(),
+        }
+    }
 }
 
 impl From<&str> for Id {

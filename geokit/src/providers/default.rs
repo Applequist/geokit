@@ -57,8 +57,8 @@ mod tests {
         assert_eq!(provider.ellipsoid_ids().len(), 1);
         let wgs84 = provider.ellipsoid("WGS 84");
         assert!(wgs84.is_some());
-        assert!((wgs84.unwrap().a - 6378137.0).abs() < 1e-5);
-        assert!((wgs84.unwrap().invf - 298.257223563).abs() < 1e-5);
+        assert!((wgs84.unwrap().a() - 6378137.0).abs() < 1e-5);
+        assert!((wgs84.unwrap().invf() - 298.257223563).abs() < 1e-5);
     }
 
     #[test]
@@ -67,6 +67,6 @@ mod tests {
         assert_eq!(provider.prime_meridian_ids().len(), 1);
         let gw = provider.prime_meridian("Greenwich");
         assert!(gw.is_some());
-        assert_eq!(gw.unwrap().greenwich_lon(), 0.0);
+        assert_eq!(gw.unwrap().lon(), 0.0);
     }
 }

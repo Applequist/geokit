@@ -2,11 +2,14 @@ use super::geocentric::GeocentricCrs;
 use super::{CoordSpace, Crs};
 use crate::geodesy::{Ellipsoid, GeodeticDatum, PrimeMeridian};
 use crate::id::Id;
-use crate::transformation::{Result, Transformation};
+use crate::transformation::{Chain, CoordScaling, Result, Transformation};
 use std::fmt::*;
 
-/// Defines the ordering and direction of the axes of a 3D geodetic CRS.
-#[derive(Debug, Copy, Clone, PartialEq)]
+/// A [`GeodeticAxes`] value defines the *coordinates system* part of a [`GedoeticCrs`], that is:
+/// - the ordering and direction of the axes,
+/// - the angle unit used for longitude and latitude,
+/// - the length unit used for the ellipsoidal height.
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum GeodeticAxes {
     /// Coordinates are given in the following order:
     /// - longitude positive east of prime meridian,
@@ -29,6 +32,7 @@ pub enum GeodeticAxes {
 }
 
 impl GeodeticAxes {
+    /// Return the dimension (2D or 3D) of the coordinates system.
     fn dim(&self) -> usize {
         match self {
             GeodeticAxes::EastNorthUp {
@@ -43,29 +47,10 @@ impl GeodeticAxes {
             | GeodeticAxes::NorthEast { angle_unit: _ } => 2,
         }
     }
-}
 
-impl Default for GeodeticAxes {
-    /// Return the [`GeodeticAxes`] used in **normalized geodetic coordinates**.
-    fn default() -> Self {
-        Self::EastNorthUp {
-            angle_unit: 1.0,
-            height_unit: 1.0,
-        }
-    }
-}
-
-type ToOrd = (usize, f64);
-
-#[derive(Debug, Clone)]
-struct GeodeticNormalization {
-    ord: Vec<ToOrd>,
-}
-
-impl GeodeticNormalization {
-    /// Create a new [`GeodeticNormalization`] conversion base on [`GeodeticAxes`]
-    fn from(value: GeodeticAxes) -> Self {
-        let ord = match value {
+    /// Return the **coordinates normalization** conversion.
+    fn normalization(&self) -> CoordScaling {
+        let ord = match *self {
             GeodeticAxes::EastNorthUp {
                 angle_unit,
                 height_unit,
@@ -85,41 +70,12 @@ impl GeodeticNormalization {
                 vec![(1, angle_unit), (0, angle_unit)]
             }
         };
-        Self { ord }
-    }
-}
-
-impl Transformation for GeodeticNormalization {
-    fn in_dim(&self) -> usize {
-        self.ord.len()
+        CoordScaling(ord)
     }
 
-    fn out_dim(&self) -> usize {
-        3
-    }
-
-    fn apply(&self, input: &[f64], output: &mut [f64]) -> Result<()> {
-        output.copy_from_slice(&[0.; 3]);
-        for (ox, (ix, f)) in self.ord.iter().enumerate() {
-            output[ox] = input[*ix] * f;
-        }
-        Ok(())
-    }
-
-    fn boxed(&self) -> Box<dyn Transformation> {
-        Box::new(self.clone())
-    }
-}
-
-#[derive(Debug, Clone)]
-struct GeodeticDenormalization {
-    ord: Vec<ToOrd>,
-}
-
-impl GeodeticDenormalization {
-    /// Create a new [`GeodeticDenormalization`] based on [`GeodeticAxes`].
-    fn from(axes: GeodeticAxes) -> Self {
-        let ord = match axes {
+    /// Return the **coordinates denormalization** conversion.
+    fn denormalization(&self) -> CoordScaling {
+        let ord = match *self {
             GeodeticAxes::EastNorthUp {
                 angle_unit,
                 height_unit,
@@ -145,39 +101,27 @@ impl GeodeticDenormalization {
                 vec![(1, from_rad), (0, from_rad)]
             }
         };
-        Self { ord }
+        CoordScaling(ord)
     }
 }
 
-impl Transformation for GeodeticDenormalization {
-    fn in_dim(&self) -> usize {
-        3
-    }
-
-    fn out_dim(&self) -> usize {
-        self.ord.len()
-    }
-
-    fn apply(&self, input: &[f64], output: &mut [f64]) -> Result<()> {
-        for (ox, (ix, f)) in self.ord.iter().enumerate() {
-            output[ox] = input[*ix] * f;
+impl Default for GeodeticAxes {
+    /// Return the [`GeodeticAxes`] used in **normalized geodetic coordinates**.
+    fn default() -> Self {
+        Self::EastNorthUp {
+            angle_unit: 1.0,
+            height_unit: 1.0,
         }
-        Ok(())
-    }
-
-    fn boxed(&self) -> Box<dyn Transformation> {
-        Box::new(self.clone())
     }
 }
 
 /// [`GeodeticToGeocentric`] converts **normalized geodetic coordinates** to **normalized
 /// geocentric coordinates**.
 ///
-/// As mentioned in the EPSG guidance note 7 part 2, paragraph 4.1.1, this Transformation
-/// first transform to/from non-greenwich based geodetic coordinates into greenwich based
-/// ones.
+/// **IMPORTANT**: As mentioned in the EPSG guidance note 7 part 2, paragraph 4.1.1, this Transformation
+/// first transform **normalized geodetic coordinates** to greenwich based normalized geodetic coordinates.
 #[derive(Debug, Clone, Copy)]
-struct GeodeticToGeocentric {
+pub struct GeodeticToGeocentric {
     ellipsoid: Ellipsoid,
     prime_meridian: PrimeMeridian,
 }
@@ -202,12 +146,9 @@ impl Transformation for GeodeticToGeocentric {
     }
 
     fn apply(&self, input: &[f64], output: &mut [f64]) -> Result<()> {
-        let llh_gw = [
-            self.prime_meridian.to_greenwich(input[0]),
-            input[1],
-            input[2],
-        ];
-
+        // convert longitude to Greenwich-base longitude
+        // FIX: what if we cross the antimeridian ?
+        let llh_gw = [input[0] + self.prime_meridian.lon(), input[1], input[2]];
         self.ellipsoid.llh_to_xyz(&llh_gw, output);
         Ok(())
     }
@@ -217,8 +158,13 @@ impl Transformation for GeodeticToGeocentric {
     }
 }
 
+/// [`GeocentricToGeodetic`] converts **normalized geocentric coordinates** to **normalized
+/// geodetic coordinates**.
+///
+/// **IMPORTANT**: As mentioned in the EPSG guidance note 7 part 2, paragraph 4.1.1, this Transformation
+/// also transform the normalized geodetic coordinates to non-greenwich based normalized geodetic coordinates.
 #[derive(Debug, Clone, Copy)]
-struct GeocentricToGeodetic {
+pub struct GeocentricToGeodetic {
     ellipsoid: Ellipsoid,
     prime_meridian: PrimeMeridian,
 }
@@ -243,7 +189,9 @@ impl Transformation for GeocentricToGeodetic {
 
     fn apply(&self, input: &[f64], output: &mut [f64]) -> Result<()> {
         self.ellipsoid.xyz_to_llh(input, output);
-        output[0] = self.prime_meridian.from_greenwich(output[0]);
+        // Convert longitude from Greenwich-based longitude to this prime_meridian base longitude.
+        // FIX: What if we cross the anti-meridian
+        output[0] -= self.prime_meridian.lon();
         Ok(())
     }
 
@@ -253,7 +201,7 @@ impl Transformation for GeocentricToGeodetic {
 }
 
 /// A `GeodeticCrs` is a **2D/3D geodetic coordinates reference system** in which
-/// coordinates are given by longitude, latitude and optionally ellipsoidal height in various order, direction
+/// coordinates are made up of longitude, latitude and optionally ellipsoidal height in various order, direction
 /// and units.
 #[derive(Debug, Clone, PartialEq)]
 pub struct GeodeticCrs {
@@ -263,12 +211,47 @@ pub struct GeodeticCrs {
 }
 
 impl GeodeticCrs {
+    /// Create a new [`GeodeticCrs`].
     pub fn new(id: Id, datum: GeodeticDatum, axes: GeodeticAxes) -> Self {
         Self { id, datum, axes }
+    }
+
+    /// Return a reference to this CRS [`datum`][GeodeticDatum].
+    pub fn datum(&self) -> &GeodeticDatum {
+        &self.datum
+    }
+
+    /// Return a reference to the [`axes`][GeodeticAxes] used by this CRS.
+    pub fn axes(&self) -> &GeodeticAxes {
+        &self.axes
+    }
+
+    /// Return the *lower* [`geocentric`][GeocentricCrs] CRS derived from this geodetic CRS
+    /// and the coordinates conversion to and from this geocentric CRS.
+    pub fn geoc_crs(
+        &self,
+    ) -> (
+        GeocentricCrs,
+        Chain<CoordScaling, GeodeticToGeocentric>,
+        Chain<GeocentricToGeodetic, CoordScaling>,
+    ) {
+        let geoc_crs = GeocentricCrs::new(
+            self.id.renamed(format!("{} (as geocentric)", self.id())),
+            // FIX: Should we enforce Greewich prime meridian ? See [GeocentricCrs].
+            self.datum.clone(),
+        );
+        (
+            geoc_crs,
+            self.axes
+                .normalization()
+                .and_then(GeodeticToGeocentric::from(&self.datum)),
+            GeocentricToGeodetic::from(&self.datum).and_then(self.axes.denormalization()),
+        )
     }
 }
 
 impl Default for GeodeticCrs {
+    /// Return EPSG:4326 as default the default geodetic CRS.
     fn default() -> Self {
         GeodeticCrs::new(
             Id::full("WGS 84", "EPSG", 4326),
@@ -310,8 +293,8 @@ impl Crs for GeodeticCrs {
                 self.datum.clone(),
                 GeodeticAxes::default(),
             )),
-            GeodeticNormalization::from(self.axes).boxed(),
-            GeodeticDenormalization::from(self.axes).boxed(),
+            self.axes.normalization().boxed(),
+            self.axes.denormalization().boxed(),
         )
     }
 
@@ -322,18 +305,8 @@ impl Crs for GeodeticCrs {
         Box<dyn Transformation>,
         Box<dyn Transformation>,
     )> {
-        Some((
-            Box::new(GeocentricCrs::new(
-                Id::name(format!("Lowered from {}", self.id)),
-                self.datum.clone(),
-            )),
-            GeodeticNormalization::from(self.axes)
-                .and_then(GeodeticToGeocentric::from(&self.datum))
-                .boxed(),
-            GeocentricToGeodetic::from(&self.datum)
-                .and_then(GeodeticDenormalization::from(self.axes))
-                .boxed(),
-        ))
+        let (crs, to, from) = self.geoc_crs();
+        Some((Box::new(crs), to.boxed(), from.boxed()))
     }
 }
 
