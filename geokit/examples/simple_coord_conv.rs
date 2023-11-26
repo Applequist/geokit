@@ -42,7 +42,7 @@ fn main() {
 
     // Allocating storage for transformed coordinates.
     let mut xyz = vec![0.; count * 3];
-    let trans_count = to_geoc.apply_seq(&ll, &mut xyz).unwrap();
+    let trans_count = to_geoc.fwd_seq(&ll, &mut xyz).unwrap();
 
     assert_eq!(trans_count, count);
 

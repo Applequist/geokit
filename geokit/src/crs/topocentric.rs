@@ -1,9 +1,10 @@
 use crate::crs::{geodetic::GeodeticCrs, CoordSpace, Crs};
 use crate::geodesy::GeodeticDatum;
 use crate::id::Id;
-use crate::transformation::{CoordScaling, Identity, Transformation};
+use crate::transformation::{identity, Transformation};
 
 use super::geocentric::GeocentricCrs;
+use super::LoweringTransformation;
 
 /// A `TopocentricCrs` is a **3D cartesian coordinates reference system** whose origin is specified
 /// as a geodetic location in a base 3D geodetic CRS and axes are:
@@ -34,16 +35,22 @@ impl TopocentricCrs {
         }
     }
 
-    pub fn geoc_crs(&self) -> (GeocentricCrs, Identity<3>, Identity<3>) {
+    pub fn geoc_crs(
+        &self,
+    ) -> (
+        GeocentricCrs,
+        impl Transformation + Sized,
+        impl Transformation + Sized,
+    ) {
         // TODO: Transformation part.
         let (crs, base_to_geoc, _geoc_to_base) = self.base_crs.geoc_crs();
         // Transform origin to geocentric coordinates
         let mut origin_geoc = [0.; 3];
-        base_to_geoc.apply(&self.origin, &mut origin_geoc).unwrap();
+        base_to_geoc.fwd(&self.origin, &mut origin_geoc).unwrap();
 
         // TODO: Compute the mat to go from the local topocentric frame to the geocentric frame.
         // then apply normalization then affine transform
-        (crs, Identity::<3>, Identity::<3>)
+        (crs, identity::<3>(), identity::<3>())
     }
 }
 
@@ -64,32 +71,7 @@ impl Crs for TopocentricCrs {
         self.base_crs.datum()
     }
 
-    fn normalized(
-        &self,
-    ) -> (
-        Box<dyn Crs>,
-        Box<dyn Transformation>,
-        Box<dyn Transformation>,
-    ) {
-        (
-            Box::new(TopocentricCrs::new(
-                Id::name(format!("{} normalized", self.id())),
-                self.base_crs.clone(),
-                self.origin,
-                1.0,
-            )),
-            CoordScaling::from((3, self.length_unit)).boxed(),
-            CoordScaling::from((3, 1.0 / self.length_unit)).boxed(),
-        )
-    }
-
-    fn lowered(
-        &self,
-    ) -> Option<(
-        Box<dyn Crs>,
-        Box<dyn Transformation>,
-        Box<dyn Transformation>,
-    )> {
+    fn lowered(&self) -> Option<LoweringTransformation> {
         let (crs, to, from) = self.geoc_crs();
         // TODO: build TopocentricToGeocentric and GeocentricToTopocentric
         Some((Box::new(crs), to.boxed(), from.boxed()))

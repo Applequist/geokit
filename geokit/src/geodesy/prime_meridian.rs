@@ -28,6 +28,22 @@ impl PrimeMeridian {
     pub fn lon(&self) -> f64 {
         self.gw_lon_rad
     }
+
+    /// Convert a **normalized longitude** with the prime meridian as origin into
+    /// a **normalized longitude** with the Greenwich prime meridian as origin.
+    #[inline]
+    pub(crate) fn convert_lon_to_gw(&self, lon: f64) -> f64 {
+        // FIX: What if we cross the antimeridian?
+        lon + self.gw_lon_rad
+    }
+
+    /// Convert a **normalized longitude** with the Greenwich prime meridian as origin into
+    /// a **normalized longitude** with this prime meridian as origin.
+    #[inline]
+    pub(crate) fn convert_lon_from_gw(&self, lon: f64) -> f64 {
+        // FIX: What if we cross the antimeridian?
+        lon - self.gw_lon_rad
+    }
 }
 
 impl Default for PrimeMeridian {

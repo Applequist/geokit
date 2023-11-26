@@ -26,7 +26,7 @@ use crate::transformation::Transformation;
 /// Which one is less than the other has to do with **transformation path**: coordinates are
 /// usually converted to the *lowest* CRS kind comparable to both source and destination CRS, then a
 /// datum transformation is performed if necessary.
-#[derive(Debug, Copy, Clone, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum CoordSpace {
     Geocentric,
     Geodetic,
@@ -85,16 +85,6 @@ pub trait Crs {
 
     // TODO: Add a method to tell if the CRS is normalized for its [`kind`][Self::kind()].
     // fn is_normalized(&self) -> bool
-
-    /// Return the **normalized CRS** and the **conversions** to convert coordinates in
-    /// this CRS to/from this normalized CRS.
-    fn normalized(
-        &self,
-    ) -> (
-        Box<dyn Crs>,
-        Box<dyn Transformation>,
-        Box<dyn Transformation>,
-    );
 
     /// Return the **normalized CRS** derived from this one with a lower [`CoordSpace`] if any
     /// and the conversions to convert coordinates from this CRS to and from the lowered CRS.

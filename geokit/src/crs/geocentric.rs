@@ -1,7 +1,8 @@
 use crate::crs::{CoordSpace, Crs};
 use crate::geodesy::GeodeticDatum;
 use crate::id::Id;
-use crate::transformation::{Identity, Transformation};
+
+use super::LoweringTransformation;
 
 /// A `GeocentricCrs` is a **3D cartesian coordinates reference system** in which
 /// coordinates are given by distance **in meters** along the following axes:
@@ -17,9 +18,11 @@ pub struct GeocentricCrs {
 
 impl GeocentricCrs {
     /// Creates a new [`GeocentricCrs`].
-    /// TODO: Should we enforce the use of Greenwich prime meridian in datum or
-    /// is it implicit ?
     pub fn new(id: Id, datum: GeodeticDatum) -> Self {
+        debug_assert!(
+            datum.prime_meridian().lon() == 0.0,
+            "Expected Greenwich prime meridian"
+        );
         Self { id, datum }
     }
 
@@ -57,27 +60,7 @@ impl Crs for GeocentricCrs {
         self.datum()
     }
 
-    fn normalized(
-        &self,
-    ) -> (
-        Box<dyn Crs>,
-        Box<dyn Transformation>,
-        Box<dyn Transformation>,
-    ) {
-        (
-            Box::new(self.clone()),
-            Identity::<3>.boxed(),
-            Identity::<3>.boxed(),
-        )
-    }
-
-    fn lowered(
-        &self,
-    ) -> Option<(
-        Box<dyn Crs>,
-        Box<dyn Transformation>,
-        Box<dyn Transformation>,
-    )> {
+    fn lowered(&self) -> Option<LoweringTransformation> {
         None
     }
 }

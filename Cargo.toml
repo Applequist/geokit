@@ -2,4 +2,13 @@
 
 resolver = "2"
 
-members = ["geokit"]
+members = ["geomath", "geokit"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+
+[workspace.dependencies]
+num = "0.4.1"
+approx = "0.5.1"
+thiserror = "1.0.50"

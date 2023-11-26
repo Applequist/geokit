@@ -1,29 +1,32 @@
+use std::fmt::Debug;
+
 use super::{ellipsoid::Ellipsoid, prime_meridian::PrimeMeridian};
 use crate::crs::CoordSpace;
 use crate::id::Id;
 use crate::transformation::Transformation;
 
+/// Coordinates can be transformed between different datum.
+/// A [`DatumTransformation`] specifies a direct and reverse transformations between
+/// datum.
+#[derive(Clone)]
+pub struct DatumTransformation(
+    CoordSpace,
+    Id,
+    // Box<dyn Transformation>,
+    // Box<dyn Transformation>,
+);
+
 /// A `datum` is the information required to fix a coordinate system to an object.
 /// A `GeodeticDatum` is a `datum` describing the relationship of an ellipsoidal model of the Earth
 /// with the real Earth.
 /// It is defined by an [Ellipsoid] and a [PrimeMeridian].
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct GeodeticDatum {
     id: Id,
     ellipsoid: Ellipsoid,
     prime_meridian: PrimeMeridian,
     to_ref: Option<DatumTransformation>,
 }
-
-/// Coordinates can be transformed between different datum.
-/// A [`DatumTransformation`] specifies a direct and reverse transformations between
-/// datum.
-pub type DatumTransformation = (
-    CoordSpace,
-    Id,
-    Box<dyn Transformation>,
-    Box<dyn Transformation>,
-);
 
 impl GeodeticDatum {
     /// Creates a new [`GeodeticDatum`].
@@ -59,6 +62,18 @@ impl GeodeticDatum {
     /// Return the option [DatumTransformation] to a reference datum.
     pub fn to_ref(&self) -> &Option<DatumTransformation> {
         &self.to_ref
+    }
+}
+
+impl Debug for GeodeticDatum {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("GeodeticDatum")
+            .field("id", &self.id)
+            .field("ellipsoid", &self.ellipsoid)
+            .field("prime_meridian", &self.prime_meridian)
+            // FIX: Implement Debug for DatumTransformation
+            // .field("to_ref", &self.to_ref)
+            .finish()
     }
 }
 
