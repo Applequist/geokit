@@ -1,5 +1,6 @@
 use std::fmt::Debug;
 
+use dyn_clone::DynClone;
 use geomath::linalg::{matrix::Mat3, vector::Vec3};
 use num::One;
 use smallvec::SmallVec;
@@ -23,7 +24,7 @@ pub struct TransformationError {
 pub type Result<T> = std::result::Result<T, TransformationError>;
 
 /// Base trait for coordinate transformations.
-pub trait Transformation {
+pub trait Transformation: DynClone {
     fn in_dim(&self) -> usize;
 
     fn out_dim(&self) -> usize;
@@ -100,14 +101,9 @@ pub trait Transformation {
             then: t,
         }
     }
-
-    fn boxed(self) -> Box<dyn Transformation + 'static>
-    where
-        Self: Sized + 'static,
-    {
-        Box::new(self)
-    }
 }
+
+dyn_clone::clone_trait_object!(Transformation);
 
 /// A chained transformation.
 pub struct Chain<A, B> {
@@ -128,10 +124,23 @@ where
     }
 }
 
+impl<A, B> Clone for Chain<A, B>
+where
+    A: Clone,
+    B: Clone,
+{
+    fn clone(&self) -> Self {
+        Self {
+            first: self.first.clone(),
+            then: self.then.clone(),
+        }
+    }
+}
+
 impl<A, B> Transformation for Chain<A, B>
 where
-    A: Transformation,
-    B: Transformation,
+    A: Transformation + Clone,
+    B: Transformation + Clone,
 {
     fn in_dim(&self) -> usize {
         self.first.in_dim()
@@ -156,13 +165,33 @@ where
 
 /// [Inv] inverses a transformation. Its [fwd] transformation performs the inner's [bwd]
 /// tranformation and vice-versa.
-pub struct Inv<I> {
-    inner: I,
+pub struct Inv<T> {
+    inner: T,
+}
+
+impl<T> Debug for Inv<T>
+where
+    T: Debug,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Inv").field("inner", &self.inner).finish()
+    }
+}
+
+impl<T> Clone for Inv<T>
+where
+    T: Clone,
+{
+    fn clone(&self) -> Self {
+        Self {
+            inner: self.inner.clone(),
+        }
+    }
 }
 
 impl<I> Transformation for Inv<I>
 where
-    I: Transformation,
+    I: Transformation + Clone,
 {
     fn in_dim(&self) -> usize {
         self.inner.out_dim()
@@ -187,24 +216,25 @@ pub fn inv<T: Transformation>(t: T) -> Inv<T> {
     Inv { inner: t }
 }
 
-impl Transformation for Box<dyn Transformation> {
-    fn in_dim(&self) -> usize {
-        self.as_ref().in_dim()
-    }
+// impl Transformation for Box<dyn Transformation> {
+//     fn in_dim(&self) -> usize {
+//         self.as_ref().in_dim()
+//     }
+//
+//     fn out_dim(&self) -> usize {
+//         self.as_ref().out_dim()
+//     }
+//
+//     fn fwd(&self, i: &[f64], o: &mut [f64]) -> Result<()> {
+//         self.as_ref().fwd(i, o)
+//     }
+//
+//     fn bwd(&self, i: &[f64], o: &mut [f64]) -> Result<()> {
+//         self.as_ref().bwd(i, o)
+//     }
+// }
 
-    fn out_dim(&self) -> usize {
-        self.as_ref().out_dim()
-    }
-
-    fn fwd(&self, i: &[f64], o: &mut [f64]) -> Result<()> {
-        self.as_ref().fwd(i, o)
-    }
-
-    fn bwd(&self, i: &[f64], o: &mut [f64]) -> Result<()> {
-        self.as_ref().bwd(i, o)
-    }
-}
-
+#[derive(Debug, Clone)]
 struct Identity<const N: usize>;
 
 impl<const N: usize> Transformation for Identity<N> {
@@ -391,7 +421,6 @@ impl Default for RotationConvention {
 pub struct Helmert7Params {
     rot: Mat3,
     inv_rot: Mat3,
-    conv: RotationConvention,
     t: Vec3,
     ds_ppm: f64,
 }
@@ -419,7 +448,6 @@ impl Helmert7Params {
         Self {
             rot: Mat3::one() + rot,
             inv_rot: Mat3::one() - rot,
-            conv,
             t,
             ds_ppm,
         }

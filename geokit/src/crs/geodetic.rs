@@ -173,7 +173,11 @@ impl Crs for GeodeticCrs {
 
     fn lowered(&self) -> Option<LoweringTransformation> {
         let (crs, to, from) = self.geoc_crs();
-        Some((Box::new(crs), to.boxed(), from.boxed()))
+        Some((
+            Box::new(crs),
+            dyn_clone::clone_box(&to),
+            dyn_clone::clone_box(&from),
+        ))
     }
 }
 

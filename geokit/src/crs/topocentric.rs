@@ -74,6 +74,10 @@ impl Crs for TopocentricCrs {
     fn lowered(&self) -> Option<LoweringTransformation> {
         let (crs, to, from) = self.geoc_crs();
         // TODO: build TopocentricToGeocentric and GeocentricToTopocentric
-        Some((Box::new(crs), to.boxed(), from.boxed()))
+        Some((
+            Box::new(crs),
+            dyn_clone::clone_box(&to),
+            dyn_clone::clone_box(&from),
+        ))
     }
 }

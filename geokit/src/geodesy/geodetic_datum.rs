@@ -3,7 +3,6 @@ use std::fmt::Debug;
 use super::{ellipsoid::Ellipsoid, prime_meridian::PrimeMeridian};
 use crate::crs::CoordSpace;
 use crate::id::Id;
-use crate::transformation::Transformation;
 
 /// Coordinates can be transformed between different datum.
 /// A [`DatumTransformation`] specifies a direct and reverse transformations between

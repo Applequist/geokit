@@ -8,6 +8,7 @@ geomath = { path = "../geomath/" }
 smallvec = "1.11.2"
 thiserror = { workspace = true }
 num = { workspace = true }
+dyn-clone = "1.0.16"
 
 [dev-dependencies]
 itertools = "0.12.0"
