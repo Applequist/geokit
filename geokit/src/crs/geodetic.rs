@@ -5,7 +5,7 @@ use crate::id::Id;
 use crate::transformation::{inv, Chain, CoordScaling, GeodToGeoc, Inv, Transformation};
 use std::fmt::*;
 
-/// A [`GeodeticAxes`] value defines the *coordinates system* part of a [`GedoeticCrs`], that is:
+/// A [`GeodeticAxes`] value defines the *coordinates system* part of a [`GeodeticCrs`], that is:
 /// - the ordering and direction of the axes,
 /// - the angle unit used for longitude and latitude,
 /// - the length unit used for the ellipsoidal height.
