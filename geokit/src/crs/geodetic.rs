@@ -75,7 +75,7 @@ impl GeodeticAxes {
                 height_unit,
             } => vec![(1, angle_unit), (0, angle_unit), (2, height_unit)],
             GeodeticAxes::NorthEast { angle_unit } => vec![(1, angle_unit), (0, angle_unit)],
-            GeodeticAxes::NorthWest { angle_unit } => vec![(1, angle_unit), (0, -angle_unit)],
+            GeodeticAxes::NorthWest { angle_unit } => vec![(1, -angle_unit), (0, angle_unit)],
         };
         CoordScaling(to_ord)
     }
@@ -127,7 +127,8 @@ impl GeodeticCrs {
         Chain<Inv<GeodToGeoc>, Inv<CoordScaling>>,
     ) {
         let geoc_crs = GeocentricCrs::new(
-            self.id.renamed(format!("{} (as geocentric)", self.id())),
+            self.id
+                .renamed(format!("GeocentricCrs derived from {})", self.id())),
             // FIX: Should we enforce Greewich prime meridian ? See [GeocentricCrs].
             self.datum.clone(),
         );
@@ -297,6 +298,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "Not Implemented"]
     fn lowered() {
         unimplemented!();
     }

@@ -2,7 +2,7 @@
 
 resolver = "2"
 
-members = ["geomath", "geokit"]
+members = ["geokit"]
 
 [workspace.package]
 version = "0.1.0"
@@ -12,3 +12,4 @@ edition = "2021"
 num = "0.4.1"
 approx = "0.5.1"
 thiserror = "1.0.50"
+nalgebra = "0.32.3"

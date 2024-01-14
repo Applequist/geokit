@@ -3,17 +3,43 @@ use std::fmt::Debug;
 use super::{ellipsoid::Ellipsoid, prime_meridian::PrimeMeridian};
 use crate::crs::CoordSpace;
 use crate::id::Id;
+use crate::transformation::RotationConvention;
+
+#[derive(Debug, Clone)]
+pub struct ReferenceDatum {
+    id: Id,
+    to_ref: DatumTransformation,
+}
 
 /// Coordinates can be transformed between different datum.
-/// A [`DatumTransformation`] specifies a direct and reverse transformations between
-/// datum.
-#[derive(Clone)]
-pub struct DatumTransformation(
-    CoordSpace,
-    Id,
-    // Box<dyn Transformation>,
-    // Box<dyn Transformation>,
-);
+/// A [`DatumTransformation`] specifies the supported transformations.
+#[derive(Debug, Clone, Copy)]
+pub enum DatumTransformation {
+    /// A simple datum shift transforms source normalized geocentric coordinates by adding an offset **in
+    /// meters**.
+    DatumShift { tx: f64, ty: f64, tz: f64 },
+    /// The Helmert 7-parameters transformation transforms normalized geocentric coordinates using
+    /// small rotations around x, y and z axes, a translation and a small scaling in ppm.
+    Helmert7Params {
+        conv: RotationConvention,
+        rx: f64,
+        ry: f64,
+        rz: f64,
+        tx: f64,
+        ty: f64,
+        tz: f64,
+        scale: f64,
+    },
+}
+
+impl DatumTransformation {
+    pub fn coord_space(&self) -> CoordSpace {
+        match self {
+            DatumTransformation::DatumShift { .. } => CoordSpace::Geocentric,
+            DatumTransformation::Helmert7Params { .. } => CoordSpace::Geocentric,
+        }
+    }
+}
 
 /// A `datum` is the information required to fix a coordinate system to an object.
 /// A `GeodeticDatum` is a `datum` describing the relationship of an ellipsoidal model of the Earth
@@ -24,7 +50,7 @@ pub struct GeodeticDatum {
     id: Id,
     ellipsoid: Ellipsoid,
     prime_meridian: PrimeMeridian,
-    to_ref: Option<DatumTransformation>,
+    ref_datum: Option<ReferenceDatum>,
 }
 
 impl GeodeticDatum {
@@ -33,13 +59,13 @@ impl GeodeticDatum {
         id: Id,
         ellipsoid: Ellipsoid,
         prime_meridian: PrimeMeridian,
-        to_ref: Option<DatumTransformation>,
+        ref_datum: Option<ReferenceDatum>,
     ) -> Self {
         Self {
             id,
             ellipsoid,
             prime_meridian,
-            to_ref,
+            ref_datum,
         }
     }
 
@@ -59,8 +85,8 @@ impl GeodeticDatum {
     }
 
     /// Return the option [DatumTransformation] to a reference datum.
-    pub fn to_ref(&self) -> &Option<DatumTransformation> {
-        &self.to_ref
+    pub fn ref_datum(&self) -> Option<&ReferenceDatum> {
+        self.ref_datum.as_ref()
     }
 }
 
@@ -70,8 +96,7 @@ impl Debug for GeodeticDatum {
             .field("id", &self.id)
             .field("ellipsoid", &self.ellipsoid)
             .field("prime_meridian", &self.prime_meridian)
-            // FIX: Implement Debug for DatumTransformation
-            // .field("to_ref", &self.to_ref)
+            .field("ref_datum", &self.ref_datum)
             .finish()
     }
 }

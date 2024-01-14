@@ -1,12 +1,15 @@
+use core::f64;
 use std::fmt::Debug;
 
 use dyn_clone::DynClone;
-use geomath::linalg::{matrix::Mat3, vector::Vec3};
-use num::One;
+use na::{Matrix3, Vector3};
 use smallvec::SmallVec;
 use thiserror::Error;
 
-use crate::geodesy::{Ellipsoid, GeodeticDatum, PrimeMeridian};
+use crate::{
+    geodesy::{Ellipsoid, GeodeticDatum, PrimeMeridian},
+    providers::default,
+};
 
 /// Value returned when [`Transformation::apply()`] cannot be completed.
 /// `index` indicates the index of **coordinates** (as opposed to the index of individual floats)
@@ -353,7 +356,7 @@ impl Transformation for GeodToGeoc {
 /// This epsg:1031.
 #[derive(Debug, Clone, Copy)]
 pub struct DatumShift {
-    t: Vec3,
+    t: Vector3<f64>,
 }
 
 impl DatumShift {
@@ -366,7 +369,7 @@ impl DatumShift {
     /// - tz: the Z coordinates of the origin of source CRS in the target CRS
     pub fn new(tx: f64, ty: f64, tz: f64) -> Self {
         DatumShift {
-            t: Vec3::new([tx, ty, tz]),
+            t: Vector3::new(tx, ty, tz),
         }
     }
 }
@@ -395,21 +398,22 @@ impl Transformation for DatumShift {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Default, Clone, Copy)]
 pub enum RotationConvention {
     /// Rotation convention where positive angle rotations are clockwise when seen from
     /// the origin of the CS in the positive direction of the axis of rotation,
     /// or counter-clockwise when looking at the origin along the axis of rotation.
+    #[default]
     PositionVector,
     /// Rotation convention opposite of the [PositionVector] convention.
     CoordinateFrame,
 }
 
-impl Default for RotationConvention {
-    fn default() -> Self {
-        RotationConvention::PositionVector
-    }
-}
+// impl Default for RotationConvention {
+//     fn default() -> Self {
+//         RotationConvention::PositionVector
+//     }
+// }
 
 /// [Helmert7Params] transforms **normalized geocentric coordinates** between 2 [GeocentricCrs]
 /// whose [GeodeticDatum] are related by rotation around the origin, translation and scale change,
@@ -419,9 +423,9 @@ impl Default for RotationConvention {
 /// epsg:1032 (with the CoordinateFrame convention).
 #[derive(Debug, Clone, Copy)]
 pub struct Helmert7Params {
-    rot: Mat3,
-    inv_rot: Mat3,
-    t: Vec3,
+    rot: Matrix3<f64>,
+    inv_rot: Matrix3<f64>,
+    t: Vector3<f64>,
     ds_ppm: f64,
 }
 
@@ -433,21 +437,17 @@ impl Helmert7Params {
         ds_ppm: f64,
     ) -> Self {
         let rot = match conv {
-            RotationConvention::PositionVector => Mat3::with_rows([
-                Vec3::new([0.0, -rz, ry]),
-                Vec3::new([rz, 0.0, -rx]),
-                Vec3::new([-ry, rx, 0.0]),
-            ]),
-            RotationConvention::CoordinateFrame => Mat3::with_rows([
-                Vec3::new([0.0, rz, -ry]),
-                Vec3::new([-rz, 0.0, rx]),
-                Vec3::new([ry, -rx, 0.0]),
-            ]),
+            RotationConvention::PositionVector => {
+                Matrix3::new(0.0, -rz, ry, rz, 0.0, -rx, -ry, rx, 0.0)
+            }
+            RotationConvention::CoordinateFrame => {
+                Matrix3::new(0.0, rz, -ry, -rz, 0.0, rx, ry, -rx, 0.0)
+            }
         };
-        let t = Vec3::new([tx, ty, tz]);
+        let t = Vector3::new(tx, ty, tz);
         Self {
-            rot: Mat3::one() + rot,
-            inv_rot: Mat3::one() - rot,
+            rot: Matrix3::identity() + rot,
+            inv_rot: Matrix3::identity() - rot,
             t,
             ds_ppm,
         }
@@ -464,16 +464,16 @@ impl Transformation for Helmert7Params {
     }
 
     fn fwd(&self, input: &[f64], output: &mut [f64]) -> Result<()> {
-        let s = Vec3::new([input[0], input[1], input[2]]);
+        let s = Vector3::new(input[0], input[1], input[2]);
         let x = self.rot * (1.0 + self.ds_ppm * 1e-6) * s + self.t;
-        output.copy_from_slice(&x);
+        output.copy_from_slice(x.as_ref());
         Ok(())
     }
 
     fn bwd(&self, input: &[f64], output: &mut [f64]) -> Result<()> {
-        let t: Vec3 = Vec3::new([input[0], input[1], input[2]]);
+        let t = Vector3::new(input[0], input[1], input[2]);
         let s = self.inv_rot * (1.0 - self.ds_ppm * 1e-6) * t - self.t;
-        output.copy_from_slice(&s);
+        output.copy_from_slice(s.as_ref());
         Ok(())
     }
 }
@@ -507,11 +507,13 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "Not Implemented"]
     fn geog_to_geoc_fwd() {
         unimplemented!()
     }
 
     #[test]
+    #[ignore = "Not Implemented"]
     fn geog_to_geoc_bwd() {
         unimplemented!()
     }
