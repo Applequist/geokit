@@ -1,15 +1,18 @@
 use geokit::{
-    crs::geodetic::{GeodeticAxes, GeodeticCrs},
+    crs::{GeodeticAxes, GeographicCrs},
     geodesy::{Ellipsoid, GeodeticDatum, PrimeMeridian},
-    id::Id,
-    transformation::Transformation,
+    operation::{
+        conversion::{GeogToGeoc, Normalization},
+        Bwd, Fwd, Operation,
+    },
 };
 use regex::Regex;
 
 fn main() {
     let re = Regex::new(r"\s+").unwrap();
 
-    let ll_grid = std::fs::read_to_string("../tests/data/ll_grid.txt").unwrap();
+    let ll_grid = std::fs::read_to_string("../tests/data/ll_grid.txt")
+        .expect("Unable to read '../tests/data/ll_grid.txt'");
     let count = ll_grid.lines().count();
     println!("Read {} 2D coordinates", count);
 
@@ -19,10 +22,10 @@ fn main() {
         .flat_map(|l| re.split(l.trim()).map(|s| s.parse::<f64>().unwrap()))
         .collect();
 
-    let src = GeodeticCrs::new(
-        Id::name("WGS84"),
+    let src = GeographicCrs::new(
+        "WGS84",
         GeodeticDatum::new(
-            Id::name("WGS84"),
+            "WGS84",
             Ellipsoid::default(),
             PrimeMeridian::default(),
             None,
@@ -33,20 +36,39 @@ fn main() {
     );
     println!("Source CRS: {:#?}", src);
 
-    let (dst, to_geoc, _from_geoc) = src.geoc_crs();
-    println!("Destination CRS: {:#?}", dst);
+    let norm = Normalization::from(src.axes());
+    let geog_to_geoc = GeogToGeoc::new(src.datum());
+    let to_geoc = Fwd(norm.clone()).and_then(Fwd(geog_to_geoc));
+    let from_geoc = Bwd(geog_to_geoc).and_then(Bwd(norm));
 
-    assert_eq!(to_geoc.in_dim(), 2);
-    assert_eq!(to_geoc.out_dim(), 3);
+    assert_eq!(
+        to_geoc.in_dim(),
+        2,
+        "Expected to_geoc input dim == 2. Got {}",
+        to_geoc.in_dim()
+    );
+    assert_eq!(
+        to_geoc.out_dim(),
+        3,
+        "Expected to_geoc output dim == 3. Got {}",
+        to_geoc.out_dim()
+    );
     println!("Transformation from source to destination: {:#?}", to_geoc);
 
     // Allocating storage for transformed coordinates.
     let mut xyz = vec![0.; count * 3];
-    let trans_count = to_geoc.fwd_seq(&ll, &mut xyz).unwrap();
-
+    let trans_count = to_geoc.apply_seq(&ll, &mut xyz).unwrap();
     assert_eq!(trans_count, count);
 
     for xyz in xyz.chunks_exact(3).take(5) {
         println!("{:?}", xyz);
+    }
+
+    let mut ll_back = vec![0.; count * 2];
+    let trans_count = from_geoc.apply_seq(&xyz, &mut ll_back).unwrap();
+    assert_eq!(trans_count, count);
+
+    for ll in ll_back.chunks_exact(2).take(5) {
+        println!("{:?}", ll);
     }
 }

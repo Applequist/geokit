@@ -1,9 +1,8 @@
-use super::geocentric::GeocentricCrs;
-use super::{CoordSpace, Crs, LoweringTransformation};
 use crate::geodesy::GeodeticDatum;
-use crate::id::Id;
-use crate::transformation::{inv, Chain, CoordScaling, GeodToGeoc, Inv, Transformation};
+use crate::tag::Tag;
 use std::fmt::*;
+
+use super::Crs;
 
 /// A [`GeodeticAxes`] value defines the *coordinates system* part of a [`GeodeticCrs`], that is:
 /// - the ordering and direction of the axes,
@@ -61,24 +60,6 @@ impl GeodeticAxes {
             | GeodeticAxes::NorthWest { angle_unit: _ } => 2,
         }
     }
-
-    /// Return the **coordinates normalization** conversion.
-    pub fn normalization(&self) -> CoordScaling {
-        let to_ord = match *self {
-            GeodeticAxes::EastNorthUp {
-                angle_unit,
-                height_unit,
-            } => vec![(0, angle_unit), (1, angle_unit), (2, height_unit)],
-            GeodeticAxes::EastNorth { angle_unit } => vec![(0, angle_unit), (1, angle_unit)],
-            GeodeticAxes::NorthEastUp {
-                angle_unit,
-                height_unit,
-            } => vec![(1, angle_unit), (0, angle_unit), (2, height_unit)],
-            GeodeticAxes::NorthEast { angle_unit } => vec![(1, angle_unit), (0, angle_unit)],
-            GeodeticAxes::NorthWest { angle_unit } => vec![(1, -angle_unit), (0, angle_unit)],
-        };
-        CoordScaling(to_ord)
-    }
 }
 
 impl Default for GeodeticAxes {
@@ -91,20 +72,29 @@ impl Default for GeodeticAxes {
     }
 }
 
-/// A `GeodeticCrs` is a **2D/3D geodetic coordinates reference system** in which
+/// A `GeographicCrs` is a **2D/3D geodetic coordinates reference system** in which
 /// coordinates are made up of longitude, latitude and optionally ellipsoidal height in various order, direction
 /// and units.
 #[derive(Debug, Clone, PartialEq)]
-pub struct GeodeticCrs {
-    id: Id,
+pub struct GeographicCrs {
+    tag: Tag,
     datum: GeodeticDatum,
     axes: GeodeticAxes,
 }
 
-impl GeodeticCrs {
+impl GeographicCrs {
     /// Create a new [`GeodeticCrs`].
-    pub fn new(id: Id, datum: GeodeticDatum, axes: GeodeticAxes) -> Self {
-        Self { id, datum, axes }
+    pub fn new<T: Into<Tag>>(tag: T, datum: GeodeticDatum, axes: GeodeticAxes) -> Self {
+        Self {
+            tag: tag.into(),
+            datum,
+            axes,
+        }
+    }
+
+    /// Return the coordinates space dimension.
+    pub fn dim(&self) -> usize {
+        self.axes.dim()
     }
 
     /// Return a reference to this CRS [`datum`][GeodeticDatum].
@@ -116,37 +106,13 @@ impl GeodeticCrs {
     pub fn axes(&self) -> &GeodeticAxes {
         &self.axes
     }
-
-    /// Return the *lower* [`geocentric`][GeocentricCrs] CRS derived from this geodetic CRS
-    /// and the coordinates conversion to and from this geocentric CRS.
-    pub fn geoc_crs(
-        &self,
-    ) -> (
-        GeocentricCrs,
-        Chain<CoordScaling, GeodToGeoc>,
-        Chain<Inv<GeodToGeoc>, Inv<CoordScaling>>,
-    ) {
-        let geoc_crs = GeocentricCrs::new(
-            self.id
-                .renamed(format!("GeocentricCrs derived from {})", self.id())),
-            // FIX: Should we enforce Greewich prime meridian ? See [GeocentricCrs].
-            self.datum.clone(),
-        );
-        let normalization = self.axes.normalization();
-        let geod_to_geoc = GeodToGeoc::new(&self.datum);
-        (
-            geoc_crs,
-            normalization.clone().and_then(geod_to_geoc),
-            inv(geod_to_geoc).and_then(inv(normalization)),
-        )
-    }
 }
 
-impl Default for GeodeticCrs {
+impl Default for GeographicCrs {
     /// Return EPSG:4326 as default the default geodetic CRS.
     fn default() -> Self {
-        GeodeticCrs::new(
-            Id::full("WGS 84", "EPSG", 4326),
+        GeographicCrs::new(
+            ("WGS 84", "EPSG", 4326),
             GeodeticDatum::default(),
             GeodeticAxes::NorthEast {
                 angle_unit: 1.0_f64.to_radians(),
@@ -155,55 +121,27 @@ impl Default for GeodeticCrs {
     }
 }
 
-impl Crs for GeodeticCrs {
-    fn id(&self) -> &Id {
-        &self.id
-    }
-
-    fn dim(&self) -> usize {
-        self.axes.dim()
-    }
-
-    fn kind(&self) -> CoordSpace {
-        CoordSpace::Geodetic
-    }
-
-    fn datum(&self) -> &GeodeticDatum {
-        &self.datum
-    }
-
-    fn lowered(&self) -> Option<LoweringTransformation> {
-        let (crs, to, from) = self.geoc_crs();
-        Some((
-            Box::new(crs),
-            dyn_clone::clone_box(&to),
-            dyn_clone::clone_box(&from),
-        ))
-    }
-}
+impl Crs for GeographicCrs {}
 
 #[cfg(test)]
 mod tests {
     use crate::{
-        crs::{
-            geodetic::{GeodeticAxes, GeodeticCrs},
-            Crs,
-        },
+        crs::geographic::{GeodeticAxes, GeographicCrs},
         geodesy::{Ellipsoid, GeodeticDatum, PrimeMeridian},
-        id::Id,
+        tag::Tag,
     };
 
     #[test]
     fn deault() {
-        let wgs84_2d = GeodeticCrs::default();
+        let wgs84_2d = GeographicCrs::default();
         assert_eq!(wgs84_2d.dim(), 2);
         assert_eq!(wgs84_2d.datum(), &GeodeticDatum::default());
     }
 
     #[test]
     fn partial_eq() {
-        let geod3d = GeodeticCrs::new(
-            Id::name("WGS 84 (geodetic3d)"),
+        let geod3d = GeographicCrs::new(
+            "WGS 84 (geodetic3d)",
             GeodeticDatum::default(),
             GeodeticAxes::EastNorthUp {
                 angle_unit: 1.0,
@@ -211,8 +149,8 @@ mod tests {
             },
         );
 
-        let different_id = GeodeticCrs::new(
-            Id::name("WGS 84.1 (geodetic3d)"),
+        let different_id = GeographicCrs::new(
+            "WGS 84.1 (geodetic3d)",
             GeodeticDatum::default(),
             GeodeticAxes::EastNorthUp {
                 angle_unit: 1.0,
@@ -224,10 +162,10 @@ mod tests {
         assert!(!different_id.eq(&geod3d));
         assert!(different_id.ne(&geod3d));
 
-        let different_datum = GeodeticCrs::new(
-            Id::name("WGS 84 (geodetic3d)"),
+        let different_datum = GeographicCrs::new(
+            "WGS 84 (geodetic3d)",
             GeodeticDatum::new(
-                Id::name("WGS 84.1"),
+                Tag::name("WGS 84.1"),
                 Ellipsoid::default(),
                 PrimeMeridian::default(),
                 None,
@@ -242,8 +180,8 @@ mod tests {
         assert!(!different_datum.eq(&geod3d));
         assert!(different_datum.ne(&geod3d));
 
-        let different_axes = GeodeticCrs::new(
-            Id::name("WGS 84 (geodetic3d)"),
+        let different_axes = GeographicCrs::new(
+            "WGS 84 (geodetic3d)",
             GeodeticDatum::default(),
             GeodeticAxes::NorthEastUp {
                 angle_unit: 1.0,
@@ -255,8 +193,8 @@ mod tests {
         assert!(!different_axes.eq(&geod3d));
         assert!(different_axes.ne(&geod3d));
 
-        let different_angle_unit = GeodeticCrs::new(
-            Id::name("WGS 84 (geodetic3d)"),
+        let different_angle_unit = GeographicCrs::new(
+            "WGS 84 (geodetic3d)",
             GeodeticDatum::default(),
             GeodeticAxes::NorthEastUp {
                 angle_unit: 1.0_f64.to_radians(),
@@ -268,8 +206,8 @@ mod tests {
         assert!(!different_angle_unit.eq(&geod3d));
         assert!(different_angle_unit.ne(&geod3d));
 
-        let different_height_unit = GeodeticCrs::new(
-            Id::name("WGS 84 (geodetic3d)"),
+        let different_height_unit = GeographicCrs::new(
+            "WGS 84 (geodetic3d)",
             GeodeticDatum::default(),
             GeodeticAxes::NorthEastUp {
                 angle_unit: 1.,
@@ -284,8 +222,8 @@ mod tests {
 
     #[test]
     fn clone() {
-        let geod = GeodeticCrs::new(
-            Id::name("WGS 84 (geodetic2d)"),
+        let geod = GeographicCrs::new(
+            "WGS 84 (geodetic2d)",
             GeodeticDatum::default(),
             GeodeticAxes::EastNorthUp {
                 angle_unit: 1.,
@@ -295,11 +233,5 @@ mod tests {
 
         let cpy = geod.clone();
         assert_eq!(geod, cpy);
-    }
-
-    #[test]
-    #[ignore = "Not Implemented"]
-    fn lowered() {
-        unimplemented!();
     }
 }

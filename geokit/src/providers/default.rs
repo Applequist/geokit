@@ -1,6 +1,6 @@
 use crate::{
     geodesy::{Ellipsoid, GeodeticDatum, PrimeMeridian},
-    id::Id,
+    tag::Tag,
 };
 
 use super::GeodesyProvider;
@@ -9,36 +9,36 @@ use super::GeodesyProvider;
 pub struct DefaultGeodesyProvider;
 
 impl GeodesyProvider for DefaultGeodesyProvider {
-    fn ellipsoid_ids(&self) -> Vec<Id> {
-        vec![Id::name("WGS 84")]
+    fn ellipsoid_ids(&self) -> Vec<Tag> {
+        vec![Tag::name("WGS 84")]
     }
 
-    fn ellipsoid<I: Into<Id>>(&self, id: I) -> Option<Ellipsoid> {
-        if id.into() == Id::name("WGS 84") {
+    fn ellipsoid<I: Into<Tag>>(&self, id: I) -> Option<Ellipsoid> {
+        if id.into() == Tag::name("WGS 84") {
             Some(Ellipsoid::default())
         } else {
             None
         }
     }
 
-    fn prime_meridian_ids(&self) -> Vec<Id> {
-        vec![Id::name("Greenwich")]
+    fn prime_meridian_ids(&self) -> Vec<Tag> {
+        vec![Tag::name("Greenwich")]
     }
 
-    fn prime_meridian<I: Into<Id>>(&self, id: I) -> Option<PrimeMeridian> {
-        if id.into() == Id::name("Greenwich") {
+    fn prime_meridian<I: Into<Tag>>(&self, id: I) -> Option<PrimeMeridian> {
+        if id.into() == Tag::name("Greenwich") {
             Some(PrimeMeridian::default())
         } else {
             None
         }
     }
 
-    fn datum_ids(&self) -> Vec<Id> {
-        vec![Id::name("WGS_1984")]
+    fn datum_ids(&self) -> Vec<Tag> {
+        vec![Tag::name("WGS_1984")]
     }
 
-    fn datum<I: Into<Id>>(&self, id: I) -> Option<GeodeticDatum> {
-        if id.into() == Id::name("WGS_1984") {
+    fn datum<I: Into<Tag>>(&self, id: I) -> Option<GeodeticDatum> {
+        if id.into() == Tag::name("WGS_1984") {
             Some(GeodeticDatum::default())
         } else {
             None
