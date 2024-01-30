@@ -2,16 +2,17 @@ use na::{Matrix3, Vector3};
 
 use super::{DynOperation, Result};
 
-/// The `DatumShift` transforms **normalized goecentric coordinates** between 2 [GeocentricCrs] whose
-/// [GeodeticDatum] are related by a simple translation of the origin.
+/// The `GeocentricTranslation` transforms **normalized goecentric coordinates** between 2 [GeocentricCrs] whose
+/// [GeodeticDatum] are related by a simple translation of the origin, such that
+/// `xyz_dst = xyz_src + t`.
 ///
 /// This epsg:1031.
 #[derive(Debug, Clone, Copy)]
-pub struct DatumShift {
+pub struct GeocentricTranslation {
     t: Vector3<f64>,
 }
 
-impl DatumShift {
+impl GeocentricTranslation {
     /// Create a new instance with the given translation in metres.
     ///
     /// # Arguments
@@ -20,13 +21,13 @@ impl DatumShift {
     /// - ty: the Y coordinates of the origin of source CRS in the target CRS
     /// - tz: the Z coordinates of the origin of source CRS in the target CRS
     pub fn new(tx: f64, ty: f64, tz: f64) -> Self {
-        DatumShift {
+        GeocentricTranslation {
             t: Vector3::new(tx, ty, tz),
         }
     }
 }
 
-impl DynOperation for DatumShift {
+impl DynOperation for GeocentricTranslation {
     fn fwd_in_dim(&self) -> usize {
         3
     }
@@ -35,17 +36,17 @@ impl DynOperation for DatumShift {
         3
     }
 
-    fn fwd(&self, xyz: &[f64], s_xyz: &mut [f64]) -> Result<()> {
-        s_xyz[0] = xyz[0] + self.t[0];
-        s_xyz[1] = xyz[1] + self.t[1];
-        s_xyz[2] = xyz[2] + self.t[2];
+    fn fwd(&self, xyz_src: &[f64], xyz_dst: &mut [f64]) -> Result<()> {
+        xyz_dst[0] = xyz_src[0] + self.t[0];
+        xyz_dst[1] = xyz_src[1] + self.t[1];
+        xyz_dst[2] = xyz_src[2] + self.t[2];
         Ok(())
     }
 
-    fn bwd(&self, s_xyz: &[f64], xyz: &mut [f64]) -> Result<()> {
-        xyz[0] = s_xyz[0] - self.t[0];
-        xyz[1] = s_xyz[1] - self.t[1];
-        xyz[2] = s_xyz[2] - self.t[2];
+    fn bwd(&self, xyz_dst: &[f64], xyz_src: &mut [f64]) -> Result<()> {
+        xyz_src[0] = xyz_dst[0] - self.t[0];
+        xyz_src[1] = xyz_dst[1] - self.t[1];
+        xyz_src[2] = xyz_dst[2] - self.t[2];
         Ok(())
     }
 }
@@ -130,11 +131,11 @@ mod tests {
 
     use crate::operation::DynOperation;
 
-    use super::{DatumShift, Helmert7Params, RotationConvention};
+    use super::{GeocentricTranslation, Helmert7Params, RotationConvention};
 
     #[test]
-    fn datum_shift_fwd() {
-        let t = DatumShift::new(84.87, 96.49, 116.95);
+    fn geocentric_translation_fwd() {
+        let t = GeocentricTranslation::new(84.87, 96.49, 116.95);
         let source_xyz = [3_771_793.97, 140_253.34, 5_124_304.35];
         let mut xyz = [0.; 3];
         let expected_xyz = [3_771_878.84, 140_349.83, 5_124_421.30];
@@ -145,8 +146,8 @@ mod tests {
     }
 
     #[test]
-    fn datum_shift_bwd() {
-        let t = DatumShift::new(84.87, 96.49, 116.95);
+    fn geocentric_translation_bwd() {
+        let t = GeocentricTranslation::new(84.87, 96.49, 116.95);
         let xs = [3_771_793.97, 140_253.34, 5_124_304.35];
         let mut xyz = [0.; 3];
         let xt = [3_771_878.84, 140_349.83, 5_124_421.30];
@@ -157,7 +158,7 @@ mod tests {
     }
 
     #[test]
-    fn test_helmert_fwd() {
+    fn helmert_fwd() {
         let t = Helmert7Params::new(
             (RotationConvention::PositionVector, 0.0, 0.0, 2.685868e-6),
             (0.0, 0.0, 4.5),
@@ -173,7 +174,7 @@ mod tests {
     }
 
     #[test]
-    fn test_helmert_bwd() {
+    fn helmert_bwd() {
         let t = Helmert7Params::new(
             (RotationConvention::PositionVector, 0.0, 0.0, 2.685868e-6),
             (0.0, 0.0, 4.5),

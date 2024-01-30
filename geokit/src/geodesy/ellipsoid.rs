@@ -18,11 +18,7 @@ impl Ellipsoid {
     pub fn from_ab(a: f64, b: f64) -> Self {
         assert!(b > 0., "Expected b > 0. Got {}", b);
         assert!(a >= b, "Expected a >= b. Got a = {}, b = {}", a, b);
-        Self {
-            a,
-            b,
-            invf: if a > b { a / (a - b) } else { f64::INFINITY },
-        }
+        Self::new(a, b, if a > b { a / (a - b) } else { f64::INFINITY })
     }
 
     /// Create a new ellipsoid using semi-major axis **in meters** and inverse flattening.
@@ -33,11 +29,11 @@ impl Ellipsoid {
     pub fn from_ainvf(a: f64, invf: f64) -> Self {
         assert!(a > 0., "Expected a > 0. Got {}", a);
         assert!(invf > 1., "Expected invf > 1. Got {}", invf);
-        Self {
-            a,
-            b: a * (1. - 1. / invf),
-            invf,
-        }
+        Self::new(a, a * (1. - 1. / invf), invf)
+    }
+
+    pub const fn new(a: f64, b: f64, invf: f64) -> Self {
+        Self { a, b, invf }
     }
 
     /// Return whether the ellipsoid is actually a sphere or not.
@@ -153,6 +149,68 @@ impl Default for Ellipsoid {
     fn default() -> Self {
         Ellipsoid::from_ainvf(6_378_137.0, 298.257_223_563)
     }
+}
+
+#[rustfmt::skip]
+pub mod consts {
+    use super::Ellipsoid;
+
+    macro_rules! ellipsoid {
+        ($name:ident, a = $a:expr, b = $b:expr, $desc:expr) => {
+            pub const $name: Ellipsoid = Ellipsoid::new( $a, $b, if $a > $b { $a / ($a - $b) } else { f64::INFINITY });
+        };
+        ($name:ident, a = $a:expr, invf = $invf:expr, $desc:expr) => {
+            pub const $name: Ellipsoid = Ellipsoid::new($a, $a * (1. - 1. / $invf), $invf);
+        };
+    }
+
+    ellipsoid!(MERIT,     a = 6_378_137.,      invf = 298.257,           "MERIT 1983");
+    ellipsoid!(SGS85,     a = 6_378_136.,      invf = 298.257,           "Soviet Geodetic System 85");
+    ellipsoid!(GRS80,     a = 6_378_137.,      invf = 298.257222101,     "GRS 1980(IUGG, 1980)");
+    ellipsoid!(IAU76,     a = 6_378_140.,      invf = 298.257,           "IAU 1976");
+    ellipsoid!(AIRY,      a = 6_377_563.396,   invf = 299.3249646,       "Airy 1830");
+    ellipsoid!(APL4_9,    a = 6_378_137.,      invf = 298.25,            "Appl. Physics. 1965");
+    ellipsoid!(NWL9D,     a = 6_378_145.,      invf = 298.25,            "Naval Weapons Lab., 1965");
+    ellipsoid!(MOD_AIRY,  a = 6_377_340.189,   b = 6_356_034.446,        "Modified Airy");
+    ellipsoid!(ANDRAE,    a = 6_377_104.43,    invf = 300.0,             "Andrae 1876 (Den., Iclnd.)");
+    ellipsoid!(DANISH,    a = 6_377_019.256_3, invf = 300.0,             "Andrae 1876 (Denmark, Iceland)");
+    ellipsoid!(AUST_SA,   a = 6_378_160.,      invf = 298.25,            "Australian Natl & S. Amer. 1969");
+    ellipsoid!(GRS67,     a = 6_378_160.,      invf = 298.2471674270,    "GRS 67(IUGG 1967)");
+    ellipsoid!(GSK2011,   a = 6_378_136.5,     invf = 298.2564151,       "GSK-2011");
+    ellipsoid!(BESSEL,    a = 6_377_397.155,   invf = 299.1528128,       "Bessel 1841");
+    ellipsoid!(BESS_NAM,  a = 6_377_483.865,   invf = 299.1528128,       "Bessel 1841 (Namibia)");
+    ellipsoid!(CLRK66,    a = 6_378_206.4,     b = 6_356_583.8,          "Clarke 1866");
+    ellipsoid!(CLRK80,    a = 6_378_249.145,   invf = 293.4663,          "Clarke 1880 mod.");
+    ellipsoid!(CLRK80IGN, a = 6_378_249.2,     invf = 293.4660212936269, "Clarke 1880 (IGN).");
+    ellipsoid!(CPM,       a = 6_375_738.7,     invf = 334.29,            "Comm. des Poids et Mesures 1799");
+    ellipsoid!(DELMBR,    a = 6_376_428.,      invf = 311.5,             "Delambre 1810 (Belgium)");
+    ellipsoid!(ENGELIS,   a = 6_378_136.05,    invf = 298.2566,          "Engelis 1985");
+    ellipsoid!(EVRST30,   a = 6_377_276.345,   invf = 300.8017,          "Everest 1830");
+    ellipsoid!(EVRST48,   a = 6_377_304.063,   invf = 300.8017,          "Everest 1948");
+    ellipsoid!(EVRST56,   a = 6_377_301.243,   invf = 300.8017,          "Everest 1956");
+    ellipsoid!(EVRST69,   a = 6_377_295.664,   invf = 300.8017,          "Everest 1969");
+    ellipsoid!(EVRSTSS,   a = 6_377_298.556,   invf = 300.8017,          "Everest (Sabah & Sarawak)");
+    ellipsoid!(FSCHR60,   a = 6_378_166.,      invf = 298.3,             "Fischer (Mercury Datum) 1960");
+    ellipsoid!(FSCHR60M,  a = 6_378_155.,      invf = 298.3,             "Modified Fischer 1960");
+    ellipsoid!(FSCHR68,   a = 6_378_150.,      invf = 298.3,             "Fischer 1968");
+    ellipsoid!(HELMERT,   a = 6_378_200.,      invf = 298.3,             "Helmert 1906");
+    ellipsoid!(HOUGH,     a = 6_378_270.,      invf = 297.,              "Hough");
+    ellipsoid!(INTL,      a = 6_378_388.,      invf = 297.,              "International 1924 (Hayford 1909, 1910)");
+    ellipsoid!(KRASS,     a = 6_378_245.,      invf = 298.3,             "Krassovsky, 1942");
+    ellipsoid!(KAULA,     a = 6_378_163.,      invf = 298.24,            "Kaula 1961");
+    ellipsoid!(LERCH,     a = 6_378_139.,      invf = 298.257,           "Lerch 1979");
+    ellipsoid!(MPRTS,     a = 6_397_300.,      invf = 191.,              "Maupertius 1738");
+    ellipsoid!(NEW_INTL,  a = 6_378_157.5,     b = 6_356_772.2,          "New International 1967");
+    ellipsoid!(PLESSIS,   a = 6_376_523.,      b = 6_355_863.,           "Plessis 1817 (France)");
+    ellipsoid!(PZ90,      a = 6_378_136.,      invf = 298.25784,         "PZ-90");
+    ellipsoid!(SEASIA,    a = 6_378_155.,      b = 6_356_773.320_5,      "Southeast Asia");
+    ellipsoid!(WALBECK,   a = 6_376_896.,      b = 6_355_834.846_7,      "Walbeck");
+    ellipsoid!(WGS60,     a = 6_378_165.,      invf = 298.3,             "WGS 60");
+    ellipsoid!(WGS66,     a = 6_378_145.,      invf = 298.25,            "WGS 66");
+    ellipsoid!(WGS72,     a = 6_378_135.,      invf = 298.26,            "WGS 72");
+    ellipsoid!(WGS84,     a = 6_378_137.,      invf = 298.257_223_563,   "WGS 84");
+    ellipsoid!(SPHERE,    a = 6_370_997.,      invf = 6_370_997.,        "Normal Sphere (r=6370997)");
+
 }
 
 #[cfg(test)]

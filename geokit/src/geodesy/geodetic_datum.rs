@@ -16,7 +16,7 @@ pub struct ReferenceDatum {
 pub enum DatumTransformation {
     /// A simple datum shift transforms source normalized geocentric coordinates by adding an offset **in
     /// meters**.
-    DatumShift { tx: f64, ty: f64, tz: f64 },
+    GeocentricTranslation { tx: f64, ty: f64, tz: f64 },
     /// The Helmert 7-parameters transformation transforms normalized geocentric coordinates using
     /// small rotations around x, y and z axes, a translation and a small scaling in ppm.
     Helmert7Params {

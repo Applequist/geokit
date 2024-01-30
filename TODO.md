@@ -24,7 +24,6 @@
 
 -- [v] geodetic axes: N variants (EastNorthUp, NorthEastUp, EastNorth, NorthEast...)
 -- [v] geodetic datum + any geodetic axes variant -> Geographic CRS
-
 -- [ ] base geographic CRS + projection -> Projected CRS
 
 ## 4. Coordinates Operations
@@ -47,16 +46,19 @@ Goals:
 -- DynOperations:
 --- [v] Normalization
 --- [v] geographic to geocentric conversion,
---- [v] datum shift,
---- [v] Helmert 7 params
 --- [ ] Projections
+--- [v] GeocentricTranslation (3-parameters),
+--- [v] Helmert 7-parameter transformation,
+--- [ ] Molodensky-Badekas 10-parameter transformation,
+--- [ ] Abridged Molodensky transformation
+--- [ ] Geographic Offsets
 
 ## 5. CRS transformations
 
 Goals:
 
-- handle transformation between any 2 CRS whose datum share the same reference datum.
-- handle transformation from EPSG database 
+- [ ] handle hub transformation using WGS84 geocentric as a hub.
+- [ ] handle transformation from EPSG database
 
 -- [ ] TransformationPath: direct transformation + optional inverse transformation 
 -- [ ] Provider trait: transform(from: CRS, to: CRS) returns an optional transformation path.
