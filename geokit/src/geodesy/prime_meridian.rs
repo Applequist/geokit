@@ -13,12 +13,18 @@ impl PrimeMeridian {
     /// # Panics
     ///
     /// Panics if the `greenwich_longitude` is not in (-pi, pi].
-    pub fn new(gw_lon_rad: f64) -> Self {
+    pub fn with_gw_lon(gw_lon_rad: f64) -> Self {
         assert!(
             gw_lon_rad > -std::f64::consts::PI && gw_lon_rad <= std::f64::consts::PI,
             "Expected greenwich_longitude in (-pi, pi]. Got {}",
             gw_lon_rad
         );
+        Self::new(gw_lon_rad)
+    }
+
+    /// Create a new [PrimeMeridian] with the given Greenwich longitude **in (-pi, pi] radians**
+    /// positive east of Greenwich.
+    pub(crate) const fn new(gw_lon_rad: f64) -> Self {
         Self { gw_lon_rad }
     }
 
@@ -49,42 +55,8 @@ impl PrimeMeridian {
 impl Default for PrimeMeridian {
     /// Return the Greenwich prime meridian as default.
     fn default() -> Self {
-        consts::GREENWICH
+        PrimeMeridian { gw_lon_rad: 0.0 }
     }
-}
-
-#[rustfmt::skip]
-pub mod consts {
-
-    use super::PrimeMeridian;
-
-    macro_rules! prime_meridian {
-        ($name:ident, $gw_lon_rad:expr, $desc:expr) => {
-            pub const $name: PrimeMeridian = PrimeMeridian { gw_lon_rad: $gw_lon_rad };
-        };
-    }
-
-    macro_rules! deg {
-        ($d:expr) => {
-            $d * std::f64::consts::PI / 180.0
-        };
-    }
-
-    prime_meridian!(GREENWICH,                     0.,  "Greenwich");
-    prime_meridian!(LISBON,     deg!(-9.131906111111),  "Lisbon");
-    prime_meridian!(PARIS,      deg!(2.337229166667),   "Paris");
-    prime_meridian!(BOGOTA,     deg!(-74.080916666667), "Bogota");
-    prime_meridian!(MADRID,     deg!(-3.687938888889),  "Madrid");
-    prime_meridian!(ROME,       deg!(12.452333333333),  "Rome");
-    prime_meridian!(BERN,       deg!(7.439583333333),   "Bern");
-    prime_meridian!(JAKARTA,    deg!(106.807719444444), "Jakarta");
-    prime_meridian!(FERRO,      deg!(-17.666666666667), "Ferro");
-    prime_meridian!(BRUSSELS,   deg!(4.367975),         "Brussels");
-    prime_meridian!(STOCKHOLM,  deg!(18.058277777778),  "Stockholm");
-    prime_meridian!(ATHENS,     deg!(23.7163375),       "Athens");
-    prime_meridian!(OSLO,       deg!(10.722916666667),  "Oslo");
-    prime_meridian!(COPENHAGEN, deg!(12.57788),         "Copenhagen");
-
 }
 
 #[cfg(test)]
@@ -94,20 +66,20 @@ mod tests {
     #[test]
     #[should_panic = "Expected greenwich_longitude in (-pi, pi]"]
     fn longitude_lt_mpi() {
-        let _p = PrimeMeridian::new(-std::f64::consts::PI - f64::EPSILON);
+        let _p = PrimeMeridian::with_gw_lon(-std::f64::consts::PI - f64::EPSILON);
     }
 
     #[test]
     #[should_panic = "Expected greenwich_longitude in (-pi, pi]"]
     fn longitude_eq_mpi() {
-        let _p = PrimeMeridian::new(-std::f64::consts::PI);
+        let _p = PrimeMeridian::with_gw_lon(-std::f64::consts::PI);
     }
 
     #[test]
     #[should_panic = "Expected greenwich_longitude in (-pi, pi]"]
     fn longitude_gt_pi() {
         // FIX: shoud panic when only add 1.0 * f64::EPSILON!
-        let _p = PrimeMeridian::new(std::f64::consts::PI + 2.0 * f64::EPSILON);
+        let _p = PrimeMeridian::with_gw_lon(std::f64::consts::PI + 2.0 * f64::EPSILON);
     }
 
     #[test]

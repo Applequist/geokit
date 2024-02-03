@@ -2,23 +2,22 @@ use crate::{
     crs::Crs,
     geodesy::{Ellipsoid, GeodeticDatum, PrimeMeridian},
     operation::Operation,
-    tag::Tag,
 };
 
 pub trait GeodesyProvider {
-    fn ellipsoid_ids(&self) -> Vec<Tag>;
-    fn ellipsoid<I: Into<Tag>>(&self, id: I) -> Option<Ellipsoid>;
+    fn ellipsoid_ids(&self) -> impl Iterator<Item = &str>;
+    fn ellipsoid(&self, id: &str) -> Option<Ellipsoid>;
 
-    fn prime_meridian_ids(&self) -> Vec<Tag>;
-    fn prime_meridian<I: Into<Tag>>(&self, id: I) -> Option<PrimeMeridian>;
+    fn prime_meridian_ids(&self) -> impl Iterator<Item = &str>;
+    fn prime_meridian(&self, id: &str) -> Option<PrimeMeridian>;
 
-    fn datum_ids(&self) -> Vec<Tag>;
-    fn datum<I: Into<Tag>>(&self, id: I) -> Option<GeodeticDatum>;
+    fn datum_ids(&self) -> impl Iterator<Item = &str>;
+    fn datum(&self, id: &str) -> Option<GeodeticDatum>;
 }
 
 pub trait CrsProvider {
-    fn crs_ids(&self) -> Vec<Tag>;
-    fn crs(&self, id: Tag) -> Option<Box<dyn Crs>>;
+    fn crs_ids(&self) -> impl Iterator<Item = &str>;
+    fn crs(&self, id: &str) -> Option<Box<dyn Crs>>;
 }
 
 pub type TransformationPath = (Box<dyn Operation>, Box<dyn Operation>);

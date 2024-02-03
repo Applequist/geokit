@@ -1,5 +1,4 @@
 use crate::geodesy::GeodeticDatum;
-use crate::tag::Tag;
 use std::fmt::*;
 
 use super::Crs;
@@ -77,19 +76,23 @@ impl Default for GeodeticAxes {
 /// and units.
 #[derive(Debug, Clone, PartialEq)]
 pub struct GeographicCrs {
-    tag: Tag,
+    id: String,
     datum: GeodeticDatum,
     axes: GeodeticAxes,
 }
 
 impl GeographicCrs {
     /// Create a new [`GeodeticCrs`].
-    pub fn new<T: Into<Tag>>(tag: T, datum: GeodeticDatum, axes: GeodeticAxes) -> Self {
+    pub fn new<T: Into<String>>(id: T, datum: GeodeticDatum, axes: GeodeticAxes) -> Self {
         Self {
-            tag: tag.into(),
+            id: id.into(),
             datum,
             axes,
         }
+    }
+
+    pub fn id(&self) -> &str {
+        &self.id
     }
 
     /// Return the coordinates space dimension.
@@ -112,7 +115,7 @@ impl Default for GeographicCrs {
     /// Return EPSG:4326 as default the default geodetic CRS.
     fn default() -> Self {
         GeographicCrs::new(
-            ("WGS 84", "EPSG", 4326),
+            "EPSG:4326",
             GeodeticDatum::default(),
             GeodeticAxes::NorthEast {
                 angle_unit: 1.0_f64.to_radians(),
@@ -128,7 +131,6 @@ mod tests {
     use crate::{
         crs::geographic::{GeodeticAxes, GeographicCrs},
         geodesy::{Ellipsoid, GeodeticDatum, PrimeMeridian},
-        tag::Tag,
     };
 
     #[test]
@@ -165,7 +167,7 @@ mod tests {
         let different_datum = GeographicCrs::new(
             "WGS 84 (geodetic3d)",
             GeodeticDatum::new(
-                Tag::name("WGS 84.1"),
+                "WGS 84.1",
                 Ellipsoid::default(),
                 PrimeMeridian::default(),
                 None,

@@ -23,7 +23,7 @@ fn dist(a: &[f64], b: &[f64]) -> f64 {
 }
 
 #[test]
-fn ll_to_xyz() {
+fn llh_to_xyz() {
     let re = Regex::new(r"\s+").unwrap();
 
     let ll_grid = include_str!("data/ll_grid.txt");

@@ -1,5 +1,4 @@
 use crate::geodesy::GeodeticDatum;
-use crate::tag::Tag;
 
 use super::Crs;
 
@@ -11,25 +10,25 @@ use super::Crs;
 /// - Z: axis from the center of the datum's ellipsoid through the north pole.
 #[derive(Debug, Clone, PartialEq)]
 pub struct GeocentricCrs {
-    tag: Tag,
+    id: String,
     datum: GeodeticDatum,
 }
 
 impl GeocentricCrs {
     /// Creates a new [`GeocentricCrs`].
-    pub fn new<T: Into<Tag>>(tag: T, datum: GeodeticDatum) -> Self {
+    pub fn new<T: Into<String>>(id: T, datum: GeodeticDatum) -> Self {
         debug_assert!(
             datum.prime_meridian().lon() == 0.0,
             "Expected Greenwich prime meridian"
         );
         Self {
-            tag: tag.into(),
+            id: id.into(),
             datum,
         }
     }
 
-    pub fn tag(&self) -> &Tag {
-        &self.tag
+    pub fn id(&self) -> &str {
+        &self.id
     }
 
     /// Return this CRS geodetic datum as a reference.
@@ -42,10 +41,7 @@ impl GeocentricCrs {
 impl Default for GeocentricCrs {
     /// The default WGS84 geocentric CRS (epsg:4328)
     fn default() -> Self {
-        GeocentricCrs::new(
-            ("WGS 84 (geocentric)", "EPSG", 4328),
-            GeodeticDatum::default(),
-        )
+        GeocentricCrs::new("EPSG:4328", GeodeticDatum::default())
     }
 }
 
@@ -56,7 +52,6 @@ mod tests {
 
     use super::*;
     use crate::geodesy::*;
-    use crate::tag::Tag;
 
     #[test]
     fn clone() {
@@ -73,7 +68,7 @@ mod tests {
         assert!(!geoc.ne(&cpy));
 
         let mut different_tag = geoc.clone();
-        different_tag.tag = Tag::name("WGS 84.1");
+        different_tag.id = "WGS 84.1".into();
         assert_ne!(geoc, different_tag);
 
         let mut different_datum = geoc.clone();

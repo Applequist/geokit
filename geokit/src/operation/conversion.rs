@@ -120,14 +120,13 @@ mod tests {
     use crate::crs::{GeodeticAxes, GeographicCrs};
     use crate::operation::conversion::Normalization;
     use crate::operation::DynOperation;
-    use crate::tag::Tag;
 
     use crate::geodesy::GeodeticDatum;
 
     #[test]
     fn normalization() {
         let latlondeg = GeographicCrs::new(
-            Tag::name("WGS84"),
+            "WGS84",
             GeodeticDatum::default(),
             GeodeticAxes::NorthWest {
                 angle_unit: 1.0_f64.to_radians(),

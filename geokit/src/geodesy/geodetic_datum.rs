@@ -2,11 +2,10 @@ use std::fmt::Debug;
 
 use super::{Ellipsoid, PrimeMeridian};
 use crate::operation::transformation::RotationConvention;
-use crate::tag::Tag;
 
 #[derive(Debug, Clone)]
 pub struct ReferenceDatum {
-    tag: Tag,
+    id: String,
     to_ref: DatumTransformation,
 }
 
@@ -37,7 +36,7 @@ pub enum DatumTransformation {
 /// It is defined by an [Ellipsoid] and a [PrimeMeridian].
 #[derive(Clone)]
 pub struct GeodeticDatum {
-    tag: Tag,
+    id: String,
     ellipsoid: Ellipsoid,
     prime_meridian: PrimeMeridian,
     ref_datum: Option<ReferenceDatum>,
@@ -45,14 +44,14 @@ pub struct GeodeticDatum {
 
 impl GeodeticDatum {
     /// Creates a new [`GeodeticDatum`].
-    pub fn new<T: Into<Tag>>(
-        tag: T,
+    pub fn new<T: Into<String>>(
+        id: T,
         ellipsoid: Ellipsoid,
         prime_meridian: PrimeMeridian,
         ref_datum: Option<ReferenceDatum>,
     ) -> Self {
         Self {
-            tag: tag.into(),
+            id: id.into(),
             ellipsoid,
             prime_meridian,
             ref_datum,
@@ -60,8 +59,8 @@ impl GeodeticDatum {
     }
 
     /// Return this datum's id as a reference.
-    pub fn tag(&self) -> &Tag {
-        &self.tag
+    pub fn id(&self) -> &str {
+        &self.id
     }
 
     /// Return a copy of this datum's ellipsoid.
@@ -82,7 +81,7 @@ impl GeodeticDatum {
 
 impl PartialEq for GeodeticDatum {
     fn eq(&self, other: &Self) -> bool {
-        self.tag == other.tag
+        self.id == other.id
             && self.ellipsoid == other.ellipsoid
             && self.prime_meridian == other.prime_meridian
     }
@@ -92,7 +91,7 @@ impl Default for GeodeticDatum {
     /// Return the WGS 84 datum (EPSG:6326) as default GeodeticDatum.
     fn default() -> Self {
         GeodeticDatum::new(
-            Tag::full("WGS 1984", "EPSG", 6326),
+            "EPSG:6326",
             Ellipsoid::default(),
             PrimeMeridian::default(),
             None,
@@ -103,7 +102,7 @@ impl Default for GeodeticDatum {
 impl Debug for GeodeticDatum {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("GeodeticDatum")
-            .field("tag", &self.tag)
+            .field("id", &self.id)
             .field("ellipsoid", &self.ellipsoid)
             .field("prime_meridian", &self.prime_meridian)
             .field("ref_datum", &self.ref_datum)
@@ -116,12 +115,11 @@ mod tests {
 
     use super::GeodeticDatum;
     use crate::geodesy::{Ellipsoid, PrimeMeridian};
-    use crate::tag::Tag;
 
     #[test]
     fn clone() {
         let d = GeodeticDatum::new(
-            Tag::name("WGS 84"),
+            "WGS 84",
             Ellipsoid::from_ainvf(6_378_137.0, 298.257_223_563),
             PrimeMeridian::new(0.0),
             None,
@@ -134,31 +132,31 @@ mod tests {
     #[test]
     fn partial_eq() {
         let d = GeodeticDatum::new(
-            Tag::name("WGS 84"),
+            "WGS 84",
             Ellipsoid::from_ainvf(6_378_137.0, 298.257_223_563),
             PrimeMeridian::new(0.0),
             None,
         );
         let same = GeodeticDatum::new(
-            Tag::name("WGS 84"),
+            "WGS 84",
             Ellipsoid::from_ainvf(6_378_137.0, 298.257_223_563),
             PrimeMeridian::new(0.0),
             None,
         );
         let different_id = GeodeticDatum::new(
-            Tag::name("WGS 84.1"),
+            "WGS 84.1",
             Ellipsoid::from_ainvf(6_378_137.0, 298.257_223_563),
             PrimeMeridian::new(0.0),
             None,
         );
         let different_ellipsoid = GeodeticDatum::new(
-            Tag::name("WGS 84"),
+            "WGS 84",
             Ellipsoid::from_ab(6_378_137.0, 6_378_137.0),
             PrimeMeridian::new(0.0),
             None,
         );
         let different_pm = GeodeticDatum::new(
-            Tag::name("WGS 84"),
+            "WGS 84",
             Ellipsoid::from_ainvf(6_378_137.0, 298.257_223_563),
             PrimeMeridian::new(2.32_f64.to_radians()),
             None,
@@ -176,10 +174,10 @@ mod tests {
     fn default() {
         let wgs84 = GeodeticDatum::default();
         assert_eq!(
-            wgs84.tag,
-            Tag::full("WGS_1984", "EPSG", 6326),
-            "Expected 'WGS 84'. Got {}",
-            wgs84.tag
+            wgs84.id(),
+            "EPSG:6326",
+            "Expected 'EPSG:6326'. Got {}",
+            wgs84.id()
         );
         assert_eq!(wgs84.ellipsoid, Ellipsoid::default());
         assert_eq!(wgs84.prime_meridian, PrimeMeridian::default());
