@@ -1,3 +1,5 @@
+use smol_str::SmolStr;
+
 use crate::geodesy::GeodeticDatum;
 
 use super::Crs;
@@ -10,38 +12,31 @@ use super::Crs;
 /// - Z: axis from the center of the datum's ellipsoid through the north pole.
 #[derive(Debug, Clone, PartialEq)]
 pub struct GeocentricCrs {
-    id: String,
+    id: SmolStr,
     datum: GeodeticDatum,
 }
 
 impl GeocentricCrs {
     /// Creates a new [`GeocentricCrs`].
-    pub fn new<T: Into<String>>(id: T, datum: GeodeticDatum) -> Self {
+    pub fn new<T: AsRef<str>>(id: T, datum: GeodeticDatum) -> Self {
         debug_assert!(
             datum.prime_meridian().lon() == 0.0,
             "Expected Greenwich prime meridian"
         );
         Self {
-            id: id.into(),
+            id: SmolStr::new(id),
             datum,
         }
     }
 
     pub fn id(&self) -> &str {
-        &self.id
+        self.id.as_str()
     }
 
     /// Return this CRS geodetic datum as a reference.
     #[inline]
     pub fn datum(&self) -> &GeodeticDatum {
         &self.datum
-    }
-}
-
-impl Default for GeocentricCrs {
-    /// The default WGS84 geocentric CRS (epsg:4328)
-    fn default() -> Self {
-        GeocentricCrs::new("EPSG:4328", GeodeticDatum::default())
     }
 }
 
@@ -55,14 +50,30 @@ mod tests {
 
     #[test]
     fn clone() {
-        let geoc = GeocentricCrs::default();
+        let geoc = GeocentricCrs::new(
+            "WGS84",
+            GeodeticDatum::new(
+                "WGS84",
+                ellipsoid::consts::WGS84,
+                prime_meridian::consts::GREENWICH,
+                None,
+            ),
+        );
         let cpy = geoc.clone();
         assert_eq!(geoc, cpy);
     }
 
     #[test]
     fn partial_eq() {
-        let geoc = GeocentricCrs::default();
+        let geoc = GeocentricCrs::new(
+            "WGS84",
+            GeodeticDatum::new(
+                "WGS84",
+                ellipsoid::consts::WGS84,
+                prime_meridian::consts::GREENWICH,
+                None,
+            ),
+        );
         let cpy = geoc.clone();
         assert!(geoc.eq(&cpy));
         assert!(!geoc.ne(&cpy));
@@ -74,8 +85,8 @@ mod tests {
         let mut different_datum = geoc.clone();
         different_datum.datum = GeodeticDatum::new(
             "WGS 84.1",
-            Ellipsoid::default(),
-            PrimeMeridian::default(),
+            ellipsoid::consts::GRS80,
+            prime_meridian::consts::GREENWICH,
             None,
         );
         assert_ne!(geoc, different_datum);

@@ -28,5 +28,3 @@ pub enum TransformationProviderError {
 pub trait TransformationProvider<S, D> {
     fn transformation(from: &S, to: &D) -> Result<TransformationPath, TransformationProviderError>;
 }
-
-pub mod default;

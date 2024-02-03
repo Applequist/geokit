@@ -74,7 +74,7 @@ impl DynOperation for Normalization {
 /// before/after transformation to/from geocentric coordinates.
 ///
 /// This is epsg:9602.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub struct GeogToGeoc {
     ellipsoid: Ellipsoid,
     prime_meridian: PrimeMeridian,
@@ -83,8 +83,8 @@ pub struct GeogToGeoc {
 impl GeogToGeoc {
     pub fn new(datum: &GeodeticDatum) -> Self {
         Self {
-            ellipsoid: datum.ellipsoid(),
-            prime_meridian: datum.prime_meridian(),
+            ellipsoid: datum.ellipsoid().clone(),
+            prime_meridian: datum.prime_meridian().clone(),
         }
     }
 }
@@ -121,13 +121,18 @@ mod tests {
     use crate::operation::conversion::Normalization;
     use crate::operation::DynOperation;
 
-    use crate::geodesy::GeodeticDatum;
+    use crate::geodesy::{Ellipsoid, GeodeticDatum, PrimeMeridian};
 
     #[test]
     fn normalization() {
         let latlondeg = GeographicCrs::new(
             "WGS84",
-            GeodeticDatum::default(),
+            GeodeticDatum::new(
+                "WGS84",
+                Ellipsoid::from_ab("WGS84", 1., 0.99),
+                PrimeMeridian::new("Greenwich", 0.0),
+                None,
+            ),
             GeodeticAxes::NorthWest {
                 angle_unit: 1.0_f64.to_radians(),
             },

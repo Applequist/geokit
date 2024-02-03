@@ -1,17 +1,19 @@
 use std::fmt::Debug;
 
+use smol_str::SmolStr;
+
 use super::{Ellipsoid, PrimeMeridian};
 use crate::operation::transformation::RotationConvention;
 
 #[derive(Debug, Clone)]
 pub struct ReferenceDatum {
-    id: String,
+    id: SmolStr,
     to_ref: DatumTransformation,
 }
 
 /// Coordinates can be transformed between different datum.
 /// A [`DatumTransformation`] specifies the supported transformations.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub enum DatumTransformation {
     /// A simple datum shift transforms source normalized geocentric coordinates by adding an offset **in
     /// meters**.
@@ -36,7 +38,7 @@ pub enum DatumTransformation {
 /// It is defined by an [Ellipsoid] and a [PrimeMeridian].
 #[derive(Clone)]
 pub struct GeodeticDatum {
-    id: String,
+    id: SmolStr,
     ellipsoid: Ellipsoid,
     prime_meridian: PrimeMeridian,
     ref_datum: Option<ReferenceDatum>,
@@ -44,14 +46,29 @@ pub struct GeodeticDatum {
 
 impl GeodeticDatum {
     /// Creates a new [`GeodeticDatum`].
-    pub fn new<T: Into<String>>(
+    pub const fn new_static(
+        id: &'static str,
+        ellipsoid: Ellipsoid,
+        prime_meridian: PrimeMeridian,
+        ref_datum: Option<ReferenceDatum>,
+    ) -> Self {
+        Self {
+            id: SmolStr::new_static(id),
+            ellipsoid,
+            prime_meridian,
+            ref_datum,
+        }
+    }
+
+    /// Creates a new [`GeodeticDatum`].
+    pub fn new<T: AsRef<str>>(
         id: T,
         ellipsoid: Ellipsoid,
         prime_meridian: PrimeMeridian,
         ref_datum: Option<ReferenceDatum>,
     ) -> Self {
         Self {
-            id: id.into(),
+            id: SmolStr::new(id),
             ellipsoid,
             prime_meridian,
             ref_datum,
@@ -60,17 +77,17 @@ impl GeodeticDatum {
 
     /// Return this datum's id as a reference.
     pub fn id(&self) -> &str {
-        &self.id
+        self.id.as_str()
     }
 
     /// Return a copy of this datum's ellipsoid.
-    pub fn ellipsoid(&self) -> Ellipsoid {
-        self.ellipsoid
+    pub fn ellipsoid(&self) -> &Ellipsoid {
+        &self.ellipsoid
     }
 
     /// Return a copy of this datum's prime meridian.
-    pub fn prime_meridian(&self) -> PrimeMeridian {
-        self.prime_meridian
+    pub fn prime_meridian(&self) -> &PrimeMeridian {
+        &self.prime_meridian
     }
 
     /// Return the option [DatumTransformation] to a reference datum.
@@ -87,18 +104,6 @@ impl PartialEq for GeodeticDatum {
     }
 }
 
-impl Default for GeodeticDatum {
-    /// Return the WGS 84 datum (EPSG:6326) as default GeodeticDatum.
-    fn default() -> Self {
-        GeodeticDatum::new(
-            "EPSG:6326",
-            Ellipsoid::default(),
-            PrimeMeridian::default(),
-            None,
-        )
-    }
-}
-
 impl Debug for GeodeticDatum {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("GeodeticDatum")
@@ -110,18 +115,31 @@ impl Debug for GeodeticDatum {
     }
 }
 
+pub mod consts {
+    use crate::geodesy::{ellipsoid, prime_meridian};
+
+    use super::GeodeticDatum;
+
+    pub const WGS84: GeodeticDatum = GeodeticDatum::new_static(
+        "EPSG:6326",
+        ellipsoid::consts::WGS84,
+        prime_meridian::consts::GREENWICH,
+        None,
+    );
+}
+
 #[cfg(test)]
 mod tests {
 
     use super::GeodeticDatum;
-    use crate::geodesy::{Ellipsoid, PrimeMeridian};
+    use crate::geodesy::{ellipsoid, prime_meridian, Ellipsoid, PrimeMeridian};
 
     #[test]
     fn clone() {
         let d = GeodeticDatum::new(
             "WGS 84",
-            Ellipsoid::from_ainvf(6_378_137.0, 298.257_223_563),
-            PrimeMeridian::new(0.0),
+            Ellipsoid::from_ainvf("WGS84", 6_378_137.0, 298.257_223_563),
+            PrimeMeridian::new("Greenwich", 0.0),
             None,
         );
         let cpy = d.clone();
@@ -133,32 +151,32 @@ mod tests {
     fn partial_eq() {
         let d = GeodeticDatum::new(
             "WGS 84",
-            Ellipsoid::from_ainvf(6_378_137.0, 298.257_223_563),
-            PrimeMeridian::new(0.0),
+            ellipsoid::consts::WGS84,
+            prime_meridian::consts::GREENWICH,
             None,
         );
         let same = GeodeticDatum::new(
             "WGS 84",
-            Ellipsoid::from_ainvf(6_378_137.0, 298.257_223_563),
-            PrimeMeridian::new(0.0),
+            ellipsoid::consts::WGS84,
+            prime_meridian::consts::GREENWICH,
             None,
         );
         let different_id = GeodeticDatum::new(
             "WGS 84.1",
-            Ellipsoid::from_ainvf(6_378_137.0, 298.257_223_563),
-            PrimeMeridian::new(0.0),
+            ellipsoid::consts::WGS84,
+            prime_meridian::consts::GREENWICH,
             None,
         );
         let different_ellipsoid = GeodeticDatum::new(
             "WGS 84",
-            Ellipsoid::from_ab(6_378_137.0, 6_378_137.0),
-            PrimeMeridian::new(0.0),
+            ellipsoid::consts::GRS80,
+            prime_meridian::consts::GREENWICH,
             None,
         );
         let different_pm = GeodeticDatum::new(
             "WGS 84",
-            Ellipsoid::from_ainvf(6_378_137.0, 298.257_223_563),
-            PrimeMeridian::new(2.32_f64.to_radians()),
+            ellipsoid::consts::WGS84,
+            prime_meridian::consts::PARIS,
             None,
         );
 
@@ -168,19 +186,6 @@ mod tests {
         assert_ne!(d, different_id);
         assert_ne!(d, different_ellipsoid);
         assert_ne!(d, different_pm);
-    }
-
-    #[test]
-    fn default() {
-        let wgs84 = GeodeticDatum::default();
-        assert_eq!(
-            wgs84.id(),
-            "EPSG:6326",
-            "Expected 'EPSG:6326'. Got {}",
-            wgs84.id()
-        );
-        assert_eq!(wgs84.ellipsoid, Ellipsoid::default());
-        assert_eq!(wgs84.prime_meridian, PrimeMeridian::default());
     }
 
     #[ignore = "unimplemented"]

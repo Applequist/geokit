@@ -13,7 +13,7 @@ approx = "0.5.1"
 dyn-clone = "1.0.16"
 nalgebra = "0.32.3"
 num = "0.4.1"
-phf = { version = "0.11.2", features = ["macros"] }
 regex = "1.10.2"
 smallvec = "1.11.2"
+smol_str = "0.2.1"
 thiserror = "1.0.50"

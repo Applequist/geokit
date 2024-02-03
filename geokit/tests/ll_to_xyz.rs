@@ -1,7 +1,7 @@
 use approx::assert_abs_diff_eq;
 use geokit::{
     crs::{GeodeticAxes, GeographicCrs},
-    geodesy::{Ellipsoid, GeodeticDatum, PrimeMeridian},
+    geodesy::{geodetic_datum, Ellipsoid, GeodeticDatum, PrimeMeridian},
     operation::{
         conversion::{GeogToGeoc, Normalization},
         Bwd, Fwd, Operation,
@@ -54,12 +54,7 @@ fn llh_to_xyz() {
 
     let src = GeographicCrs::new(
         "WGS84",
-        GeodeticDatum::new(
-            "WGS84",
-            Ellipsoid::default(),
-            PrimeMeridian::default(),
-            None,
-        ),
+        geodetic_datum::consts::WGS84,
         GeodeticAxes::EastNorth {
             angle_unit: 1.0_f64.to_radians(),
         },
@@ -68,7 +63,7 @@ fn llh_to_xyz() {
 
     let norm = Normalization::from(src.axes());
     let geog_to_geoc = GeogToGeoc::new(src.datum());
-    let to_geoc = Fwd(norm.clone()).and_then(Fwd(geog_to_geoc));
+    let to_geoc = Fwd(norm.clone()).and_then(Fwd(geog_to_geoc.clone()));
     let from_geoc = Bwd(geog_to_geoc).and_then(Bwd(norm));
 
     // Allocating storage for transformed coordinates.

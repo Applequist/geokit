@@ -7,8 +7,8 @@ edition.workspace = true
 dyn-clone = { workspace = true }
 nalgebra = { workspace = true }
 num = { workspace = true }
-phf = { workspace = true }
 smallvec = { workspace = true }
+smol_str = { workspace = true }
 thiserror = { workspace = true }
 
 [dev-dependencies]

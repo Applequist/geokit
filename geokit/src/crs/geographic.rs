@@ -111,40 +111,25 @@ impl GeographicCrs {
     }
 }
 
-impl Default for GeographicCrs {
-    /// Return EPSG:4326 as default the default geodetic CRS.
-    fn default() -> Self {
-        GeographicCrs::new(
-            "EPSG:4326",
-            GeodeticDatum::default(),
-            GeodeticAxes::NorthEast {
-                angle_unit: 1.0_f64.to_radians(),
-            },
-        )
-    }
-}
-
 impl Crs for GeographicCrs {}
 
 #[cfg(test)]
 mod tests {
     use crate::{
         crs::geographic::{GeodeticAxes, GeographicCrs},
-        geodesy::{Ellipsoid, GeodeticDatum, PrimeMeridian},
+        geodesy::{ellipsoid, prime_meridian, GeodeticDatum},
     };
-
-    #[test]
-    fn deault() {
-        let wgs84_2d = GeographicCrs::default();
-        assert_eq!(wgs84_2d.dim(), 2);
-        assert_eq!(wgs84_2d.datum(), &GeodeticDatum::default());
-    }
 
     #[test]
     fn partial_eq() {
         let geod3d = GeographicCrs::new(
             "WGS 84 (geodetic3d)",
-            GeodeticDatum::default(),
+            GeodeticDatum::new(
+                "WGS84",
+                ellipsoid::consts::WGS84,
+                prime_meridian::consts::GREENWICH,
+                None,
+            ),
             GeodeticAxes::EastNorthUp {
                 angle_unit: 1.0,
                 height_unit: 1.0,
@@ -153,7 +138,12 @@ mod tests {
 
         let different_id = GeographicCrs::new(
             "WGS 84.1 (geodetic3d)",
-            GeodeticDatum::default(),
+            GeodeticDatum::new(
+                "WGS84",
+                ellipsoid::consts::WGS84,
+                prime_meridian::consts::GREENWICH,
+                None,
+            ),
             GeodeticAxes::EastNorthUp {
                 angle_unit: 1.0,
                 height_unit: 1.0,
@@ -167,9 +157,9 @@ mod tests {
         let different_datum = GeographicCrs::new(
             "WGS 84 (geodetic3d)",
             GeodeticDatum::new(
-                "WGS 84.1",
-                Ellipsoid::default(),
-                PrimeMeridian::default(),
+                "WGS84.1",
+                ellipsoid::consts::WGS84,
+                prime_meridian::consts::GREENWICH,
                 None,
             ),
             GeodeticAxes::EastNorthUp {
@@ -184,7 +174,12 @@ mod tests {
 
         let different_axes = GeographicCrs::new(
             "WGS 84 (geodetic3d)",
-            GeodeticDatum::default(),
+            GeodeticDatum::new(
+                "WGS84",
+                ellipsoid::consts::WGS84,
+                prime_meridian::consts::GREENWICH,
+                None,
+            ),
             GeodeticAxes::NorthEastUp {
                 angle_unit: 1.0,
                 height_unit: 1.0,
@@ -197,7 +192,12 @@ mod tests {
 
         let different_angle_unit = GeographicCrs::new(
             "WGS 84 (geodetic3d)",
-            GeodeticDatum::default(),
+            GeodeticDatum::new(
+                "WGS84",
+                ellipsoid::consts::WGS84,
+                prime_meridian::consts::GREENWICH,
+                None,
+            ),
             GeodeticAxes::NorthEastUp {
                 angle_unit: 1.0_f64.to_radians(),
                 height_unit: 1.,
@@ -210,7 +210,12 @@ mod tests {
 
         let different_height_unit = GeographicCrs::new(
             "WGS 84 (geodetic3d)",
-            GeodeticDatum::default(),
+            GeodeticDatum::new(
+                "WGS84",
+                ellipsoid::consts::WGS84,
+                prime_meridian::consts::GREENWICH,
+                None,
+            ),
             GeodeticAxes::NorthEastUp {
                 angle_unit: 1.,
                 height_unit: 0.29,
@@ -226,7 +231,12 @@ mod tests {
     fn clone() {
         let geod = GeographicCrs::new(
             "WGS 84 (geodetic2d)",
-            GeodeticDatum::default(),
+            GeodeticDatum::new(
+                "WGS84",
+                ellipsoid::consts::WGS84,
+                prime_meridian::consts::GREENWICH,
+                None,
+            ),
             GeodeticAxes::EastNorthUp {
                 angle_unit: 1.,
                 height_unit: 1.,
