@@ -2,15 +2,24 @@ use std::f64::consts::{FRAC_PI_2, FRAC_PI_4};
 
 use crate::{geodesy::Ellipsoid, operation::DynOperation};
 
+/// [WebMercator](epsg:1024) also known as 'Pseudo-Mercator' is a projection method
+/// used by some popular web mapping and visualisation applications.
+/// Strictly speaking the name is misleading as it is **NOT** a Mercator projection.
+#[derive(Debug, Clone, PartialEq)]
 pub struct WebMercator {
     ellipsoid: Ellipsoid,
+    /// longitude of *natural origin* in radians.
     lon0: f64,
+    /// latitude of *natural origin* in radians.
     lat0: f64,
+    /// False easting in meters.
     false_easting: f64,
+    /// False norhting in meters.
     false_northing: f64,
 }
 
 impl WebMercator {
+    /// Creates a new [WebMercator] projection instance.
     pub fn new(
         ellipsoid: Ellipsoid,
         lon0: f64,

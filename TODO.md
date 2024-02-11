@@ -26,9 +26,6 @@
 -- [v] geodetic datum + any geodetic axes variant -> Geographic CRS
 -- [v] geodetic datum + any projected axes variant + projection -> Projected CRS
 
-Crs -> Operation -> Geodesy
- |                     ^
- +---------------------+
 
 ## 4. Coordinates Operations
 
