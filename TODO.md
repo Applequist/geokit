@@ -24,7 +24,11 @@
 
 -- [v] geodetic axes: N variants (EastNorthUp, NorthEastUp, EastNorth, NorthEast...)
 -- [v] geodetic datum + any geodetic axes variant -> Geographic CRS
--- [ ] base geographic CRS + projection -> Projected CRS
+-- [v] geodetic datum + any projected axes variant + projection -> Projected CRS
+
+Crs -> Operation -> Geodesy
+ |                     ^
+ +---------------------+
 
 ## 4. Coordinates Operations
 

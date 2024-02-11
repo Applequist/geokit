@@ -33,6 +33,11 @@ impl GeocentricCrs {
         self.id.as_str()
     }
 
+    #[inline]
+    pub fn dim(&self) -> usize {
+        3
+    }
+
     /// Return this CRS geodetic datum as a reference.
     #[inline]
     pub fn datum(&self) -> &GeodeticDatum {
@@ -40,7 +45,11 @@ impl GeocentricCrs {
     }
 }
 
-impl Crs for GeocentricCrs {}
+impl Crs for GeocentricCrs {
+    fn is_normalized(&self) -> bool {
+        true
+    }
+}
 
 #[cfg(test)]
 mod tests {

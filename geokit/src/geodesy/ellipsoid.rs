@@ -1,3 +1,5 @@
+use std::fmt::Debug;
+
 use smol_str::SmolStr;
 
 /// An `Ellipsoid` is a mathematical surface used as a model of the Earth surface.

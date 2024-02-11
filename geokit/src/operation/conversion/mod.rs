@@ -1,5 +1,5 @@
 use crate::{
-    crs::geographic::GeodeticAxes,
+    crs::{geographic::GeodeticAxes, projected::ProjectedAxes},
     geodesy::{Ellipsoid, GeodeticDatum, PrimeMeridian},
 };
 
@@ -14,13 +14,13 @@ pub type ToOrd = (usize, f64);
 /// - zeroing input coordinates in excess or output coordinates in excess.
 ///
 /// Normalized geocentric coordinates are (x, y, z) measured in metres.
-/// Normalized geographic coordinates are (lon, lat(, height)) measured in radians (and metres).
+/// Normalized geographic coordinates are using the `GeodeticAxes::EastNorthUp(1.0, 1.0)` axes..
 #[derive(Debug, Clone)]
 pub struct Normalization(Vec<ToOrd>);
 
-impl From<&GeodeticAxes> for Normalization {
-    fn from(value: &GeodeticAxes) -> Self {
-        let to_ord = match *value {
+impl From<GeodeticAxes> for Normalization {
+    fn from(value: GeodeticAxes) -> Self {
+        let to_ord = match value {
             GeodeticAxes::EastNorthUp {
                 angle_unit,
                 height_unit,
@@ -32,6 +32,19 @@ impl From<&GeodeticAxes> for Normalization {
             } => vec![(1, angle_unit), (0, angle_unit), (2, height_unit)],
             GeodeticAxes::NorthEast { angle_unit } => vec![(1, angle_unit), (0, angle_unit)],
             GeodeticAxes::NorthWest { angle_unit } => vec![(1, -angle_unit), (0, angle_unit)],
+        };
+        Normalization(to_ord)
+    }
+}
+
+impl From<ProjectedAxes> for Normalization {
+    fn from(value: ProjectedAxes) -> Self {
+        let to_ord = match value {
+            ProjectedAxes::EastNorthUp {
+                horiz_unit,
+                height_unit,
+            } => vec![(0, horiz_unit), (1, horiz_unit), (2, height_unit)],
+            ProjectedAxes::EastNorth { horiz_unit } => vec![(0, horiz_unit), (1, horiz_unit)],
         };
         Normalization(to_ord)
     }
@@ -114,6 +127,8 @@ impl DynOperation for GeogToGeoc {
         Ok(())
     }
 }
+
+pub mod projection;
 
 #[cfg(test)]
 mod tests {

@@ -1,3 +1,5 @@
+use smol_str::SmolStr;
+
 use crate::geodesy::GeodeticDatum;
 use std::fmt::*;
 
@@ -76,42 +78,57 @@ impl Default for GeodeticAxes {
 /// and units.
 #[derive(Debug, Clone, PartialEq)]
 pub struct GeographicCrs {
-    id: String,
+    id: SmolStr,
     datum: GeodeticDatum,
     axes: GeodeticAxes,
 }
 
 impl GeographicCrs {
     /// Create a new [`GeodeticCrs`].
-    pub fn new<T: Into<String>>(id: T, datum: GeodeticDatum, axes: GeodeticAxes) -> Self {
+    pub fn new<T: AsRef<str>>(id: T, datum: GeodeticDatum, axes: GeodeticAxes) -> Self {
         Self {
-            id: id.into(),
+            id: SmolStr::new(id),
             datum,
             axes,
         }
     }
 
     pub fn id(&self) -> &str {
-        &self.id
+        self.id.as_str()
     }
 
     /// Return the coordinates space dimension.
+    #[inline]
     pub fn dim(&self) -> usize {
         self.axes.dim()
     }
 
     /// Return a reference to this CRS [`datum`][GeodeticDatum].
+    #[inline]
     pub fn datum(&self) -> &GeodeticDatum {
         &self.datum
     }
 
     /// Return a reference to the [`axes`][GeodeticAxes] used by this CRS.
-    pub fn axes(&self) -> &GeodeticAxes {
-        &self.axes
+    #[inline]
+    pub fn axes(&self) -> GeodeticAxes {
+        self.axes
     }
 }
 
-impl Crs for GeographicCrs {}
+impl Crs for GeographicCrs {
+    fn is_normalized(&self) -> bool {
+        if let GeodeticAxes::EastNorthUp {
+            angle_unit,
+            height_unit,
+        } = self.axes()
+        {
+            angle_unit == 1.0 && height_unit == 1.0
+        } else {
+            false
+        }
+    }
+}
 
 #[cfg(test)]
 mod tests {
