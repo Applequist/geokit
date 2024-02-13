@@ -105,24 +105,6 @@ dyn_clone::clone_trait_object!(Operation);
 #[derive(Debug, Clone)]
 pub struct Fwd<T>(pub T);
 
-// impl<T> Debug for Fwd<T>
-// where
-//     T: Debug,
-// {
-//     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-//         f.debug_tuple("Fwd").field(&self.0).finish()
-//     }
-// }
-//
-// impl<T> Clone for Fwd<T>
-// where
-//     T: Clone,
-// {
-//     fn clone(&self) -> Self {
-//         Self(self.0.clone())
-//     }
-// }
-
 impl<T> Operation for Fwd<T>
 where
     T: DynOperation + Clone,
@@ -143,24 +125,6 @@ where
 /// A [DynOperation] wrapper that selects the backward, eg inverse, operation.
 #[derive(Debug, Clone)]
 pub struct Bwd<T>(pub T);
-
-// impl<T> Debug for Bwd<T>
-// where
-//     T: Debug,
-// {
-//     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-//         f.debug_tuple("Bwd").field(&self.0).finish()
-//     }
-// }
-//
-// impl<T> Clone for Bwd<T>
-// where
-//     T: Clone,
-// {
-//     fn clone(&self) -> Self {
-//         Self(self.0.clone())
-//     }
-// }
 
 impl<T> Operation for Bwd<T>
 where
