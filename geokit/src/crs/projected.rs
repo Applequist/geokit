@@ -4,7 +4,10 @@ use smol_str::SmolStr;
 
 use crate::{
     geodesy::{Ellipsoid, GeodeticDatum},
-    operation::{conversion::projection::WebMercator, DynOperation},
+    operation::{
+        conversion::{projection::WebMercator, GeogToGeoc, Normalization},
+        Bwd, DynOperation, Fwd, Operation,
+    },
 };
 
 use super::Crs;
@@ -96,6 +99,20 @@ impl ProjectedCrs {
     #[inline]
     pub fn axes(&self) -> ProjectedAxes {
         self.axes
+    }
+
+    pub fn projection(&self) -> Box<dyn DynOperation> {
+        self.projection.projection(self.datum().ellipsoid())
+    }
+
+    pub fn to_geoc(&self) -> (impl Operation + Clone, impl Operation + Clone) {
+        let fwd = Fwd(Normalization::from(self.axes()))
+            .and_then(Bwd(self.projection()))
+            .and_then(Fwd(GeogToGeoc::new(self.datum())));
+        let bwd = Bwd(GeogToGeoc::new(self.datum()))
+            .and_then(Fwd(self.projection()))
+            .and_then(Bwd(Normalization::from(self.axes())));
+        (fwd, bwd)
     }
 }
 

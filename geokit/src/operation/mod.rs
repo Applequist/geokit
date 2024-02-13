@@ -22,7 +22,7 @@ pub type Result<T> = std::result::Result<T, OperationError>;
 
 /// Base trait for coordinate operations that may be invertible.
 /// By default, operations are considered not invertible.
-pub trait DynOperation {
+pub trait DynOperation: DynClone {
     /// Return the input coordinates dimension of the forward operation.
     fn fwd_in_dim(&self) -> usize;
 
@@ -43,6 +43,30 @@ pub trait DynOperation {
             index: 0,
             reason: "Operation is not invertible".into(),
         })
+    }
+}
+
+dyn_clone::clone_trait_object!(DynOperation);
+
+impl DynOperation for Box<dyn DynOperation> {
+    fn fwd_in_dim(&self) -> usize {
+        self.as_ref().fwd_in_dim()
+    }
+
+    fn fwd_out_dim(&self) -> usize {
+        self.as_ref().fwd_out_dim()
+    }
+
+    fn fwd(&self, input: &[f64], output: &mut [f64]) -> Result<()> {
+        self.as_ref().fwd(input, output)
+    }
+
+    fn is_invertible(&self) -> bool {
+        self.as_ref().is_invertible()
+    }
+
+    fn bwd(&self, input: &[f64], output: &mut [f64]) -> Result<()> {
+        self.as_ref().bwd(input, output)
     }
 }
 

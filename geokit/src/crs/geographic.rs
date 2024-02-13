@@ -1,6 +1,12 @@
 use smol_str::SmolStr;
 
-use crate::geodesy::GeodeticDatum;
+use crate::{
+    geodesy::GeodeticDatum,
+    operation::{
+        conversion::{GeogToGeoc, Normalization},
+        Bwd, Fwd, Operation,
+    },
+};
 use std::fmt::*;
 
 use super::Crs;
@@ -113,6 +119,14 @@ impl GeographicCrs {
     #[inline]
     pub fn axes(&self) -> GeodeticAxes {
         self.axes
+    }
+
+    pub fn to_geoc(&self) -> (impl Operation + Clone, impl Operation + Clone) {
+        let fwd =
+            Fwd(Normalization::from(self.axes())).and_then(Fwd(GeogToGeoc::new(self.datum())));
+        let bwd =
+            Bwd(GeogToGeoc::new(self.datum())).and_then(Bwd(Normalization::from(self.axes())));
+        (fwd, bwd)
     }
 }
 
