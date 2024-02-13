@@ -1,7 +1,6 @@
 use core::f64;
 use std::fmt::Debug;
 
-use dyn_clone::DynClone;
 use thiserror::Error;
 
 /// Value returned when an operation cannot be completed.
@@ -21,8 +20,7 @@ pub type Result<T> = std::result::Result<T, OperationError>;
 
 /// Base trait for coordinate operations that may be invertible.
 /// By default, operations are considered not invertible.
-// FIXME: Do we need the DynClone bound ?
-pub trait DynOperation: DynClone {
+pub trait DynOperation {
     /// Return the input coordinates dimension of the forward operation.
     fn fwd_in_dim(&self) -> usize;
 
@@ -45,8 +43,6 @@ pub trait DynOperation: DynClone {
         })
     }
 }
-
-dyn_clone::clone_trait_object!(DynOperation);
 
 impl DynOperation for Box<dyn DynOperation> {
     fn fwd_in_dim(&self) -> usize {
@@ -72,7 +68,7 @@ impl DynOperation for Box<dyn DynOperation> {
 
 /// Base trait for **unidirectional** transformation.
 // FIXME: Do we need the DynClone bound ?!
-pub trait Operation: DynClone {
+pub trait Operation {
     /// Return the input coordinates dimension.
     fn in_dim(&self) -> usize;
 
@@ -124,15 +120,13 @@ pub trait Operation: DynClone {
     }
 }
 
-dyn_clone::clone_trait_object!(Operation);
-
 /// A [DynOperation] wrapper that selects the forward operation.
 #[derive(Debug, Clone)]
 pub struct Fwd<T>(pub T);
 
 impl<T> Operation for Fwd<T>
 where
-    T: DynOperation + Clone,
+    T: DynOperation,
 {
     fn in_dim(&self) -> usize {
         self.0.fwd_in_dim()
@@ -153,7 +147,7 @@ pub struct Bwd<T>(pub T);
 
 impl<T> Operation for Bwd<T>
 where
-    T: DynOperation + Clone,
+    T: DynOperation,
 {
     fn in_dim(&self) -> usize {
         self.0.fwd_out_dim()
@@ -177,8 +171,8 @@ pub struct Chain<A, B> {
 
 impl<A, B> Operation for Chain<A, B>
 where
-    A: Operation + Clone,
-    B: Operation + Clone,
+    A: Operation,
+    B: Operation,
 {
     fn in_dim(&self) -> usize {
         self.first.in_dim()

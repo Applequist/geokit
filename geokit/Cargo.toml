@@ -4,7 +4,6 @@ version.workspace = true
 edition.workspace = true
 
 [dependencies]
-dyn-clone = { workspace = true }
 nalgebra = { workspace = true }
 num = { workspace = true }
 smol_str = { workspace = true }

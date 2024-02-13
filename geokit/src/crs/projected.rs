@@ -105,7 +105,7 @@ impl ProjectedCrs {
         self.projection.projection(self.datum().ellipsoid())
     }
 
-    pub fn to_geoc(&self) -> (impl Operation + Clone, impl Operation + Clone) {
+    pub fn to_geoc(&self) -> (impl Operation, impl Operation) {
         let fwd = Fwd(Normalization::from(self.axes()))
             .and_then(Bwd(self.projection()))
             .and_then(Fwd(GeogToGeoc::new(self.datum())));

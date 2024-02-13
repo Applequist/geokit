@@ -10,7 +10,6 @@ edition = "2021"
 
 [workspace.dependencies]
 approx = "0.5.1"
-dyn-clone = "1.0.16"
 nalgebra = "0.32.3"
 num = "0.4.1"
 regex = "1.10.2"
