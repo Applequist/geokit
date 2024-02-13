@@ -144,35 +144,10 @@ where
 }
 
 /// A chained coordinates operation.
+#[derive(Debug, Clone)]
 pub struct Chain<A, B> {
     first: A,
     then: B,
-}
-
-impl<A, B> Debug for Chain<A, B>
-where
-    A: Debug,
-    B: Debug,
-{
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("Chain")
-            .field("first", &self.first)
-            .field("then", &self.then)
-            .finish()
-    }
-}
-
-impl<A, B> Clone for Chain<A, B>
-where
-    A: Clone,
-    B: Clone,
-{
-    fn clone(&self) -> Self {
-        Self {
-            first: self.first.clone(),
-            then: self.then.clone(),
-        }
-    }
 }
 
 impl<A, B> Operation for Chain<A, B>
