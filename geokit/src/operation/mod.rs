@@ -2,7 +2,6 @@ use core::f64;
 use std::fmt::Debug;
 
 use dyn_clone::DynClone;
-use smallvec::SmallVec;
 use thiserror::Error;
 
 /// Value returned when an operation cannot be completed.
@@ -22,6 +21,7 @@ pub type Result<T> = std::result::Result<T, OperationError>;
 
 /// Base trait for coordinate operations that may be invertible.
 /// By default, operations are considered not invertible.
+// FIXME: Do we need the DynClone bound ?
 pub trait DynOperation: DynClone {
     /// Return the input coordinates dimension of the forward operation.
     fn fwd_in_dim(&self) -> usize;
@@ -71,6 +71,7 @@ impl DynOperation for Box<dyn DynOperation> {
 }
 
 /// Base trait for **unidirectional** transformation.
+// FIXME: Do we need the DynClone bound ?!
 pub trait Operation: DynClone {
     /// Return the input coordinates dimension.
     fn in_dim(&self) -> usize;
@@ -188,8 +189,8 @@ where
     }
 
     fn apply(&self, i: &[f64], o: &mut [f64]) -> Result<()> {
-        let mut os: SmallVec<[f64; 3]> = SmallVec::from_elem(0.0, self.first.out_dim());
-        self.first.apply(i, &mut os)?;
+        let mut os = [0.0; 3];
+        self.first.apply(i, &mut os[0..self.first.out_dim()])?;
         self.then.apply(&os, o)
     }
 }
