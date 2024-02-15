@@ -38,6 +38,7 @@ pub enum Crs {
 }
 
 impl Crs {
+    /// Returns the id of a [Crs].
     pub fn id(&self) -> &str {
         match self {
             Crs::Geocentric {
@@ -59,6 +60,7 @@ impl Crs {
         }
     }
 
+    /// Returns the coordinates dimension of a [Crs].
     pub fn dim(&self) -> usize {
         match self {
             Crs::Geocentric {
@@ -80,7 +82,7 @@ impl Crs {
         }
     }
 
-    /// Return this CRS geodetic datum as a reference.
+    /// Returns the [GeodeticDatum] used by this [Crs].
     pub fn datum(&self) -> &GeodeticDatum {
         match self {
             Crs::Geocentric {
@@ -102,6 +104,7 @@ impl Crs {
         }
     }
 
+    /// Returns the id of the reference [GeodeticDatum] of this [Crs].
     pub fn ref_datum_id(&self) -> &str {
         match self {
             Crs::Geocentric {
@@ -122,6 +125,13 @@ impl Crs {
             } => datum.ref_datum_id(),
         }
     }
+
+    /// Returns whether a [Crs] is normalized.
+    /// A [Crs::Geocentric] CRS is normalized by default.
+    /// A [Crs::Geographic] CRS is normalized if it is using the following
+    /// axes `GeodeticAxes::EastNorthUp { angle_unit: 1.0, height_unit: 1.0 }`.
+    /// And a [Crs::Projected] CRS is normalized if it is using the following axes:
+    /// `ProjectedAxes::EastNorthUp { horiz_unit: 1.0, height_unit: 1.0 }`.
     pub fn is_normalized(&self) -> bool {
         match self {
             Crs::Geocentric {
@@ -163,7 +173,8 @@ impl Crs {
         }
     }
 
-    pub fn normalization(&self) -> Normalization {
+    /// Returns the [DynOperation] used to normalized coordinates.
+    pub fn normalization(&self) -> impl DynOperation {
         match self {
             Crs::Geocentric {
                 id: _,
@@ -184,7 +195,8 @@ impl Crs {
         }
     }
 
-    pub fn to_geoc(&self) -> (Box<dyn Operation>, Box<dyn Operation>) {
+    /// Returns coordinates conversion to and from normalized geocentric coordinates.
+    pub fn to_normalized_geoc(&self) -> (Box<dyn Operation>, Box<dyn Operation>) {
         match self {
             Crs::Geocentric {
                 id: _,
@@ -214,8 +226,10 @@ impl Crs {
     }
 }
 
+/// The [GeocentricAxes] enum defines the *coordinates system* part of [Geocentric] CRS.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum GeocentricAxes {
+    /// Coordinates are x, y, and z in meters.
     XYZ,
 }
 

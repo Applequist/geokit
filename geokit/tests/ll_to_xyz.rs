@@ -2,7 +2,7 @@ use approx::assert_abs_diff_eq;
 use geokit::{
     crs::{Crs::Geographic, GeodeticAxes},
     geodesy::geodetic_datum,
-    operation::{conversion::GeogToGeoc, Bwd, Fwd, Operation},
+    operation::Operation,
 };
 use regex::Regex;
 use std::default::Default;
@@ -58,10 +58,7 @@ fn llh_to_xyz() {
     };
     println!("Source CRS: {:#?}", src);
 
-    let norm = src.normalization();
-    let geog_to_geoc = GeogToGeoc::new(src.datum());
-    let to_geoc = Fwd(norm.clone()).and_then(Fwd(geog_to_geoc.clone()));
-    let from_geoc = Bwd(geog_to_geoc).and_then(Bwd(norm));
+    let (to_geoc, from_geoc) = src.to_normalized_geoc();
 
     // Allocating storage for transformed coordinates.
     println!("Converting ll coordinates to xyz coordinates...");

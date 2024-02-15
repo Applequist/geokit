@@ -147,7 +147,6 @@ pub mod projection;
 mod tests {
     use crate::crs::Crs::Geographic;
     use crate::crs::GeodeticAxes;
-    use crate::operation::conversion::Normalization;
     use crate::operation::DynOperation;
 
     use crate::geodesy::{Ellipsoid, GeodeticDatum, PrimeMeridian};
@@ -166,7 +165,7 @@ mod tests {
                 angle_unit: 1.0_f64.to_radians(),
             },
         };
-        let t: Normalization = latlondeg.normalization();
+        let t = latlondeg.normalization();
         assert_eq!(t.fwd_in_dim(), 2);
         assert_eq!(t.fwd_out_dim(), 3);
 
