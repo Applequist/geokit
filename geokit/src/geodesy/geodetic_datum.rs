@@ -15,11 +15,12 @@ pub struct ReferenceDatum {
 /// A [`DatumTransformation`] specifies the supported transformations.
 #[derive(Debug, Clone)]
 pub enum DatumTransformation {
-    /// A simple datum shift transforms source normalized geocentric coordinates by adding an offset **in
+    /// A simple translation of source normalized geocentric coordinates by adding an offset **in
     /// meters**.
     GeocentricTranslation { tx: f64, ty: f64, tz: f64 },
     /// The Helmert 7-parameters transformation transforms normalized geocentric coordinates using
     /// small rotations around x, y and z axes, a translation and a small scaling in ppm.
+    /// Rotations angle are in radians, translation along axes are in meters and scale is in ppm.
     Helmert7Params {
         conv: RotationConvention,
         rx: f64,
@@ -36,7 +37,7 @@ pub enum DatumTransformation {
 /// A `GeodeticDatum` is a `datum` describing the relationship of an ellipsoidal model of the Earth
 /// with the real Earth.
 /// It is defined by an [Ellipsoid] and a [PrimeMeridian].
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct GeodeticDatum {
     id: SmolStr,
     ellipsoid: Ellipsoid,
@@ -90,9 +91,11 @@ impl GeodeticDatum {
         &self.prime_meridian
     }
 
-    /// Return the option [DatumTransformation] to a reference datum.
-    pub fn ref_datum(&self) -> Option<&ReferenceDatum> {
-        self.ref_datum.as_ref()
+    /// Returns the id of the reference datum used by this datum.
+    pub fn ref_datum_id(&self) -> &str {
+        self.ref_datum
+            .as_ref()
+            .map_or(self.id(), |to_ref| to_ref.id.as_str())
     }
 }
 
@@ -104,27 +107,62 @@ impl PartialEq for GeodeticDatum {
     }
 }
 
-impl Debug for GeodeticDatum {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("GeodeticDatum")
-            .field("id", &self.id)
-            .field("ellipsoid", &self.ellipsoid)
-            .field("prime_meridian", &self.prime_meridian)
-            .field("ref_datum", &self.ref_datum)
-            .finish()
-    }
-}
-
 pub mod consts {
-    use crate::geodesy::{ellipsoid, prime_meridian};
+    use smol_str::SmolStr;
 
-    use super::GeodeticDatum;
+    use crate::{
+        geodesy::{ellipsoid, prime_meridian},
+        operation::transformation::RotationConvention,
+    };
+
+    use super::{DatumTransformation, GeodeticDatum, ReferenceDatum};
 
     pub const WGS84: GeodeticDatum = GeodeticDatum::new_static(
-        "EPSG:6326",
+        "WGS84",
         ellipsoid::consts::WGS84,
         prime_meridian::consts::GREENWICH,
         None,
+    );
+
+    pub const GGRS87: GeodeticDatum = GeodeticDatum::new_static(
+        "GGRS87",
+        ellipsoid::consts::GRS80,
+        prime_meridian::consts::GREENWICH,
+        Some(ReferenceDatum {
+            id: SmolStr::new_static("WGS84"),
+            to_ref: DatumTransformation::GeocentricTranslation {
+                tx: -199.87,
+                ty: 74.79,
+                tz: 246.64,
+            },
+        }),
+    );
+
+    pub const NAD83: GeodeticDatum = GeodeticDatum::new_static(
+        "NAD83",
+        ellipsoid::consts::GRS80,
+        prime_meridian::consts::GREENWICH,
+        None,
+    );
+
+    pub const RNB72: GeodeticDatum = GeodeticDatum::new_static(
+        "RNB72",
+        ellipsoid::consts::INTL,
+        prime_meridian::consts::GREENWICH,
+        Some(ReferenceDatum {
+            id: SmolStr::new_static("WGS84"),
+            to_ref: DatumTransformation::Helmert7Params {
+                conv: RotationConvention::CoordinateFrame,
+                // TODO: Convert arcsec to radians
+                rx: -0.33657,
+                ry: 0.456955,
+                rz: -1.84218,
+                tx: 106.869,
+                ty: -52.2978,
+                tz: 103.724,
+                scale: 0.,
+            },
+        }),
     );
 }
 
@@ -132,7 +170,7 @@ pub mod consts {
 mod tests {
 
     use super::GeodeticDatum;
-    use crate::geodesy::{ellipsoid, prime_meridian, Ellipsoid, PrimeMeridian};
+    use crate::geodesy::{ellipsoid, geodetic_datum, prime_meridian, Ellipsoid, PrimeMeridian};
 
     #[test]
     fn clone() {
@@ -188,15 +226,9 @@ mod tests {
         assert_ne!(d, different_pm);
     }
 
-    #[ignore = "unimplemented"]
     #[test]
-    fn debug() {
-        unimplemented!()
-    }
-
-    #[ignore = "unimplemented"]
-    #[test]
-    fn display() {
-        unimplemented!()
+    fn ref_datum_id() {
+        assert_eq!(geodetic_datum::consts::WGS84.ref_datum_id(), "WGS84");
+        assert_eq!(geodetic_datum::consts::RNB72.ref_datum_id(), "WGS84");
     }
 }

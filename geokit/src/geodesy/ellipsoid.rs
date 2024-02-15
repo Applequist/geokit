@@ -2,7 +2,9 @@ use std::fmt::Debug;
 
 use smol_str::SmolStr;
 
-/// An `Ellipsoid` is a mathematical surface used as a model of the Earth surface.
+/// An `Ellipsoid` is a mathematical surface defined by rotating an ellipse around
+/// it semi-minor axis.
+/// It is used in a [GeodeticDatum] as a model of the Earth surface.
 #[derive(Debug, Clone)]
 pub struct Ellipsoid {
     /// The name of this ellipsoid.
