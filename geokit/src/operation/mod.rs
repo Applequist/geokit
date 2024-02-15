@@ -67,7 +67,6 @@ impl DynOperation for Box<dyn DynOperation> {
 }
 
 /// Base trait for **unidirectional** transformation.
-// FIXME: Do we need the DynClone bound ?!
 pub trait Operation {
     /// Return the input coordinates dimension.
     fn in_dim(&self) -> usize;
@@ -117,6 +116,20 @@ pub trait Operation {
             first: self,
             then: t,
         }
+    }
+}
+
+impl Operation for Box<dyn Operation> {
+    fn in_dim(&self) -> usize {
+        self.as_ref().in_dim()
+    }
+
+    fn out_dim(&self) -> usize {
+        self.as_ref().out_dim()
+    }
+
+    fn apply(&self, input: &[f64], output: &mut [f64]) -> Result<()> {
+        self.as_ref().apply(input, output)
     }
 }
 

@@ -1,5 +1,5 @@
 use crate::{
-    crs::{geographic::GeodeticAxes, projected::ProjectedAxes},
+    crs::{GeocentricAxes, GeodeticAxes, ProjectedAxes},
     geodesy::{Ellipsoid, GeodeticDatum, PrimeMeridian},
 };
 
@@ -17,6 +17,19 @@ pub type ToOrd = (usize, f64);
 /// Normalized geographic coordinates are using the `GeodeticAxes::EastNorthUp(1.0, 1.0)` axes..
 #[derive(Debug, Clone)]
 pub struct Normalization(Vec<ToOrd>);
+
+impl Normalization {
+    pub fn identity<const N: usize>() -> Self {
+        let to_ord = (0..3).map(|ord| (ord, 1.0)).collect::<Vec<_>>();
+        Normalization(to_ord)
+    }
+}
+
+impl From<GeocentricAxes> for Normalization {
+    fn from(_value: GeocentricAxes) -> Self {
+        Normalization::identity::<3>()
+    }
+}
 
 impl From<GeodeticAxes> for Normalization {
     fn from(value: GeodeticAxes) -> Self {
@@ -132,7 +145,8 @@ pub mod projection;
 
 #[cfg(test)]
 mod tests {
-    use crate::crs::{GeodeticAxes, GeographicCrs};
+    use crate::crs::Crs::Geographic;
+    use crate::crs::GeodeticAxes;
     use crate::operation::conversion::Normalization;
     use crate::operation::DynOperation;
 
@@ -140,19 +154,19 @@ mod tests {
 
     #[test]
     fn normalization() {
-        let latlondeg = GeographicCrs::new(
-            "WGS84",
-            GeodeticDatum::new(
+        let latlondeg = Geographic {
+            id: "WGS84".into(),
+            datum: GeodeticDatum::new(
                 "WGS84",
                 Ellipsoid::from_ab("WGS84", 1., 0.99),
                 PrimeMeridian::new("Greenwich", 0.0),
                 None,
             ),
-            GeodeticAxes::NorthWest {
+            axes: GeodeticAxes::NorthWest {
                 angle_unit: 1.0_f64.to_radians(),
             },
-        );
-        let t: Normalization = latlondeg.axes().into();
+        };
+        let t: Normalization = latlondeg.normalization();
         assert_eq!(t.fwd_in_dim(), 2);
         assert_eq!(t.fwd_out_dim(), 3);
 

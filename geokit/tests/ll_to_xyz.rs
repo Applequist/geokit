@@ -1,11 +1,8 @@
 use approx::assert_abs_diff_eq;
 use geokit::{
-    crs::{GeodeticAxes, GeographicCrs},
+    crs::{Crs::Geographic, GeodeticAxes},
     geodesy::geodetic_datum,
-    operation::{
-        conversion::{GeogToGeoc, Normalization},
-        Bwd, Fwd, Operation,
-    },
+    operation::{conversion::GeogToGeoc, Bwd, Fwd, Operation},
 };
 use regex::Regex;
 use std::default::Default;
@@ -52,16 +49,16 @@ fn llh_to_xyz() {
         count_ll, count_xyz
     );
 
-    let src = GeographicCrs::new(
-        "WGS84",
-        geodetic_datum::consts::WGS84,
-        GeodeticAxes::EastNorth {
+    let src = Geographic {
+        id: "WGS84".into(),
+        datum: geodetic_datum::consts::WGS84,
+        axes: GeodeticAxes::EastNorth {
             angle_unit: 1.0_f64.to_radians(),
         },
-    );
+    };
     println!("Source CRS: {:#?}", src);
 
-    let norm = Normalization::from(src.axes());
+    let norm = src.normalization();
     let geog_to_geoc = GeogToGeoc::new(src.datum());
     let to_geoc = Fwd(norm.clone()).and_then(Fwd(geog_to_geoc.clone()));
     let from_geoc = Bwd(geog_to_geoc).and_then(Bwd(norm));
