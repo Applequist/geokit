@@ -113,6 +113,76 @@ impl GeogToGeoc {
             prime_meridian: datum.prime_meridian().clone(),
         }
     }
+
+    /// Convert **normalized geodetic coordinates** (lon in rad, lat in rad, height in meters)
+    /// into **normalized geocentric coordinates** (x, y, z) all in meters.
+    fn llh_to_xyz(&self, llh: &[f64], xyz: &mut [f64]) {
+        let lon = llh[0];
+        let lat = llh[1];
+        let h = llh[2];
+
+        let v = self.ellipsoid.prime_vertical_radius(lat);
+        let (sin_lon, cos_lon) = lon.sin_cos();
+        let (sin_lat, cos_lat) = lat.sin_cos();
+
+        xyz[0] = (v + h) * cos_lat * cos_lon;
+        xyz[1] = (v + h) * cos_lat * sin_lon;
+        xyz[2] = (v * (1.0 - self.ellipsoid.e_sq()) + h) * sin_lat;
+    }
+
+    /// Convert **normalized geocentric coordinates** (x, y, z) in meters
+    /// into **normalized geodetic coordinates** (lon in rad, lat in rad, height in meters)
+    /// using Heiskanen and Moritz iterative method.
+    fn xyz_to_llh(&self, xyz: &[f64], llh: &mut [f64]) {
+        let x = xyz[0];
+        let y = xyz[1];
+        let z = xyz[2];
+
+        let a2 = self.ellipsoid.a_sq();
+        let b2 = self.ellipsoid.b_sq();
+        let e2 = self.ellipsoid.e_sq();
+
+        let lon = y.atan2(x);
+
+        let p = x.hypot(y);
+        let mut lat = z.atan2(p * (1.0 - e2));
+        let (sin_lat, cos_lat) = lat.sin_cos();
+        let n = a2 / (a2 * cos_lat * cos_lat + b2 * sin_lat * sin_lat).sqrt();
+        let mut h = p / cos_lat - n;
+        loop {
+            let next_lat = z.atan2(p * (1.0 - e2 * n / (n + h)));
+            let (sin_nlat, cos_nlat) = next_lat.sin_cos();
+            let next_n = a2 / ((a2 * cos_nlat * cos_nlat) + b2 * sin_nlat * sin_nlat).sqrt();
+            let next_h = p / cos_nlat - next_n;
+            let delta_lat = (lat - next_lat).abs();
+            let delta_h = (h - next_h).abs();
+            lat = next_lat;
+            h = next_h;
+            if delta_lat < 0.5e-5 && delta_h < 0.5e-3 {
+                break;
+            }
+        }
+
+        llh[0] = lon;
+        llh[1] = lat;
+        llh[2] = h;
+    }
+
+    /// Convert a **normalized longitude** with the prime meridian as origin into
+    /// a **normalized longitude** with the Greenwich prime meridian as origin.
+    #[inline]
+    fn convert_lon_to_gw(&self, lon: f64) -> f64 {
+        // FIX: What if we cross the antimeridian?
+        lon + self.prime_meridian.lon()
+    }
+
+    /// Convert a **normalized longitude** with the Greenwich prime meridian as origin into
+    /// a **normalized longitude** with this prime meridian as origin.
+    #[inline]
+    fn convert_lon_from_gw(&self, lon: f64) -> f64 {
+        // FIX: What if we cross the antimeridian?
+        lon - self.prime_meridian.lon()
+    }
 }
 
 impl DynOperation for GeogToGeoc {
@@ -128,15 +198,15 @@ impl DynOperation for GeogToGeoc {
     fn fwd(&self, input: &[f64], output: &mut [f64]) -> Result<()> {
         let mut llh_cpy = [0.0; 3];
         llh_cpy.copy_from_slice(input);
-        llh_cpy[0] = self.prime_meridian.convert_lon_to_gw(input[0]);
-        self.ellipsoid.llh_to_xyz(&llh_cpy, output);
+        llh_cpy[0] = self.convert_lon_to_gw(input[0]);
+        self.llh_to_xyz(&llh_cpy, output);
         Ok(())
     }
 
     /// Convert geocentric coordinates to geographic coordinates.
     fn bwd(&self, input: &[f64], output: &mut [f64]) -> Result<()> {
-        self.ellipsoid.xyz_to_llh(input, output);
-        output[0] = self.prime_meridian.convert_lon_from_gw(output[0]);
+        self.xyz_to_llh(input, output);
+        output[0] = self.convert_lon_from_gw(output[0]);
         Ok(())
     }
 }

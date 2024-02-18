@@ -120,60 +120,6 @@ impl Ellipsoid {
     pub fn prime_meridional_radius(&self, lat: f64) -> f64 {
         self.a * (1.0 - self.e_sq()) / (1.0 - self.e_sq() * lat.sin().powi(2)).powf(1.5)
     }
-
-    /// Convert **normalized geodetic coordinates** (lon in rad, lat in rad, height in meters)
-    /// into **normalized geocentric coordinates** (x, y, z) all in meters.
-    pub fn llh_to_xyz(&self, llh: &[f64], xyz: &mut [f64]) {
-        let lon = llh[0];
-        let lat = llh[1];
-        let h = llh[2];
-
-        let v = self.prime_vertical_radius(lat);
-        let (sin_lon, cos_lon) = lon.sin_cos();
-        let (sin_lat, cos_lat) = lat.sin_cos();
-
-        xyz[0] = (v + h) * cos_lat * cos_lon;
-        xyz[1] = (v + h) * cos_lat * sin_lon;
-        xyz[2] = (v * (1.0 - self.e_sq()) + h) * sin_lat;
-    }
-
-    /// Convert **normalized geocentric coordinates** (x, y, z) in meters
-    /// into **normalized geodetic coordinates** (lon in rad, lat in rad, height in meters)
-    /// using Heiskanen and Moritz iterative method.
-    pub fn xyz_to_llh(&self, xyz: &[f64], llh: &mut [f64]) {
-        let x = xyz[0];
-        let y = xyz[1];
-        let z = xyz[2];
-
-        let a2 = self.a_sq();
-        let b2 = self.b_sq();
-        let e2 = self.e_sq();
-
-        let lon = y.atan2(x);
-
-        let p = x.hypot(y);
-        let mut lat = z.atan2(p * (1.0 - e2));
-        let (sin_lat, cos_lat) = lat.sin_cos();
-        let n = a2 / (a2 * cos_lat * cos_lat + b2 * sin_lat * sin_lat).sqrt();
-        let mut h = p / cos_lat - n;
-        loop {
-            let next_lat = z.atan2(p * (1.0 - e2 * n / (n + h)));
-            let (sin_nlat, cos_nlat) = next_lat.sin_cos();
-            let next_n = a2 / ((a2 * cos_nlat * cos_nlat) + b2 * sin_nlat * sin_nlat).sqrt();
-            let next_h = p / cos_nlat - next_n;
-            let delta_lat = (lat - next_lat).abs();
-            let delta_h = (h - next_h).abs();
-            lat = next_lat;
-            h = next_h;
-            if delta_lat < 0.5e-5 && delta_h < 0.5e-3 {
-                break;
-            }
-        }
-
-        llh[0] = lon;
-        llh[1] = lat;
-        llh[2] = h;
-    }
 }
 
 impl PartialEq for Ellipsoid {
