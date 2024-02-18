@@ -1,6 +1,6 @@
 use std::f64::consts::{FRAC_PI_2, FRAC_PI_4};
 
-use crate::{geodesy::Ellipsoid, operation::DynOperation};
+use crate::{geodesy::Ellipsoid, operation::Operation};
 
 /// [WebMercator](epsg:1024) also known as 'Pseudo-Mercator' is a projection method
 /// used by some popular web mapping and visualisation applications.
@@ -37,12 +37,12 @@ impl WebMercator {
     }
 }
 
-impl DynOperation for WebMercator {
-    fn fwd_in_dim(&self) -> usize {
+impl Operation for WebMercator {
+    fn in_dim(&self) -> usize {
         3
     }
 
-    fn fwd_out_dim(&self) -> usize {
+    fn out_dim(&self) -> usize {
         3
     }
 
@@ -52,10 +52,6 @@ impl DynOperation for WebMercator {
             self.false_northing + self.ellipsoid.a() * (input[1] / 2.0 + FRAC_PI_4).tan().ln();
         output[2] = input[2];
         Ok(())
-    }
-
-    fn is_invertible(&self) -> bool {
-        true
     }
 
     fn bwd(&self, input: &[f64], output: &mut [f64]) -> crate::operation::Result<()> {
@@ -71,7 +67,7 @@ impl DynOperation for WebMercator {
 mod tests {
     use approx::assert_abs_diff_eq;
 
-    use crate::{geodesy::ellipsoid, operation::DynOperation};
+    use crate::{geodesy::ellipsoid, operation::Operation};
 
     use super::WebMercator;
 

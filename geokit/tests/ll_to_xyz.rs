@@ -2,7 +2,7 @@ use approx::assert_abs_diff_eq;
 use geokit::{
     crs::{Crs::Geographic, GeodeticAxes},
     geodesy::geodetic_datum,
-    operation::Operation,
+    operation::apply_seq,
 };
 use regex::Regex;
 use std::default::Default;
@@ -63,7 +63,7 @@ fn llh_to_xyz() {
     // Allocating storage for transformed coordinates.
     println!("Converting ll coordinates to xyz coordinates...");
     let mut xyz = vec![0.; count_ll * 3];
-    let trans_count = to_geoc.apply_seq(&ll_orig, &mut xyz).unwrap();
+    let trans_count = apply_seq(to_geoc, &ll_orig, &mut xyz).unwrap();
     assert_eq!(
         trans_count, count_ll,
         "Expected #ops = {count_ll}. Got {trans_count}"
@@ -80,7 +80,7 @@ fn llh_to_xyz() {
 
     println!("Converting xyz coordinates to ll coordinates...");
     let mut ll = vec![0.; count_xyz * 2];
-    let trans_count = from_geoc.apply_seq(&xyz_orig, &mut ll).unwrap();
+    let trans_count = apply_seq(from_geoc, &xyz_orig, &mut ll).unwrap();
     assert_eq!(
         trans_count, count_xyz,
         "Expected #ops = {count_xyz}. Got {trans_count}"

@@ -6,7 +6,7 @@ use super::{Ellipsoid, PrimeMeridian};
 use crate::operation::{
     identity,
     transformation::{GeocentricTranslation, Helmert7Params, RotationConvention},
-    DynOperation,
+    Operation,
 };
 
 /// Coordinates can be transformed between different datum.
@@ -34,10 +34,10 @@ pub enum ToWGS84 {
 
 impl ToWGS84 {
     /// Returns the actual transformation.
-    pub fn transformation(&self) -> Box<dyn DynOperation> {
+    pub fn transformation(&self) -> Box<dyn Operation> {
         match *self {
             ToWGS84::GeocentricTranslation { tx, ty, tz } => {
-                Box::new(GeocentricTranslation::new(tx, ty, tz))
+                GeocentricTranslation::new(tx, ty, tz).boxed()
             }
             ToWGS84::Helmert7Params {
                 conv,
@@ -48,7 +48,7 @@ impl ToWGS84 {
                 ty,
                 tz,
                 scale,
-            } => Box::new(Helmert7Params::new(conv, rx, ry, rz, tx, ty, tz, scale)),
+            } => Helmert7Params::new(conv, rx, ry, rz, tx, ty, tz, scale).boxed(),
         }
     }
 }
@@ -116,9 +116,9 @@ impl GeodeticDatum {
         self.to_wgs84.map_or(self.id(), |_| "WGS84")
     }
 
-    pub fn to_wgs84(&self) -> Box<dyn DynOperation> {
+    pub fn to_wgs84(&self) -> Box<dyn Operation> {
         self.to_wgs84
-            .map_or(Box::new(identity::<3>()), |spec| spec.transformation())
+            .map_or(identity::<3>().boxed(), |spec| spec.transformation())
     }
 }
 

@@ -1,6 +1,6 @@
 use na::{Matrix3, Vector3};
 
-use super::{DynOperation, Result};
+use super::{Operation, Result};
 
 /// The `GeocentricTranslation` transforms **normalized goecentric coordinates** between 2 [GeocentricCrs] whose
 /// [GeodeticDatum] are related by a simple translation of the origin, such that
@@ -27,12 +27,12 @@ impl GeocentricTranslation {
     }
 }
 
-impl DynOperation for GeocentricTranslation {
-    fn fwd_in_dim(&self) -> usize {
+impl Operation for GeocentricTranslation {
+    fn in_dim(&self) -> usize {
         3
     }
 
-    fn fwd_out_dim(&self) -> usize {
+    fn out_dim(&self) -> usize {
         3
     }
 
@@ -106,12 +106,12 @@ impl Helmert7Params {
     }
 }
 
-impl DynOperation for Helmert7Params {
-    fn fwd_in_dim(&self) -> usize {
+impl Operation for Helmert7Params {
+    fn in_dim(&self) -> usize {
         3
     }
 
-    fn fwd_out_dim(&self) -> usize {
+    fn out_dim(&self) -> usize {
         3
     }
 
@@ -134,7 +134,7 @@ impl DynOperation for Helmert7Params {
 mod tests {
     use approx::assert_relative_eq;
 
-    use crate::operation::DynOperation;
+    use crate::operation::Operation;
 
     use super::{GeocentricTranslation, Helmert7Params, RotationConvention};
 

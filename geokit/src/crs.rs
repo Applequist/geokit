@@ -4,7 +4,7 @@ use crate::{
     geodesy::{Ellipsoid, GeodeticDatum},
     operation::{
         conversion::{projection::WebMercator, GeogToGeoc, Normalization},
-        Bwd, DynOperation, Fwd, Operation,
+        Inv, Operation,
     },
 };
 
@@ -113,12 +113,12 @@ impl Crs {
         match self {
             Crs::Geocentric { datum, .. } => {
                 let op = datum.to_wgs84();
-                (Box::new(Fwd(op.clone())), Box::new(Bwd(op)))
+                (op.clone().boxed(), Inv(op).boxed())
             }
             Crs::Geographic { datum, axes, .. } => {
-                let fwd = Fwd(Normalization::from(*axes)).and_then(Fwd(GeogToGeoc::new(datum)));
-                let bwd = Bwd(GeogToGeoc::new(datum)).and_then(Bwd(Normalization::from(*axes)));
-                (Box::new(fwd), Box::new(bwd))
+                let fwd = Normalization::from(*axes).and_then(GeogToGeoc::new(datum));
+                let bwd = Inv(GeogToGeoc::new(datum)).and_then(Inv(Normalization::from(*axes)));
+                (fwd.boxed(), bwd.boxed())
             }
             Crs::Projected {
                 datum,
@@ -126,13 +126,13 @@ impl Crs {
                 projection,
                 ..
             } => {
-                let fwd = Fwd(Normalization::from(*axes))
-                    .and_then(Bwd(projection.projection(datum.ellipsoid())))
-                    .and_then(Fwd(GeogToGeoc::new(datum)));
-                let bwd = Bwd(GeogToGeoc::new(datum))
-                    .and_then(Fwd(projection.projection(datum.ellipsoid())))
-                    .and_then(Bwd(Normalization::from(*axes)));
-                (Box::new(fwd), Box::new(bwd))
+                let fwd = Normalization::from(*axes)
+                    .and_then(Inv(projection.projection(datum.ellipsoid())))
+                    .and_then(GeogToGeoc::new(datum));
+                let bwd = Inv(GeogToGeoc::new(datum))
+                    .and_then(projection.projection(datum.ellipsoid()))
+                    .and_then(Inv(Normalization::from(*axes)));
+                (fwd.boxed(), bwd.boxed())
             }
         }
     }
@@ -242,20 +242,15 @@ pub enum ProjectionSpec {
 }
 
 impl ProjectionSpec {
-    pub fn projection(&self, ellipsoid: &Ellipsoid) -> Box<dyn DynOperation> {
+    pub fn projection(&self, ellipsoid: &Ellipsoid) -> Box<dyn Operation> {
         match *self {
             Self::WebMercator {
                 lon0,
                 lat0,
                 false_easting,
                 false_northing,
-            } => Box::new(WebMercator::new(
-                ellipsoid.clone(),
-                lon0,
-                lat0,
-                false_easting,
-                false_northing,
-            )),
+            } => WebMercator::new(ellipsoid.clone(), lon0, lat0, false_easting, false_northing)
+                .boxed(),
         }
     }
 }

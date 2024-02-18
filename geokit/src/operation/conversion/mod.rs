@@ -3,8 +3,7 @@ use crate::{
     geodesy::{Ellipsoid, GeodeticDatum, PrimeMeridian},
 };
 
-use super::DynOperation;
-use super::Result;
+use super::{Operation, Result};
 
 pub type ToOrd = (usize, f64);
 
@@ -63,12 +62,12 @@ impl From<ProjectedAxes> for Normalization {
     }
 }
 
-impl DynOperation for Normalization {
-    fn fwd_in_dim(&self) -> usize {
+impl Operation for Normalization {
+    fn in_dim(&self) -> usize {
         self.0.len()
     }
 
-    fn fwd_out_dim(&self) -> usize {
+    fn out_dim(&self) -> usize {
         3
     }
 
@@ -78,10 +77,6 @@ impl DynOperation for Normalization {
             output[nix] = input[*ix] * f;
         }
         Ok(())
-    }
-
-    fn is_invertible(&self) -> bool {
-        true
     }
 
     fn bwd(&self, input: &[f64], output: &mut [f64]) -> Result<()> {
@@ -185,12 +180,12 @@ impl GeogToGeoc {
     }
 }
 
-impl DynOperation for GeogToGeoc {
-    fn fwd_in_dim(&self) -> usize {
+impl Operation for GeogToGeoc {
+    fn in_dim(&self) -> usize {
         3
     }
 
-    fn fwd_out_dim(&self) -> usize {
+    fn out_dim(&self) -> usize {
         3
     }
 
@@ -217,7 +212,7 @@ pub mod projection;
 mod tests {
     use crate::crs::GeodeticAxes;
     use crate::operation::conversion::Normalization;
-    use crate::operation::DynOperation;
+    use crate::operation::Operation;
 
     #[test]
     fn normalization() {
@@ -225,8 +220,8 @@ mod tests {
             angle_unit: 1.0_f64.to_radians(),
         };
         let t = Normalization::from(latlondeg);
-        assert_eq!(t.fwd_in_dim(), 2);
-        assert_eq!(t.fwd_out_dim(), 3);
+        assert_eq!(t.in_dim(), 2);
+        assert_eq!(t.out_dim(), 3);
 
         let i = [10.0, 110.0];
         let mut o = [0.0; 3];
