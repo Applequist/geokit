@@ -1,6 +1,7 @@
-use na::{Matrix3, Vector3};
+use nalgebra::Matrix3;
+use nalgebra::Vector3;
 
-use super::{Operation, Result};
+use crate::operation::{self, Operation};
 
 /// The `GeocentricTranslation` transforms **normalized goecentric coordinates** between 2 [GeocentricCrs] whose
 /// [GeodeticDatum] are related by a simple translation of the origin, such that
@@ -36,14 +37,14 @@ impl Operation for GeocentricTranslation {
         3
     }
 
-    fn fwd(&self, xyz_src: &[f64], xyz_dst: &mut [f64]) -> Result<()> {
+    fn fwd(&self, xyz_src: &[f64], xyz_dst: &mut [f64]) -> operation::Result<()> {
         xyz_dst[0] = xyz_src[0] + self.t[0];
         xyz_dst[1] = xyz_src[1] + self.t[1];
         xyz_dst[2] = xyz_src[2] + self.t[2];
         Ok(())
     }
 
-    fn bwd(&self, xyz_dst: &[f64], xyz_src: &mut [f64]) -> Result<()> {
+    fn bwd(&self, xyz_dst: &[f64], xyz_src: &mut [f64]) -> operation::Result<()> {
         xyz_src[0] = xyz_dst[0] - self.t[0];
         xyz_src[1] = xyz_dst[1] - self.t[1];
         xyz_src[2] = xyz_dst[2] - self.t[2];
@@ -80,14 +81,12 @@ impl Helmert7Params {
     /// Create a new [Helmert7Params] transformation.
     pub fn new(
         conv: RotationConvention,
-        rx: f64,
-        ry: f64,
-        rz: f64,
-        tx: f64,
-        ty: f64,
-        tz: f64,
+        rotation: [f64; 3],
+        translation: [f64; 3],
         ds_ppm: f64,
     ) -> Self {
+        let [rx, ry, rz] = rotation;
+        let [tx, ty, tz] = translation;
         let rot = match conv {
             RotationConvention::PositionVector => {
                 Matrix3::new(0.0, -rz, ry, rz, 0.0, -rx, -ry, rx, 0.0)
@@ -115,14 +114,14 @@ impl Operation for Helmert7Params {
         3
     }
 
-    fn fwd(&self, input: &[f64], output: &mut [f64]) -> Result<()> {
+    fn fwd(&self, input: &[f64], output: &mut [f64]) -> operation::Result<()> {
         let s = Vector3::new(input[0], input[1], input[2]);
         let x = self.rot * (1.0 + self.ds_ppm * 1e-6) * s + self.t;
         output.copy_from_slice(x.as_ref());
         Ok(())
     }
 
-    fn bwd(&self, input: &[f64], output: &mut [f64]) -> Result<()> {
+    fn bwd(&self, input: &[f64], output: &mut [f64]) -> operation::Result<()> {
         let t = Vector3::new(input[0], input[1], input[2]);
         let s = self.inv_rot * (1.0 - self.ds_ppm * 1e-6) * t - self.t;
         output.copy_from_slice(s.as_ref());
@@ -136,7 +135,7 @@ mod tests {
 
     use crate::operation::Operation;
 
-    use super::{GeocentricTranslation, Helmert7Params, RotationConvention};
+    use super::GeocentricTranslation;
 
     #[test]
     fn geocentric_translation_fwd() {
@@ -162,16 +161,14 @@ mod tests {
         assert_relative_eq!(xyz[2], xs[2], epsilon = 1e-6);
     }
 
+    use super::{Helmert7Params, RotationConvention};
+
     #[test]
     fn helmert_fwd() {
         let t = Helmert7Params::new(
             RotationConvention::PositionVector,
-            0.0,
-            0.0,
-            2.685868e-6,
-            0.0,
-            0.0,
-            4.5,
+            [0.0, 0.0, 2.685868e-6],
+            [0.0, 0.0, 4.5],
             0.219,
         );
         let xs = [3_657_660.66, 255_768.55, 5_201_382.11];
@@ -187,12 +184,8 @@ mod tests {
     fn helmert_bwd() {
         let t = Helmert7Params::new(
             RotationConvention::PositionVector,
-            0.0,
-            0.0,
-            2.685868e-6,
-            0.0,
-            0.0,
-            4.5,
+            [0.0, 0.0, 2.685868e-6],
+            [0.0, 0.0, 4.5],
             0.219,
         );
         let xs = [3_657_660.66, 255_768.55, 5_201_382.11];

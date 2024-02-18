@@ -3,7 +3,10 @@ use smol_str::SmolStr;
 use crate::{
     geodesy::{Ellipsoid, GeodeticDatum},
     operation::{
-        conversion::{projection::WebMercator, GeogToGeoc, Normalization},
+        conversion::{
+            projection::cyl::{Mercator, WebMercator},
+            GeogToGeoc, Normalization,
+        },
         Inv, Operation,
     },
 };
@@ -239,6 +242,18 @@ pub enum ProjectionSpec {
         false_easting: f64,
         false_northing: f64,
     },
+    Mercator1SP {
+        lon0: f64,
+        k0: f64,
+        false_easting: f64,
+        false_northing: f64,
+    },
+    Mercator2SP {
+        lon0: f64,
+        lat0: f64,
+        false_easting: f64,
+        false_northing: f64,
+    },
 }
 
 impl ProjectionSpec {
@@ -249,8 +264,19 @@ impl ProjectionSpec {
                 lat0,
                 false_easting,
                 false_northing,
-            } => WebMercator::new(ellipsoid.clone(), lon0, lat0, false_easting, false_northing)
-                .boxed(),
+            } => WebMercator::new(ellipsoid, lon0, lat0, false_easting, false_northing).boxed(),
+            Self::Mercator1SP {
+                lon0,
+                k0,
+                false_easting,
+                false_northing,
+            } => Mercator::new_1_sp(ellipsoid, lon0, k0, false_easting, false_northing).boxed(),
+            Self::Mercator2SP {
+                lon0,
+                lat0,
+                false_easting,
+                false_northing,
+            } => Mercator::new_2_sp(ellipsoid, lon0, lat0, false_easting, false_northing).boxed(),
         }
     }
 }

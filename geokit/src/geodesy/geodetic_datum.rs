@@ -22,12 +22,8 @@ pub enum ToWGS84 {
     /// Rotations angle are in radians, translation along axes are in meters and scale is in ppm.
     Helmert7Params {
         conv: RotationConvention,
-        rx: f64,
-        ry: f64,
-        rz: f64,
-        tx: f64,
-        ty: f64,
-        tz: f64,
+        rotation: [f64; 3],
+        translation: [f64; 3],
         scale: f64,
     },
 }
@@ -41,14 +37,10 @@ impl ToWGS84 {
             }
             ToWGS84::Helmert7Params {
                 conv,
-                rx,
-                ry,
-                rz,
-                tx,
-                ty,
-                tz,
+                rotation,
+                translation,
                 scale,
-            } => Helmert7Params::new(conv, rx, ry, rz, tx, ty, tz, scale).boxed(),
+            } => Helmert7Params::new(conv, rotation, translation, scale).boxed(),
         }
     }
 }
@@ -171,12 +163,8 @@ pub mod consts {
         Some(ToWGS84::Helmert7Params {
             conv: RotationConvention::CoordinateFrame,
             // TODO: Convert arcsec to radians
-            rx: -0.33657,
-            ry: 0.456955,
-            rz: -1.84218,
-            tx: 106.869,
-            ty: -52.2978,
-            tz: 103.724,
+            rotation: [-0.33657, 0.456955, -1.84218],
+            translation: [106.869, -52.2978, 103.724],
             scale: 0.,
         }),
     );

@@ -109,6 +109,10 @@ impl Ellipsoid {
         (self.a_sq() - self.b_sq()) / self.a_sq()
     }
 
+    pub fn e(&self) -> f64 {
+        self.e_sq().sqrt()
+    }
+
     /// Return the radius of curvature **in meters** in the east-west direction
     /// at the given latitude **in radians**.
     pub fn prime_vertical_radius(&self, lat: f64) -> f64 {
@@ -119,6 +123,10 @@ impl Ellipsoid {
     /// at the given latitude **in radians**.
     pub fn prime_meridional_radius(&self, lat: f64) -> f64 {
         self.a * (1.0 - self.e_sq()) / (1.0 - self.e_sq() * lat.sin().powi(2)).powf(1.5)
+    }
+
+    pub fn conformal_sphere_radius(&self, lat: f64) -> f64 {
+        (self.prime_meridional_radius(lat) * self.prime_vertical_radius(lat)).sqrt()
     }
 }
 
