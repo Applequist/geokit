@@ -58,7 +58,7 @@ fn llh_to_xyz() {
     };
     println!("Source CRS: {:#?}", src);
 
-    let (to_geoc, from_geoc) = src.to_normalized_geoc();
+    let (to_geoc, from_geoc) = src.to_wgs84_geoc();
 
     // Allocating storage for transformed coordinates.
     println!("Converting ll coordinates to xyz coordinates...");

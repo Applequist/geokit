@@ -1,7 +1,7 @@
 use crate::{
     crs::Crs,
     geodesy::{Ellipsoid, GeodeticDatum, PrimeMeridian},
-    operation::Operation,
+    operation::{Chain, Operation},
 };
 
 pub trait GeodesyProvider {
@@ -20,7 +20,10 @@ pub trait CrsProvider {
     fn crs(&self, id: &str) -> Option<Crs>;
 }
 
-pub type TransformationPath = (Box<dyn Operation>, Box<dyn Operation>);
+pub type TransformationPath = (
+    Chain<Box<dyn Operation>, Box<dyn Operation>>,
+    Chain<Box<dyn Operation>, Box<dyn Operation>>,
+);
 pub enum TransformationProviderError {
     NoTransformationPath,
 }
@@ -39,6 +42,14 @@ impl TransformationProvider for DefaultTransformationProvider {
         src: &Crs,
         dst: &Crs,
     ) -> Result<TransformationPath, TransformationProviderError> {
-        Err(TransformationProviderError::NoTransformationPath)
+        if src.ref_datum_id() != dst.ref_datum_id() {
+            return Err(TransformationProviderError::NoTransformationPath);
+        }
+        let (src_to_ref, ref_to_src) = src.to_wgs84_geoc();
+        let (dst_to_ref, ref_to_dst) = dst.to_wgs84_geoc();
+        Ok((
+            src_to_ref.and_then(ref_to_dst),
+            dst_to_ref.and_then(ref_to_src),
+        ))
     }
 }

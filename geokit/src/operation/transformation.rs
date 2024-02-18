@@ -51,7 +51,7 @@ impl DynOperation for GeocentricTranslation {
     }
 }
 
-#[derive(Debug, Default, Clone, Copy)]
+#[derive(Debug, Default, Clone, Copy, PartialEq)]
 pub enum RotationConvention {
     /// Rotation convention where positive angle rotations are clockwise when seen from
     /// the origin of the CS in the positive direction of the axis of rotation,
@@ -79,8 +79,13 @@ pub struct Helmert7Params {
 impl Helmert7Params {
     /// Create a new [Helmert7Params] transformation.
     pub fn new(
-        (conv, rx, ry, rz): (RotationConvention, f64, f64, f64),
-        (tx, ty, tz): (f64, f64, f64),
+        conv: RotationConvention,
+        rx: f64,
+        ry: f64,
+        rz: f64,
+        tx: f64,
+        ty: f64,
+        tz: f64,
         ds_ppm: f64,
     ) -> Self {
         let rot = match conv {
@@ -160,8 +165,13 @@ mod tests {
     #[test]
     fn helmert_fwd() {
         let t = Helmert7Params::new(
-            (RotationConvention::PositionVector, 0.0, 0.0, 2.685868e-6),
-            (0.0, 0.0, 4.5),
+            RotationConvention::PositionVector,
+            0.0,
+            0.0,
+            2.685868e-6,
+            0.0,
+            0.0,
+            4.5,
             0.219,
         );
         let xs = [3_657_660.66, 255_768.55, 5_201_382.11];
@@ -176,8 +186,13 @@ mod tests {
     #[test]
     fn helmert_bwd() {
         let t = Helmert7Params::new(
-            (RotationConvention::PositionVector, 0.0, 0.0, 2.685868e-6),
-            (0.0, 0.0, 4.5),
+            RotationConvention::PositionVector,
+            0.0,
+            0.0,
+            2.685868e-6,
+            0.0,
+            0.0,
+            4.5,
             0.219,
         );
         let xs = [3_657_660.66, 255_768.55, 5_201_382.11];

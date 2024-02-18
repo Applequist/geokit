@@ -3,18 +3,17 @@ use std::fmt::Debug;
 use smol_str::SmolStr;
 
 use super::{Ellipsoid, PrimeMeridian};
-use crate::operation::transformation::RotationConvention;
-
-#[derive(Debug, Clone)]
-pub struct ReferenceDatum {
-    id: SmolStr,
-    to_ref: DatumTransformation,
-}
+use crate::operation::{
+    identity,
+    transformation::{GeocentricTranslation, Helmert7Params, RotationConvention},
+    DynOperation,
+};
 
 /// Coordinates can be transformed between different datum.
-/// A [`DatumTransformation`] specifies the supported transformations.
-#[derive(Debug, Clone)]
-pub enum DatumTransformation {
+/// A [`ToWGS84`] specifies the transformation to transform normalized geocentric coordinates from
+/// a datum to geocentric WGS84 coordinates.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum ToWGS84 {
     /// A simple translation of source normalized geocentric coordinates by adding an offset **in
     /// meters**.
     GeocentricTranslation { tx: f64, ty: f64, tz: f64 },
@@ -33,6 +32,27 @@ pub enum DatumTransformation {
     },
 }
 
+impl ToWGS84 {
+    /// Returns the actual transformation.
+    pub fn transformation(&self) -> Box<dyn DynOperation> {
+        match *self {
+            ToWGS84::GeocentricTranslation { tx, ty, tz } => {
+                Box::new(GeocentricTranslation::new(tx, ty, tz))
+            }
+            ToWGS84::Helmert7Params {
+                conv,
+                rx,
+                ry,
+                rz,
+                tx,
+                ty,
+                tz,
+                scale,
+            } => Box::new(Helmert7Params::new(conv, rx, ry, rz, tx, ty, tz, scale)),
+        }
+    }
+}
+
 /// A `datum` is the information required to fix a coordinate system to an object.
 /// A `GeodeticDatum` is a `datum` describing the relationship of an ellipsoidal model of the Earth
 /// with the real Earth.
@@ -42,7 +62,7 @@ pub struct GeodeticDatum {
     id: SmolStr,
     ellipsoid: Ellipsoid,
     prime_meridian: PrimeMeridian,
-    ref_datum: Option<ReferenceDatum>,
+    to_wgs84: Option<ToWGS84>,
 }
 
 impl GeodeticDatum {
@@ -51,13 +71,13 @@ impl GeodeticDatum {
         id: &'static str,
         ellipsoid: Ellipsoid,
         prime_meridian: PrimeMeridian,
-        ref_datum: Option<ReferenceDatum>,
+        to_wgs84: Option<ToWGS84>,
     ) -> Self {
         Self {
             id: SmolStr::new_static(id),
             ellipsoid,
             prime_meridian,
-            ref_datum,
+            to_wgs84,
         }
     }
 
@@ -66,13 +86,13 @@ impl GeodeticDatum {
         id: T,
         ellipsoid: Ellipsoid,
         prime_meridian: PrimeMeridian,
-        ref_datum: Option<ReferenceDatum>,
+        to_wgs84: Option<ToWGS84>,
     ) -> Self {
         Self {
             id: SmolStr::new(id),
             ellipsoid,
             prime_meridian,
-            ref_datum,
+            to_wgs84,
         }
     }
 
@@ -93,9 +113,12 @@ impl GeodeticDatum {
 
     /// Returns the id of the reference datum used by this datum.
     pub fn ref_datum_id(&self) -> &str {
-        self.ref_datum
-            .as_ref()
-            .map_or(self.id(), |to_ref| to_ref.id.as_str())
+        self.to_wgs84.map_or(self.id(), |_| "WGS84")
+    }
+
+    pub fn to_wgs84(&self) -> Box<dyn DynOperation> {
+        self.to_wgs84
+            .map_or(Box::new(identity::<3>()), |spec| spec.transformation())
     }
 }
 
@@ -108,14 +131,13 @@ impl PartialEq for GeodeticDatum {
 }
 
 pub mod consts {
-    use smol_str::SmolStr;
 
     use crate::{
         geodesy::{ellipsoid, prime_meridian},
         operation::transformation::RotationConvention,
     };
 
-    use super::{DatumTransformation, GeodeticDatum, ReferenceDatum};
+    use super::{GeodeticDatum, ToWGS84};
 
     pub const WGS84: GeodeticDatum = GeodeticDatum::new_static(
         "WGS84",
@@ -128,13 +150,10 @@ pub mod consts {
         "GGRS87",
         ellipsoid::consts::GRS80,
         prime_meridian::consts::GREENWICH,
-        Some(ReferenceDatum {
-            id: SmolStr::new_static("WGS84"),
-            to_ref: DatumTransformation::GeocentricTranslation {
-                tx: -199.87,
-                ty: 74.79,
-                tz: 246.64,
-            },
+        Some(ToWGS84::GeocentricTranslation {
+            tx: -199.87,
+            ty: 74.79,
+            tz: 246.64,
         }),
     );
 
@@ -149,19 +168,16 @@ pub mod consts {
         "RNB72",
         ellipsoid::consts::INTL,
         prime_meridian::consts::GREENWICH,
-        Some(ReferenceDatum {
-            id: SmolStr::new_static("WGS84"),
-            to_ref: DatumTransformation::Helmert7Params {
-                conv: RotationConvention::CoordinateFrame,
-                // TODO: Convert arcsec to radians
-                rx: -0.33657,
-                ry: 0.456955,
-                rz: -1.84218,
-                tx: 106.869,
-                ty: -52.2978,
-                tz: 103.724,
-                scale: 0.,
-            },
+        Some(ToWGS84::Helmert7Params {
+            conv: RotationConvention::CoordinateFrame,
+            // TODO: Convert arcsec to radians
+            rx: -0.33657,
+            ry: 0.456955,
+            rz: -1.84218,
+            tx: 106.869,
+            ty: -52.2978,
+            tz: 103.724,
+            scale: 0.,
         }),
     );
 }

@@ -1,6 +1,7 @@
 use core::f64;
 use std::fmt::Debug;
 
+use dyn_clone::DynClone;
 use thiserror::Error;
 
 /// Value returned when an operation cannot be completed.
@@ -20,7 +21,7 @@ pub type Result<T> = std::result::Result<T, OperationError>;
 
 /// Base trait for coordinate operations that may be invertible.
 /// By default, operations are considered not invertible.
-pub trait DynOperation {
+pub trait DynOperation: DynClone {
     /// Return the input coordinates dimension of the forward operation.
     fn fwd_in_dim(&self) -> usize;
 
@@ -44,6 +45,8 @@ pub trait DynOperation {
     }
 }
 
+dyn_clone::clone_trait_object!(DynOperation);
+
 impl DynOperation for Box<dyn DynOperation> {
     fn fwd_in_dim(&self) -> usize {
         self.as_ref().fwd_in_dim()
@@ -64,6 +67,40 @@ impl DynOperation for Box<dyn DynOperation> {
     fn bwd(&self, input: &[f64], output: &mut [f64]) -> Result<()> {
         self.as_ref().bwd(input, output)
     }
+}
+
+/// A *dummy* operation that simply copies its input into the output, eg a no-op operation.
+#[derive(Debug, Clone)]
+struct Identity<const N: usize>;
+
+impl<const N: usize> DynOperation for Identity<N> {
+    fn fwd_in_dim(&self) -> usize {
+        N
+    }
+
+    fn fwd_out_dim(&self) -> usize {
+        N
+    }
+
+    #[inline]
+    fn fwd(&self, i: &[f64], o: &mut [f64]) -> Result<()> {
+        o.copy_from_slice(i);
+        Ok(())
+    }
+
+    fn is_invertible(&self) -> bool {
+        true
+    }
+
+    #[inline]
+    fn bwd(&self, input: &[f64], output: &mut [f64]) -> Result<()> {
+        self.fwd(input, output)?;
+        Ok(())
+    }
+}
+
+pub fn identity<const N: usize>() -> impl DynOperation {
+    Identity::<N>
 }
 
 /// Base trait for **unidirectional** transformation.
@@ -200,29 +237,6 @@ where
         self.first.apply(i, &mut os[0..self.first.out_dim()])?;
         self.then.apply(&os, o)
     }
-}
-
-/// A *dummy* operation that simply copies its input into the output, eg a no-op operation.
-#[derive(Debug, Clone)]
-struct Identity<const N: usize>;
-
-impl<const N: usize> Operation for Identity<N> {
-    fn in_dim(&self) -> usize {
-        N
-    }
-
-    fn out_dim(&self) -> usize {
-        N
-    }
-
-    fn apply(&self, i: &[f64], o: &mut [f64]) -> Result<()> {
-        o.copy_from_slice(i);
-        Ok(())
-    }
-}
-
-pub fn identity<const N: usize>() -> impl Operation {
-    Identity::<N>
 }
 
 pub mod conversion;

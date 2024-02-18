@@ -4,7 +4,7 @@ use crate::{
     geodesy::{Ellipsoid, GeodeticDatum},
     operation::{
         conversion::{projection::WebMercator, GeogToGeoc, Normalization},
-        identity, Bwd, DynOperation, Fwd, Operation,
+        Bwd, DynOperation, Fwd, Operation,
     },
 };
 
@@ -41,88 +41,36 @@ impl Crs {
     /// Returns the id of a [Crs].
     pub fn id(&self) -> &str {
         match self {
-            Crs::Geocentric {
-                id,
-                datum: _,
-                axes: _,
-            } => id.as_str(),
-            Crs::Geographic {
-                id,
-                datum: _,
-                axes: _,
-            } => id.as_str(),
-            Crs::Projected {
-                id,
-                datum: _,
-                axes: _,
-                projection: _,
-            } => id.as_str(),
+            Crs::Geocentric { id, .. } => id.as_str(),
+            Crs::Geographic { id, .. } => id.as_str(),
+            Crs::Projected { id, .. } => id.as_str(),
         }
     }
 
-    /// Returns the coordinates dimension of a [Crs].
+    /// Returns the coordinates dimension of this [Crs].
     pub fn dim(&self) -> usize {
         match self {
-            Crs::Geocentric {
-                id: _,
-                datum: _,
-                axes: _,
-            } => 3,
-            Crs::Geographic {
-                id: _,
-                datum: _,
-                axes,
-            } => axes.dim(),
-            Crs::Projected {
-                id: _,
-                datum: _,
-                axes,
-                projection: _,
-            } => axes.dim(),
+            Crs::Geocentric { axes: _, .. } => 3,
+            Crs::Geographic { axes, .. } => axes.dim(),
+            Crs::Projected { axes, .. } => axes.dim(),
         }
     }
 
-    /// Returns the [GeodeticDatum] used by this [Crs].
+    /// Returns the [GeodeticDatum] used by a [Crs].
     pub fn datum(&self) -> &GeodeticDatum {
         match self {
-            Crs::Geocentric {
-                id: _,
-                datum,
-                axes: _,
-            } => datum,
-            Crs::Geographic {
-                id: _,
-                datum,
-                axes: _,
-            } => datum,
-            Crs::Projected {
-                id: _,
-                datum,
-                axes: _,
-                projection: _,
-            } => datum,
+            Crs::Geocentric { datum, .. } => datum,
+            Crs::Geographic { datum, .. } => datum,
+            Crs::Projected { datum, .. } => datum,
         }
     }
 
-    /// Returns the id of the reference [GeodeticDatum] of this [Crs].
+    /// Returns the id of the reference [GeodeticDatum] of a [Crs].
     pub fn ref_datum_id(&self) -> &str {
         match self {
-            Crs::Geocentric {
-                id: _,
-                datum,
-                axes: _,
-            } => datum.ref_datum_id(),
-            Crs::Geographic {
-                id: _,
-                datum,
-                axes: _,
-            } => datum.ref_datum_id(),
-            Crs::Projected {
-                id: _,
-                datum,
-                axes: _,
-                projection: _,
-            } => datum.ref_datum_id(),
+            Crs::Geocentric { datum, .. } => datum.ref_datum_id(),
+            Crs::Geographic { datum, .. } => datum.ref_datum_id(),
+            Crs::Projected { datum, .. } => datum.ref_datum_id(),
         }
     }
 
@@ -134,16 +82,8 @@ impl Crs {
     /// `ProjectedAxes::EastNorthUp { horiz_unit: 1.0, height_unit: 1.0 }`.
     pub fn is_normalized(&self) -> bool {
         match self {
-            Crs::Geocentric {
-                id: _,
-                datum: _,
-                axes: _,
-            } => true, // TODO: Should we check for the prime meridian
-            Crs::Geographic {
-                id: _,
-                datum: _,
-                axes,
-            } => {
+            Crs::Geocentric { .. } => true, // TODO: Should we check for the prime meridian
+            Crs::Geographic { axes, .. } => {
                 if let GeodeticAxes::EastNorthUp {
                     angle_unit,
                     height_unit,
@@ -154,12 +94,7 @@ impl Crs {
                     false
                 }
             }
-            Crs::Projected {
-                id: _,
-                datum: _,
-                axes,
-                projection: _,
-            } => {
+            Crs::Projected { axes, .. } => {
                 if let ProjectedAxes::EastNorthUp {
                     horiz_unit,
                     height_unit,
@@ -173,46 +108,23 @@ impl Crs {
         }
     }
 
-    /// Returns the [DynOperation] used to normalized coordinates.
-    pub fn normalization(&self) -> impl DynOperation {
-        match self {
-            Crs::Geocentric {
-                id: _,
-                datum: _,
-                axes,
-            } => Normalization::from(*axes),
-            Crs::Geographic {
-                id: _,
-                datum: _,
-                axes,
-            } => Normalization::from(*axes),
-            Crs::Projected {
-                id: _,
-                datum: _,
-                axes,
-                projection: _,
-            } => Normalization::from(*axes),
-        }
-    }
-
     /// Returns coordinates conversion to and from normalized geocentric coordinates.
-    pub fn to_normalized_geoc(&self) -> (Box<dyn Operation>, Box<dyn Operation>) {
+    pub fn to_wgs84_geoc(&self) -> (Box<dyn Operation>, Box<dyn Operation>) {
         match self {
-            Crs::Geocentric {
-                id: _,
-                datum: _,
-                axes: _,
-            } => (Box::new(identity::<3>()), Box::new(identity::<3>())),
-            Crs::Geographic { id: _, datum, axes } => {
+            Crs::Geocentric { datum, .. } => {
+                let op = datum.to_wgs84();
+                (Box::new(Fwd(op.clone())), Box::new(Bwd(op)))
+            }
+            Crs::Geographic { datum, axes, .. } => {
                 let fwd = Fwd(Normalization::from(*axes)).and_then(Fwd(GeogToGeoc::new(datum)));
                 let bwd = Bwd(GeogToGeoc::new(datum)).and_then(Bwd(Normalization::from(*axes)));
                 (Box::new(fwd), Box::new(bwd))
             }
             Crs::Projected {
-                id: _,
                 datum,
                 axes,
                 projection,
+                ..
             } => {
                 let fwd = Fwd(Normalization::from(*axes))
                     .and_then(Bwd(projection.projection(datum.ellipsoid())))
