@@ -4,7 +4,7 @@ use crate::{
     geodesy::{Ellipsoid, GeodeticDatum},
     operation::{
         conversion::{
-            projection::cyl::{Mercator, WebMercator},
+            projection::cyl::{Mercator, TransverseMercator, WebMercator},
             GeogToGeoc, Normalization,
         },
         Inv, Operation,
@@ -236,12 +236,6 @@ impl ProjectedAxes {
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum ProjectionSpec {
-    WebMercator {
-        lon0: f64,
-        lat0: f64,
-        false_easting: f64,
-        false_northing: f64,
-    },
     Mercator1SP {
         lon0: f64,
         k0: f64,
@@ -254,17 +248,30 @@ pub enum ProjectionSpec {
         false_easting: f64,
         false_northing: f64,
     },
+    UTMNorth {
+        zone: u8,
+    },
+    UTMSouth {
+        zone: u8,
+    },
+    TransverseMercator {
+        lon0: f64,
+        lat0: f64,
+        k0: f64,
+        false_easting: f64,
+        false_northing: f64,
+    },
+    WebMercator {
+        lon0: f64,
+        lat0: f64,
+        false_easting: f64,
+        false_northing: f64,
+    },
 }
 
 impl ProjectionSpec {
     pub fn projection(&self, ellipsoid: &Ellipsoid) -> Box<dyn Operation> {
         match *self {
-            Self::WebMercator {
-                lon0,
-                lat0,
-                false_easting,
-                false_northing,
-            } => WebMercator::new(ellipsoid, lon0, lat0, false_easting, false_northing).boxed(),
             Self::Mercator1SP {
                 lon0,
                 k0,
@@ -277,6 +284,22 @@ impl ProjectionSpec {
                 false_easting,
                 false_northing,
             } => Mercator::new_2_sp(ellipsoid, lon0, lat0, false_easting, false_northing).boxed(),
+            Self::UTMNorth { zone } => TransverseMercator::new_utm_north(ellipsoid, zone).boxed(),
+            Self::UTMSouth { zone } => TransverseMercator::new_utm_south(ellipsoid, zone).boxed(),
+            Self::TransverseMercator {
+                lon0,
+                lat0,
+                k0,
+                false_easting,
+                false_northing,
+            } => TransverseMercator::new(ellipsoid, lon0, lat0, k0, false_easting, false_northing)
+                .boxed(),
+            Self::WebMercator {
+                lon0,
+                lat0,
+                false_easting,
+                false_northing,
+            } => WebMercator::new(ellipsoid, lon0, lat0, false_easting, false_northing).boxed(),
         }
     }
 }
