@@ -111,16 +111,22 @@ impl Crs {
         }
     }
 
-    /// Returns coordinates conversion to and from normalized geocentric coordinates.
-    pub fn to_wgs84_geoc(&self) -> (Box<dyn Operation>, Box<dyn Operation>) {
+    /// Returns coordinates conversion to and from normalized geocentric coordinates in the
+    /// reference datum.
+    pub fn to_ref_geoc(&self) -> (Box<dyn Operation>, Box<dyn Operation>) {
         match self {
             Crs::Geocentric { datum, .. } => {
-                let op = datum.to_wgs84();
+                let op = datum.to_ref_datum();
                 (op.clone().boxed(), Inv(op).boxed())
             }
             Crs::Geographic { datum, axes, .. } => {
-                let fwd = Normalization::from(*axes).and_then(GeogToGeoc::new(datum));
-                let bwd = Inv(GeogToGeoc::new(datum)).and_then(Inv(Normalization::from(*axes)));
+                let op = datum.to_ref_datum();
+                let fwd = Normalization::from(*axes)
+                    .and_then(GeogToGeoc::new(datum))
+                    .and_then(op.clone());
+                let bwd = Inv(op)
+                    .and_then(Inv(GeogToGeoc::new(datum)))
+                    .and_then(Inv(Normalization::from(*axes)));
                 (fwd.boxed(), bwd.boxed())
             }
             Crs::Projected {
@@ -129,10 +135,13 @@ impl Crs {
                 projection,
                 ..
             } => {
+                let op = datum.to_ref_datum();
                 let fwd = Normalization::from(*axes)
                     .and_then(Inv(projection.projection(datum.ellipsoid())))
-                    .and_then(GeogToGeoc::new(datum));
-                let bwd = Inv(GeogToGeoc::new(datum))
+                    .and_then(GeogToGeoc::new(datum))
+                    .and_then(op.clone());
+                let bwd = Inv(op)
+                    .and_then(Inv(GeogToGeoc::new(datum)))
                     .and_then(projection.projection(datum.ellipsoid()))
                     .and_then(Inv(Normalization::from(*axes)));
                 (fwd.boxed(), bwd.boxed())

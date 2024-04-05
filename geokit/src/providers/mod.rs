@@ -49,8 +49,8 @@ impl TransformationProvider for DefaultTransformationProvider {
         if src.ref_datum_id() != dst.ref_datum_id() {
             return Err(TransformationProviderError::NoTransformationPath);
         }
-        let (src_to_ref, ref_to_src) = src.to_wgs84_geoc();
-        let (dst_to_ref, ref_to_dst) = dst.to_wgs84_geoc();
+        let (src_to_ref, ref_to_src) = src.to_ref_geoc();
+        let (dst_to_ref, ref_to_dst) = dst.to_ref_geoc();
         Ok((
             src_to_ref.and_then(ref_to_dst),
             dst_to_ref.and_then(ref_to_src),
