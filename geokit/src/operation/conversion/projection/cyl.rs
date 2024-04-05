@@ -1,9 +1,7 @@
 use std::f64::consts::{FRAC_PI_2, FRAC_PI_4};
 
-use num::Float;
-
 use crate::{
-    geodesy::{ellipsoid, Ellipsoid},
+    geodesy::Ellipsoid,
     operation::{self, Operation},
 };
 
@@ -92,7 +90,7 @@ impl Operation for Mercator {
         3
     }
 
-    fn fwd(&self, input: &[f64], output: &mut [f64]) -> operation::Result<()> {
+    fn apply_fwd(&self, input: &[f64], output: &mut [f64]) -> operation::Result<()> {
         let sin_lat = input[1].sin();
         let e_sin_lat = self.e * sin_lat;
         let lat1 = FRAC_PI_4 + input[1] / 2.0;
@@ -105,7 +103,7 @@ impl Operation for Mercator {
         Ok(())
     }
 
-    fn bwd(&self, input: &[f64], output: &mut [f64]) -> operation::Result<()> {
+    fn apply_bwd(&self, input: &[f64], output: &mut [f64]) -> operation::Result<()> {
         let t = ((self.false_northing - input[1]) / (self.a * self.k0)).exp();
         let xi = FRAC_PI_2 - 2.0 * t.atan();
         let sin_2xi = (2.0 * xi).sin();
@@ -215,9 +213,7 @@ impl TransverseMercator {
             eval_polynom(&[0.0, 0.0, 0.0, 0.0, 4397.0 / 161280.0], n),
         ];
 
-        let q0 = Self::q(e, lat0);
-        let beta0 = Self::beta(q0);
-        let m0 = Self::m0(lat0, upper_b, beta0, h);
+        let m0 = Self::m0(lat0, upper_b, e, h);
 
         Self {
             e,
@@ -244,12 +240,14 @@ impl TransverseMercator {
         (beta.cos() * (lon - lon0).sin()).atanh()
     }
 
-    fn m0(lat0: f64, upper_b: f64, beta0: f64, h: [f64; 4]) -> f64 {
+    fn m0(lat0: f64, upper_b: f64, e: f64, h: [f64; 4]) -> f64 {
         if lat0 == 0.0 {
             0.0
         } else if lat0.abs() == FRAC_PI_2 {
             upper_b * lat0
         } else {
+            let q0 = Self::q(e, lat0);
+            let beta0 = Self::beta(q0);
             let xi_o0 = beta0.sin().asin();
             let xi_os = [
                 xi_o0,
@@ -273,7 +271,7 @@ impl Operation for TransverseMercator {
         3
     }
 
-    fn fwd(&self, input: &[f64], output: &mut [f64]) -> operation::Result<()> {
+    fn apply_fwd(&self, input: &[f64], output: &mut [f64]) -> operation::Result<()> {
         let q = Self::q(self.e, input[1]);
         let beta = Self::beta(q);
         let eta_0 = Self::eta_0(beta, input[0], self.lon0);
@@ -301,7 +299,7 @@ impl Operation for TransverseMercator {
         Ok(())
     }
 
-    fn bwd(&self, input: &[f64], output: &mut [f64]) -> operation::Result<()> {
+    fn apply_bwd(&self, input: &[f64], output: &mut [f64]) -> operation::Result<()> {
         let eta_p = (input[0] - self.false_easting) / (self.upper_b * self.k0);
         let xi_p = (input[1] - self.false_northing + self.k0 * self.m0) / (self.upper_b * self.k0);
 
@@ -389,14 +387,14 @@ impl Operation for WebMercator {
         3
     }
 
-    fn fwd(&self, input: &[f64], output: &mut [f64]) -> crate::operation::Result<()> {
+    fn apply_fwd(&self, input: &[f64], output: &mut [f64]) -> crate::operation::Result<()> {
         output[0] = self.false_easting + self.a * (input[0] - self.lon0);
         output[1] = self.false_northing + self.a * (input[1] / 2.0 + FRAC_PI_4).tan().ln();
         output[2] = input[2];
         Ok(())
     }
 
-    fn bwd(&self, input: &[f64], output: &mut [f64]) -> crate::operation::Result<()> {
+    fn apply_bwd(&self, input: &[f64], output: &mut [f64]) -> crate::operation::Result<()> {
         let d = (self.false_northing - input[1]) / self.a;
         output[0] = self.lon0 + (input[0] - self.false_easting) / self.a;
         output[1] = FRAC_PI_2 - 2.0 * d.exp().atan();
@@ -408,6 +406,10 @@ impl Operation for WebMercator {
 #[cfg(test)]
 mod tests {
     use approx::assert_abs_diff_eq;
+    use approx::assert_abs_diff_ne;
+    use num::traits::float::FloatCore;
+    use num::traits::real::Real;
+    use num::Float;
 
     use crate::{geodesy::ellipsoid, operation::Operation};
 
@@ -426,12 +428,12 @@ mod tests {
     fn web_mercator() {
         let proj = WebMercator::new(&ellipsoid::consts::WGS84, 0.0, 0.0, 0.0, 0.0);
         let mut output = [0.0; 3];
-        proj.fwd(&[-1.751147016, 0.42554246, 0.0], &mut output)
+        proj.apply_fwd(&[-1.751147016, 0.42554246, 0.0], &mut output)
             .unwrap();
         assert_abs_diff_eq!(output[0], -11_169_055.58, epsilon = 1e-2);
         assert_abs_diff_eq!(output[1], 2_800_000.0, epsilon = 1e-2);
 
-        proj.bwd(&[-11_169_055.58, 2_810_000.0, 0.0], &mut output)
+        proj.apply_bwd(&[-11_169_055.58, 2_810_000.0, 0.0], &mut output)
             .unwrap();
         assert_abs_diff_eq!(output[0], -1.751147016, epsilon = 1e-9);
         assert_abs_diff_eq!(output[1], 0.426970023, epsilon = 1e-9);
@@ -448,7 +450,7 @@ mod tests {
             900_000.0,
         );
         let mut output = [0.0; 3];
-        proj.fwd(
+        proj.apply_fwd(
             &[120.0_f64.to_radians(), -3.0_f64.to_radians(), 0.0],
             &mut output,
         )
@@ -456,7 +458,7 @@ mod tests {
         assert_abs_diff_eq!(output[0], 5009726.58, epsilon = 2e-2);
         assert_abs_diff_eq!(output[1], 569150.82, epsilon = 2e-2);
 
-        proj.bwd(&[5009726.58, 569150.82, 0.0], &mut output)
+        proj.apply_bwd(&[5009726.58, 569150.82, 0.0], &mut output)
             .unwrap();
         assert_abs_diff_eq!(output[0].to_degrees(), 120.0, epsilon = 3e-8);
         assert_abs_diff_eq!(output[1].to_degrees(), -3.0, epsilon = 3e-8);
@@ -473,7 +475,7 @@ mod tests {
             0.0,
         );
         let mut output = [0.0; 3];
-        proj.fwd(
+        proj.apply_fwd(
             &[53.0_f64.to_radians(), 53.0_f64.to_radians(), 0.0],
             &mut output,
         )
@@ -481,7 +483,7 @@ mod tests {
         assert_abs_diff_eq!(165704.29, output[0], epsilon = 4e-3);
         assert_abs_diff_eq!(5171848.07, output[1], epsilon = 3e-3);
 
-        proj.bwd(&[165704.29, 5171848.07, 0.0], &mut output)
+        proj.apply_bwd(&[165704.29, 5171848.07, 0.0], &mut output)
             .unwrap();
         assert_abs_diff_eq!(output[0].to_degrees(), 53.0, epsilon = 5e-8);
         assert_abs_diff_eq!(output[1].to_degrees(), 53.0, epsilon = 4e-8);
@@ -499,18 +501,61 @@ mod tests {
             -100_000.0,
         );
 
-        let mut output = [0.0; 3];
-        proj.fwd(
-            &[0.5_f64.to_radians(), 50.5_f64.to_radians(), 0.0],
-            &mut output,
-        )
-        .unwrap();
-        assert_abs_diff_eq!(output[0], 577_274.99, epsilon = 1e-2);
-        assert_abs_diff_eq!(output[1], 69_740.5, epsilon = 1e-2);
-
-        proj.bwd(&[577_274.99, 69_740.50, 0.0], &mut output)
+        let enh = proj
+            .fwd_new(&[0.5_f64.to_radians(), 50.5_f64.to_radians(), 0.0])
             .unwrap();
-        assert_abs_diff_eq!(output[0], 0.5_f64.to_radians(), epsilon = 2e-9);
-        assert_abs_diff_eq!(output[1], 50.5_f64.to_radians(), epsilon = 2e-9);
+        assert_abs_diff_eq!(enh[0], 577_274.99, epsilon = 1e-2);
+        assert_abs_diff_eq!(enh[1], 69_740.5, epsilon = 1e-2);
+
+        let llh = proj.bwd_new(&[577_274.99, 69_740.50, 0.0]).unwrap();
+        assert_abs_diff_eq!(llh[0], 0.5_f64.to_radians(), epsilon = 2e-9);
+        assert_abs_diff_eq!(llh[1], 50.5_f64.to_radians(), epsilon = 2e-9);
+    }
+
+    #[test]
+    fn transverse_mercator_bound() {
+        let proj = TransverseMercator::new(&ellipsoid::consts::WGS84, 0.0, 0.0, 0.9996, 0.0, 0.0);
+
+        let north_pole = proj.fwd_new(&[0., 90.0_f64.to_radians(), 0.0]).unwrap();
+        println!("north_pole = {north_pole:?}");
+        let east_north = proj
+            .fwd_new(&[90f64.to_radians(), 10.0f64.to_radians(), 0.0])
+            .unwrap();
+        println!("90E 10N = {east_north:?}");
+        let west_north = proj
+            .fwd_new(&[-90f64.to_radians(), 10f64.to_radians(), 0.0])
+            .unwrap();
+        println!("90W 10N = {west_north:?}");
+
+        let south_pole = proj.fwd_new(&[0., -90.0_f64.to_radians(), 0.0]).unwrap();
+        println!("south_pole = {south_pole:?}");
+
+        let med_90: Vec<f64> = (-9..=9)
+            .flat_map(|i| vec![90.0_f64.to_radians(), (i as f64 * 10.0).to_radians(), 0.0])
+            .collect();
+        let _proj_med_90 = proj.fwd_new(&med_90).unwrap();
+    }
+
+    #[test]
+    fn transverse_mercator_roundtrip() {
+        let proj = TransverseMercator::new(&ellipsoid::consts::WGS84, 0.0, 0.0, 0.9996, 0.0, 0.0);
+
+        let north_pole = vec![10f64.to_radians(), 90.0_f64.to_radians(), 0.0];
+        let north_pole_enh = proj.fwd_new(&north_pole).unwrap();
+        println!("north_pole (enh) = {north_pole_enh:?}");
+
+        let north_pole_llh: Vec<f64> = proj.bwd_new(&north_pole_enh).unwrap();
+        println!("north_pole (llh)= {north_pole_llh:?}");
+
+        assert_abs_diff_eq!(&north_pole_llh[..], &north_pole[..], epsilon = 1e-9);
+
+        let south_pole = vec![-10f64.to_radians(), -90.0_f64.to_radians(), 0.0];
+        let south_pole_enh = proj.fwd_new(&south_pole).unwrap();
+        println!("south_pole (enh) = {south_pole_enh:?}");
+
+        let south_pole_llh: Vec<f64> = proj.bwd_new(&south_pole_enh).unwrap();
+        println!("south_pole (llh)= {south_pole_llh:?}");
+
+        assert_abs_diff_eq!(&south_pole_llh[..], &south_pole[..], epsilon = 1e-9);
     }
 }

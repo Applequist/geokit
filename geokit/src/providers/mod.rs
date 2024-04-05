@@ -24,12 +24,15 @@ pub type TransformationPath = (
     Chain<Box<dyn Operation>, Box<dyn Operation>>,
     Chain<Box<dyn Operation>, Box<dyn Operation>>,
 );
+
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum TransformationProviderError {
     NoTransformationPath,
 }
 
 pub trait TransformationProvider {
     fn transformation(
+        &self,
         src: &Crs,
         dst: &Crs,
     ) -> Result<TransformationPath, TransformationProviderError>;
@@ -39,6 +42,7 @@ pub struct DefaultTransformationProvider;
 
 impl TransformationProvider for DefaultTransformationProvider {
     fn transformation(
+        &self,
         src: &Crs,
         dst: &Crs,
     ) -> Result<TransformationPath, TransformationProviderError> {

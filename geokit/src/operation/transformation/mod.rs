@@ -37,14 +37,14 @@ impl Operation for GeocentricTranslation {
         3
     }
 
-    fn fwd(&self, xyz_src: &[f64], xyz_dst: &mut [f64]) -> operation::Result<()> {
+    fn apply_fwd(&self, xyz_src: &[f64], xyz_dst: &mut [f64]) -> operation::Result<()> {
         xyz_dst[0] = xyz_src[0] + self.t[0];
         xyz_dst[1] = xyz_src[1] + self.t[1];
         xyz_dst[2] = xyz_src[2] + self.t[2];
         Ok(())
     }
 
-    fn bwd(&self, xyz_dst: &[f64], xyz_src: &mut [f64]) -> operation::Result<()> {
+    fn apply_bwd(&self, xyz_dst: &[f64], xyz_src: &mut [f64]) -> operation::Result<()> {
         xyz_src[0] = xyz_dst[0] - self.t[0];
         xyz_src[1] = xyz_dst[1] - self.t[1];
         xyz_src[2] = xyz_dst[2] - self.t[2];
@@ -114,14 +114,14 @@ impl Operation for Helmert7Params {
         3
     }
 
-    fn fwd(&self, input: &[f64], output: &mut [f64]) -> operation::Result<()> {
+    fn apply_fwd(&self, input: &[f64], output: &mut [f64]) -> operation::Result<()> {
         let s = Vector3::new(input[0], input[1], input[2]);
         let x = self.rot * (1.0 + self.ds_ppm * 1e-6) * s + self.t;
         output.copy_from_slice(x.as_ref());
         Ok(())
     }
 
-    fn bwd(&self, input: &[f64], output: &mut [f64]) -> operation::Result<()> {
+    fn apply_bwd(&self, input: &[f64], output: &mut [f64]) -> operation::Result<()> {
         let t = Vector3::new(input[0], input[1], input[2]);
         let s = self.inv_rot * (1.0 - self.ds_ppm * 1e-6) * t - self.t;
         output.copy_from_slice(s.as_ref());
@@ -143,7 +143,7 @@ mod tests {
         let source_xyz = [3_771_793.97, 140_253.34, 5_124_304.35];
         let mut xyz = [0.; 3];
         let expected_xyz = [3_771_878.84, 140_349.83, 5_124_421.30];
-        t.fwd(&source_xyz, &mut xyz).unwrap();
+        t.apply_fwd(&source_xyz, &mut xyz).unwrap();
         assert_relative_eq!(xyz[0], expected_xyz[0], epsilon = 1e-6);
         assert_relative_eq!(xyz[1], expected_xyz[1], epsilon = 1e-6);
         assert_relative_eq!(xyz[2], expected_xyz[2], epsilon = 1e-6);
@@ -155,7 +155,7 @@ mod tests {
         let xs = [3_771_793.97, 140_253.34, 5_124_304.35];
         let mut xyz = [0.; 3];
         let xt = [3_771_878.84, 140_349.83, 5_124_421.30];
-        t.bwd(&xt, &mut xyz).unwrap();
+        t.apply_bwd(&xt, &mut xyz).unwrap();
         assert_relative_eq!(xyz[0], xs[0], epsilon = 1e-6);
         assert_relative_eq!(xyz[1], xs[1], epsilon = 1e-6);
         assert_relative_eq!(xyz[2], xs[2], epsilon = 1e-6);
@@ -174,7 +174,7 @@ mod tests {
         let xs = [3_657_660.66, 255_768.55, 5_201_382.11];
         let mut xyz = [0.; 3];
         let xt = [3_657_660.78, 255_778.43, 5_201_387.75];
-        t.fwd(&xs, &mut xyz).unwrap();
+        t.apply_fwd(&xs, &mut xyz).unwrap();
         assert_relative_eq!(xyz[0], xt[0], epsilon = 1e-2);
         assert_relative_eq!(xyz[1], xt[1], epsilon = 1e-2);
         assert_relative_eq!(xyz[2], xt[2], epsilon = 1e-2);
@@ -191,7 +191,7 @@ mod tests {
         let xs = [3_657_660.66, 255_768.55, 5_201_382.11];
         let mut xyz = [0.; 3];
         let xt = [3_657_660.78, 255_778.43, 5_201_387.75];
-        t.bwd(&xt, &mut xyz).unwrap();
+        t.apply_bwd(&xt, &mut xyz).unwrap();
         assert_relative_eq!(xyz[0], xs[0], epsilon = 1e-2);
         assert_relative_eq!(xyz[1], xs[1], epsilon = 1e-2);
         assert_relative_eq!(xyz[2], xs[2], epsilon = 1e-2);

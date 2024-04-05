@@ -71,7 +71,7 @@ impl Operation for Normalization {
         3
     }
 
-    fn fwd(&self, input: &[f64], output: &mut [f64]) -> Result<()> {
+    fn apply_fwd(&self, input: &[f64], output: &mut [f64]) -> Result<()> {
         output.copy_from_slice(&[0.; 3]);
         for (nix, (ix, f)) in self.0.iter().enumerate() {
             output[nix] = input[*ix] * f;
@@ -79,7 +79,7 @@ impl Operation for Normalization {
         Ok(())
     }
 
-    fn bwd(&self, input: &[f64], output: &mut [f64]) -> Result<()> {
+    fn apply_bwd(&self, input: &[f64], output: &mut [f64]) -> Result<()> {
         for (nix, (ix, f)) in self.0.iter().enumerate() {
             output[*ix] = input[nix] / f;
         }
@@ -190,7 +190,7 @@ impl Operation for GeogToGeoc {
     }
 
     /// Convert geographic coordinates to geocentric coordinates.
-    fn fwd(&self, input: &[f64], output: &mut [f64]) -> Result<()> {
+    fn apply_fwd(&self, input: &[f64], output: &mut [f64]) -> Result<()> {
         let mut llh_cpy = [0.0; 3];
         llh_cpy.copy_from_slice(input);
         llh_cpy[0] = self.convert_lon_to_gw(input[0]);
@@ -199,7 +199,7 @@ impl Operation for GeogToGeoc {
     }
 
     /// Convert geocentric coordinates to geographic coordinates.
-    fn bwd(&self, input: &[f64], output: &mut [f64]) -> Result<()> {
+    fn apply_bwd(&self, input: &[f64], output: &mut [f64]) -> Result<()> {
         self.xyz_to_llh(input, output);
         output[0] = self.convert_lon_from_gw(output[0]);
         Ok(())
@@ -225,7 +225,7 @@ mod tests {
 
         let i = [10.0, 110.0];
         let mut o = [0.0; 3];
-        t.fwd(&i, &mut o).unwrap();
+        t.apply_fwd(&i, &mut o).unwrap();
         assert_eq!(o, [-110.0f64.to_radians(), 10.0f64.to_radians(), 0.0]);
     }
 

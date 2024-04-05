@@ -1,10 +1,10 @@
 use approx::assert_abs_diff_eq;
 use geokit::{
-    crs::{Crs::Geographic, GeodeticAxes},
+    crs::{Crs::Geocentric, Crs::Geographic, GeocentricAxes, GeodeticAxes},
     geodesy::geodetic_datum,
-    operation::apply_seq,
+    operation::{self, Operation},
+    providers::{DefaultTransformationProvider, TransformationProvider},
 };
-use regex::Regex;
 use std::default::Default;
 
 fn dist(a: &[f64], b: &[f64]) -> f64 {
@@ -19,28 +19,16 @@ fn dist(a: &[f64], b: &[f64]) -> f64 {
         .sqrt()
 }
 
+mod input;
+
 #[test]
-fn llh_to_xyz() {
-    let re = Regex::new(r"\s+").unwrap();
-
-    let ll_grid = include_str!("data/ll_grid.txt");
-
-    let ll_orig: Vec<f64> = ll_grid
-        .lines()
-        .filter(|l| !l.is_empty() && !l.starts_with('#'))
-        .flat_map(|l| re.split(l.trim()).map(|s| s.parse::<f64>().unwrap()))
-        .collect();
-
-    let count_ll = ll_grid.lines().count() - 1; // -1 to account for the header line
+fn llh_to_xyz() -> operation::Result<()> {
+    let ll_orig = input::read_coords("tests/data/llh_grid.txt", 2).collect::<Vec<_>>();
+    let count_ll = ll_orig.len(); // -1 to account for the header line
     println!("Read {count_ll} 2D coordinates");
 
-    let xyz_grid = include_str!("data/xyz_grid.txt");
-    let xyz_orig: Vec<f64> = xyz_grid
-        .lines()
-        .filter(|l| !l.is_empty() && !l.starts_with('#'))
-        .flat_map(|l| re.split(l.trim()).map(|s| s.parse::<f64>().unwrap()))
-        .collect();
-    let count_xyz = xyz_grid.lines().count() - 1; // -1 to account for the header line
+    let xyz_orig = input::read_coords("tests/data/xyz_grid.txt", 3).collect::<Vec<_>>();
+    let count_xyz = xyz_orig.len(); // -1 to account for the header line
     println!("Read {count_xyz} 3D coordinates");
 
     assert_eq!(
@@ -58,19 +46,30 @@ fn llh_to_xyz() {
     };
     println!("Source CRS: {:#?}", src);
 
-    let (to_geoc, from_geoc) = src.to_wgs84_geoc();
+    let dst = Geocentric {
+        id: "WGS84 Geocentric".into(),
+        datum: geodetic_datum::consts::WGS84,
+        axes: GeocentricAxes::XYZ,
+    };
+
+    let provider = DefaultTransformationProvider;
+    let (src_to_dst, dst_to_src) = provider.transformation(&src, &dst).unwrap();
 
     // Allocating storage for transformed coordinates.
     println!("Converting ll coordinates to xyz coordinates...");
-    let mut xyz = vec![0.; count_ll * 3];
-    let trans_count = apply_seq(to_geoc, &ll_orig, &mut xyz).unwrap();
+    let mut xyz = vec![vec![0.0; 3]; count_ll];
+    let mut trans_count = 0;
+    for (i, o) in ll_orig.iter().zip(xyz.iter_mut()) {
+        src_to_dst.apply_fwd(i, o)?;
+        trans_count += 1;
+    }
     assert_eq!(
         trans_count, count_ll,
         "Expected #ops = {count_ll}. Got {trans_count}"
     );
 
     println!("Checking for equality...");
-    for (p_xyz, p_xyz_orig) in xyz.chunks_exact(3).zip(xyz_orig.chunks_exact(3)) {
+    for (p_xyz, p_xyz_orig) in xyz.iter().zip(xyz_orig.iter()) {
         let err = dist(p_xyz, p_xyz_orig);
         assert!(
             err < 1e-4,
@@ -79,15 +78,22 @@ fn llh_to_xyz() {
     }
 
     println!("Converting xyz coordinates to ll coordinates...");
-    let mut ll = vec![0.; count_xyz * 2];
-    let trans_count = apply_seq(from_geoc, &xyz_orig, &mut ll).unwrap();
+    let mut ll = vec![vec![0.0; 2]; count_xyz];
+    let mut trans_count = 0;
+    for (xyz, ll) in xyz_orig.iter().zip(ll.iter_mut()) {
+        dst_to_src.apply_fwd(xyz, ll)?;
+        trans_count += 1;
+    }
+
     assert_eq!(
         trans_count, count_xyz,
         "Expected #ops = {count_xyz}. Got {trans_count}"
     );
 
     println!("Checking for equality...");
-    for (p_ll, p_ll_orig) in ll.chunks_exact(2).zip(ll_orig.chunks_exact(2)) {
-        assert_abs_diff_eq!(p_ll, p_ll_orig, epsilon = 1e-4);
+    for (p_ll, p_ll_orig) in ll.iter().zip(ll_orig.iter()) {
+        assert_abs_diff_eq!(p_ll.as_slice(), p_ll_orig.as_slice(), epsilon = 1e-4);
     }
+
+    Ok(())
 }

@@ -27,10 +27,10 @@ pub trait Operation: DynClone {
     fn out_dim(&self) -> usize;
 
     /// Perform the forward operation on the given input.
-    fn fwd(&self, input: &[f64], output: &mut [f64]) -> Result<()>;
+    fn apply_fwd(&self, input: &[f64], output: &mut [f64]) -> Result<()>;
 
     /// Perform the backward, eg inverse, operation on the given input.
-    fn bwd(&self, _input: &[f64], _output: &mut [f64]) -> Result<()> {
+    fn apply_bwd(&self, _input: &[f64], _output: &mut [f64]) -> Result<()> {
         Err(OperationError::NotInvertible)
     }
 
@@ -54,6 +54,75 @@ pub trait Operation: DynClone {
             then: t,
         }
     }
+
+    /// Apply the fwd transformation into the given mutable slice.
+    fn fwd(&self, input: &[f64], output: &mut [f64]) -> Result<usize> {
+        assert!(
+            input.len() % self.in_dim() == 0,
+            "For forward transformation, the input sequence length must be a multiple of the operation's input dimension."
+        );
+        assert!(
+            output.len() % self.out_dim() == 0,
+            "For forward transformation, the output sequence length must be a multiple of the operation's output dimension."
+        );
+        let input_coords = input.chunks_exact(self.in_dim());
+        let output_coords = output.chunks_exact_mut(self.out_dim());
+        let mut ix: usize = 0;
+        for (i, o) in input_coords.zip(output_coords) {
+            match self.apply_fwd(i, o) {
+                Ok(_) => {
+                    ix += 1;
+                }
+                Err(e) => return Err(OperationError::SequenceTransformError(ix, Box::new(e))),
+            }
+        }
+        Ok(ix)
+    }
+
+    /// Apply the bwd transformation into the given mutable slice.
+    fn bwd(&self, input: &[f64], output: &mut [f64]) -> Result<usize> {
+        assert!(
+            input.len() % self.out_dim() == 0,
+            "For backward transformation, the input sequence length must be a multiple of the operation's output dimension."
+        );
+        assert!(
+            output.len() % self.in_dim() == 0,
+            "For backward transformation, the output sequence length must be a multiple of the operation's input dimension."
+        );
+        let input_coords = input.chunks_exact(self.in_dim());
+        let output_coords = output.chunks_exact_mut(self.out_dim());
+        let mut ix: usize = 0;
+        for (i, o) in input_coords.zip(output_coords) {
+            match self.apply_bwd(i, o) {
+                Ok(_) => {
+                    ix += 1;
+                }
+                Err(e) => return Err(OperationError::SequenceTransformError(ix, Box::new(e))),
+            }
+        }
+        Ok(ix)
+    }
+    /// Apply the fwd transformation to the input and stores the output into a newly allocated vector.
+    fn fwd_new(&self, input: &[f64]) -> Result<Vec<f64>> {
+        assert!(
+            input.len() % self.in_dim() == 0,
+            "For forward transformation, the input sequence length must be a multiple of the operation's input dimension."
+        );
+        let capacity = input.len() / self.in_dim() * self.out_dim();
+        let mut output = vec![0.0; capacity];
+        self.fwd(input, &mut output)?;
+        Ok(output)
+    }
+
+    fn bwd_new(&self, input: &[f64]) -> Result<Vec<f64>> {
+        assert!(input.len() % self.out_dim() == 0,
+            "For backward transformation, the input sequence length must be a multiple of the operation's output dimension.",
+        );
+        let capacity = input.len() / self.out_dim() * self.in_dim();
+        let mut output = vec![0.0; capacity];
+        self.bwd(input, &mut output)?;
+        Ok(output)
+    }
 }
 
 dyn_clone::clone_trait_object!(Operation);
@@ -67,28 +136,13 @@ impl Operation for Box<dyn Operation> {
         self.as_ref().out_dim()
     }
 
-    fn fwd(&self, input: &[f64], output: &mut [f64]) -> Result<()> {
-        self.as_ref().fwd(input, output)
+    fn apply_fwd(&self, input: &[f64], output: &mut [f64]) -> Result<()> {
+        self.as_ref().apply_fwd(input, output)
     }
 
-    fn bwd(&self, input: &[f64], output: &mut [f64]) -> Result<()> {
-        self.as_ref().bwd(input, output)
+    fn apply_bwd(&self, input: &[f64], output: &mut [f64]) -> Result<()> {
+        self.as_ref().apply_bwd(input, output)
     }
-}
-
-pub fn apply_seq<T: Operation>(t: T, input: &[f64], output: &mut [f64]) -> Result<usize> {
-    let input_coords = input.chunks_exact(t.in_dim());
-    let output_coords = output.chunks_exact_mut(t.out_dim());
-    let mut ix: usize = 0;
-    for (i, o) in input_coords.zip(output_coords) {
-        match t.fwd(i, o) {
-            Ok(_) => {
-                ix += 1;
-            }
-            Err(e) => return Err(OperationError::SequenceTransformError(ix, Box::new(e))),
-        }
-    }
-    Ok(ix)
 }
 
 /// A *dummy* operation that simply copies its input into the output, eg a no-op operation.
@@ -105,14 +159,14 @@ impl<const N: usize> Operation for Identity<N> {
     }
 
     #[inline]
-    fn fwd(&self, i: &[f64], o: &mut [f64]) -> Result<()> {
+    fn apply_fwd(&self, i: &[f64], o: &mut [f64]) -> Result<()> {
         o.copy_from_slice(i);
         Ok(())
     }
 
     #[inline]
-    fn bwd(&self, input: &[f64], output: &mut [f64]) -> Result<()> {
-        self.fwd(input, output)?;
+    fn apply_bwd(&self, input: &[f64], output: &mut [f64]) -> Result<()> {
+        self.apply_fwd(input, output)?;
         Ok(())
     }
 }
@@ -137,12 +191,12 @@ where
         self.0.in_dim()
     }
 
-    fn fwd(&self, input: &[f64], output: &mut [f64]) -> Result<()> {
-        self.0.bwd(input, output)
+    fn apply_fwd(&self, input: &[f64], output: &mut [f64]) -> Result<()> {
+        self.0.apply_bwd(input, output)
     }
 
-    fn bwd(&self, input: &[f64], output: &mut [f64]) -> Result<()> {
-        self.0.fwd(input, output)
+    fn apply_bwd(&self, input: &[f64], output: &mut [f64]) -> Result<()> {
+        self.0.apply_fwd(input, output)
     }
 }
 
@@ -166,18 +220,33 @@ where
         self.then.out_dim()
     }
 
-    fn fwd(&self, i: &[f64], o: &mut [f64]) -> Result<()> {
+    fn apply_fwd(&self, i: &[f64], o: &mut [f64]) -> Result<()> {
         let mut os = [0.0; 3];
-        self.first.fwd(i, &mut os[0..self.first.out_dim()])?;
-        self.then.fwd(&os, o)
+        self.first.apply_fwd(i, &mut os[0..self.first.out_dim()])?;
+        self.then.apply_fwd(&os, o)
     }
 
-    fn bwd(&self, i: &[f64], o: &mut [f64]) -> Result<()> {
+    fn apply_bwd(&self, i: &[f64], o: &mut [f64]) -> Result<()> {
         let mut os = [0.0; 3];
-        self.then.bwd(i, &mut os[0..self.then.in_dim()])?;
-        self.first.bwd(&os, o)
+        self.then.apply_bwd(i, &mut os[0..self.then.in_dim()])?;
+        self.first.apply_bwd(&os, o)
     }
 }
 
 pub mod conversion;
 pub mod transformation;
+
+#[cfg(test)]
+mod tests {
+    use crate::operation::Operation;
+
+    use super::identity;
+
+    #[test]
+    fn test_apply_seq() {
+        let input = [1.0; 6];
+        let mut output = [0.0; 6];
+        identity::<3>().fwd(&input, &mut output).unwrap();
+        assert_eq!(input, output);
+    }
+}
