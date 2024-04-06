@@ -89,8 +89,8 @@ pub trait Operation: DynClone {
             output.len() % self.in_dim() == 0,
             "For backward transformation, the output sequence length must be a multiple of the operation's input dimension."
         );
-        let input_coords = input.chunks_exact(self.in_dim());
-        let output_coords = output.chunks_exact_mut(self.out_dim());
+        let input_coords = input.chunks_exact(self.out_dim());
+        let output_coords = output.chunks_exact_mut(self.in_dim());
         let mut ix: usize = 0;
         for (i, o) in input_coords.zip(output_coords) {
             match self.apply_bwd(i, o) {
