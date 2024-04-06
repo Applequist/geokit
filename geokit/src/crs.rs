@@ -68,6 +68,11 @@ impl Crs {
         }
     }
 
+    /// Returns the id of the [GeodeticDatum] used by this [Crs].
+    pub fn datum_id(&self) -> &str {
+        self.datum().id()
+    }
+
     /// Returns the id of the reference [GeodeticDatum] of a [Crs].
     pub fn ref_datum_id(&self) -> &str {
         match self {
