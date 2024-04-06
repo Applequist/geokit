@@ -123,10 +123,8 @@ impl Crs {
                 let op = datum.to_ref_datum();
                 let fwd = Normalization::from(*axes)
                     .and_then(GeogToGeoc::new(datum))
-                    .and_then(op.clone());
-                let bwd = Inv(op)
-                    .and_then(Inv(GeogToGeoc::new(datum)))
-                    .and_then(Inv(Normalization::from(*axes)));
+                    .and_then(op);
+                let bwd = Inv(fwd.clone());
                 (fwd.boxed(), bwd.boxed())
             }
             Crs::Projected {
@@ -139,11 +137,8 @@ impl Crs {
                 let fwd = Normalization::from(*axes)
                     .and_then(Inv(projection.projection(datum.ellipsoid())))
                     .and_then(GeogToGeoc::new(datum))
-                    .and_then(op.clone());
-                let bwd = Inv(op)
-                    .and_then(Inv(GeogToGeoc::new(datum)))
-                    .and_then(projection.projection(datum.ellipsoid()))
-                    .and_then(Inv(Normalization::from(*axes)));
+                    .and_then(op);
+                let bwd = Inv(fwd.clone());
                 (fwd.boxed(), bwd.boxed())
             }
         }
