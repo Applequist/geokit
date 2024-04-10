@@ -8,7 +8,7 @@ use geokit::{
 use std::default::Default;
 
 fn dist(a: &[f64], b: &[f64]) -> f64 {
-    assert!(a.len() == 3);
+    assert_eq!(a.len(), 3);
     a.iter()
         .zip(b.iter())
         .fold(0.0, |mut acc, e| {
@@ -78,10 +78,11 @@ fn llh_to_utm0() -> operation::Result<()> {
     let dst_pt = src_to_dst.fwd_new(&src_pt).unwrap();
     println!("{src_pt:?} --- src_to_dst ---> {dst_pt:?}");
 
-    let bk_src_pt = dst_to_src.fwd_new(&dst_pt).unwrap();
-    println!("{dst_pt:?} --- dst_to_src ---> {bk_src_pt:?}");
-    let bk_src_pt = src_to_dst.bwd_new(&dst_pt).unwrap();
-    println!("{dst_pt:?} --- src_to_dst.bwd ---> {bk_src_pt:?}");
+    let dst_src_pt = dst_to_src.fwd_new(&dst_pt).unwrap();
+    println!("{dst_pt:?} --- dst_to_src ---> {dst_src_pt:?}");
+    let src_dst_bwd_pt = src_to_dst.bwd_new(&dst_pt).unwrap();
+    println!("{dst_pt:?} --- src_to_dst.bwd ---> {src_dst_bwd_pt:?}");
+    assert_abs_diff_eq!(&dst_src_pt[..], &src_dst_bwd_pt[..]);
 
     // Allocating storage for transformed coordinates.
     println!("Converting llh coordinates to enh coordinates...");

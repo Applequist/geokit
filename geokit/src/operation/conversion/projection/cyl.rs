@@ -387,14 +387,14 @@ impl Operation for WebMercator {
         3
     }
 
-    fn apply_fwd(&self, input: &[f64], output: &mut [f64]) -> crate::operation::Result<()> {
+    fn apply_fwd(&self, input: &[f64], output: &mut [f64]) -> operation::Result<()> {
         output[0] = self.false_easting + self.a * (input[0] - self.lon0);
         output[1] = self.false_northing + self.a * (input[1] / 2.0 + FRAC_PI_4).tan().ln();
         output[2] = input[2];
         Ok(())
     }
 
-    fn apply_bwd(&self, input: &[f64], output: &mut [f64]) -> crate::operation::Result<()> {
+    fn apply_bwd(&self, input: &[f64], output: &mut [f64]) -> operation::Result<()> {
         let d = (self.false_northing - input[1]) / self.a;
         output[0] = self.lon0 + (input[0] - self.false_easting) / self.a;
         output[1] = FRAC_PI_2 - 2.0 * d.exp().atan();

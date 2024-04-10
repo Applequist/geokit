@@ -8,7 +8,7 @@ use geokit::{
 use std::default::Default;
 
 fn dist(a: &[f64], b: &[f64]) -> f64 {
-    assert!(a.len() == 3);
+    assert_eq!(a.len(), 3);
     a.iter()
         .zip(b.iter())
         .fold(0.0, |mut acc, e| {

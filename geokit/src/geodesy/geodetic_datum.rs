@@ -114,10 +114,12 @@ impl GeodeticDatum {
         }
     }
 
+    /// Returns the [Operation] to transform **geocentric** coordinates in this datum into
+    /// **geocentric** coordinates in the reference datum.
     pub fn to_ref_datum(&self) -> Box<dyn Operation> {
         match &self.ref_datum {
             Some((_, tx)) => tx.transformation(),
-            None => identity::<3>().boxed(),
+            None => identity(3, 3).boxed(),
         }
     }
 }

@@ -122,7 +122,7 @@ impl Crs {
         match self {
             Crs::Geocentric { datum, .. } => {
                 let op = datum.to_ref_datum();
-                (op.clone().boxed(), Inv(op).boxed())
+                (op.clone(), Inv(op).boxed())
             }
             Crs::Geographic { datum, axes, .. } => {
                 let op = datum.to_ref_datum();

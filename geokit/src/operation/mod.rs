@@ -2,6 +2,7 @@ use core::f64;
 use std::fmt::Debug;
 
 use dyn_clone::DynClone;
+use na::min;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -57,12 +58,12 @@ pub trait Operation: DynClone {
 
     /// Apply the fwd transformation into the given mutable slice.
     fn fwd(&self, input: &[f64], output: &mut [f64]) -> Result<usize> {
-        assert!(
-            input.len() % self.in_dim() == 0,
+        debug_assert_eq!(
+            input.len() % self.in_dim(), 0,
             "For forward transformation, the input sequence length must be a multiple of the operation's input dimension."
         );
-        assert!(
-            output.len() % self.out_dim() == 0,
+        debug_assert_eq!(
+            output.len() % self.out_dim(), 0,
             "For forward transformation, the output sequence length must be a multiple of the operation's output dimension."
         );
         let input_coords = input.chunks_exact(self.in_dim());
@@ -81,12 +82,12 @@ pub trait Operation: DynClone {
 
     /// Apply the bwd transformation into the given mutable slice.
     fn bwd(&self, input: &[f64], output: &mut [f64]) -> Result<usize> {
-        assert!(
-            input.len() % self.out_dim() == 0,
+        debug_assert_eq!(
+            input.len() % self.out_dim(), 0,
             "For backward transformation, the input sequence length must be a multiple of the operation's output dimension."
         );
-        assert!(
-            output.len() % self.in_dim() == 0,
+        debug_assert_eq!(
+            output.len() % self.in_dim(), 0,
             "For backward transformation, the output sequence length must be a multiple of the operation's input dimension."
         );
         let input_coords = input.chunks_exact(self.out_dim());
@@ -104,8 +105,8 @@ pub trait Operation: DynClone {
     }
     /// Apply the fwd transformation to the input and stores the output into a newly allocated vector.
     fn fwd_new(&self, input: &[f64]) -> Result<Vec<f64>> {
-        assert!(
-            input.len() % self.in_dim() == 0,
+        debug_assert_eq!(
+            input.len() % self.in_dim(), 0,
             "For forward transformation, the input sequence length must be a multiple of the operation's input dimension."
         );
         let capacity = input.len() / self.in_dim() * self.out_dim();
@@ -115,7 +116,7 @@ pub trait Operation: DynClone {
     }
 
     fn bwd_new(&self, input: &[f64]) -> Result<Vec<f64>> {
-        assert!(input.len() % self.out_dim() == 0,
+        debug_assert_eq!(input.len() % self.out_dim(), 0,
             "For backward transformation, the input sequence length must be a multiple of the operation's output dimension.",
         );
         let capacity = input.len() / self.out_dim() * self.in_dim();
@@ -147,32 +148,58 @@ impl Operation for Box<dyn Operation> {
 
 /// A *dummy* operation that simply copies its input into the output, eg a no-op operation.
 #[derive(Debug, Clone)]
-struct Identity<const N: usize>;
+struct Identity {
+    in_dim: usize,
+    out_dim: usize,
+}
 
-impl<const N: usize> Operation for Identity<N> {
-    fn in_dim(&self) -> usize {
-        N
+impl Identity {
+
+    pub fn new(in_dim: usize, out_dim: usize) -> Self {
+        Self {
+            in_dim, out_dim
+        }
     }
 
+    fn copy(from: &[f64], to: &mut [f64]) {
+        let num_items = min(from.len(), to.len());
+        to[0..num_items].copy_from_slice(&from[0..num_items]);
+        if to.len() > num_items {
+            to[num_items..].fill(0.);
+        }
+    }
+}
+
+impl Operation for Identity {
+    #[inline]
+    fn in_dim(&self) -> usize {
+        self.in_dim
+    }
+
+    #[inline]
     fn out_dim(&self) -> usize {
-        N
+        self.out_dim
     }
 
     #[inline]
     fn apply_fwd(&self, i: &[f64], o: &mut [f64]) -> Result<()> {
-        o.copy_from_slice(i);
+        debug_assert_eq!(i.len(), self.in_dim(), "Invalid fwd input length");
+        debug_assert_eq!(o.len(), self.out_dim(), "Invalid fwd output length");
+        Self::copy(i, o);
         Ok(())
     }
 
     #[inline]
-    fn apply_bwd(&self, input: &[f64], output: &mut [f64]) -> Result<()> {
-        self.apply_fwd(input, output)?;
+    fn apply_bwd(&self, i: &[f64], o: &mut [f64]) -> Result<()> {
+        debug_assert_eq!(i.len(), self.out_dim(), "Invalid bwd input length");
+        debug_assert_eq!(o.len(), self.in_dim(), "Invalid bwd output length");
+        Self::copy(i, o);
         Ok(())
     }
 }
 
-pub fn identity<const N: usize>() -> impl Operation {
-    Identity::<N>
+pub fn identity(in_dim: usize, out_dim: usize) -> impl Operation {
+    Identity::new(in_dim, out_dim)
 }
 
 /// A [DynOperation] wrapper that selects the backward, eg inverse, operation.
@@ -243,10 +270,32 @@ mod tests {
     use super::identity;
 
     #[test]
+    fn identity_2_3() {
+        let mut output3 = [4., 4., 4.];
+        identity(2, 3).apply_fwd(&[1., 2.], &mut output3).unwrap();
+        assert_eq!(&output3, &[1., 2., 0.]);
+
+        let mut output2 = [0.; 2];
+        identity(2, 3).apply_bwd(&[1., 2., 3.], &mut output2).unwrap();
+        assert_eq!(&output2, &[1., 2.]);
+    }
+
+    #[test]
+    fn identity_3_2() {
+        let mut output2 = [0.; 2];
+        identity(3, 2).apply_fwd(&[1., 2., 3.], &mut output2).unwrap();
+        assert_eq!(&output2, &[1., 2.]);
+
+        let mut output3 = [4., 4., 4.];
+        identity(3, 2).apply_bwd(&[1., 2.], &mut output3).unwrap();
+        assert_eq!(&output3, &[1., 2., 0.]);
+    }
+
+    #[test]
     fn test_apply_seq() {
         let input = [1.0; 6];
         let mut output = [0.0; 6];
-        identity::<3>().fwd(&input, &mut output).unwrap();
+        identity(3, 3).fwd(&input, &mut output).unwrap();
         assert_eq!(input, output);
     }
 }

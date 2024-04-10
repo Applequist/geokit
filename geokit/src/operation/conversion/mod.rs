@@ -18,15 +18,15 @@ pub type ToOrd = (usize, f64);
 pub struct Normalization(Vec<ToOrd>);
 
 impl Normalization {
-    pub fn identity<const N: usize>() -> Self {
-        let to_ord = (0..3).map(|ord| (ord, 1.0)).collect::<Vec<_>>();
+    pub fn identity(dim: usize) -> Self {
+        let to_ord = (0..dim).map(|ord| (ord, 1.0)).collect::<Vec<_>>();
         Normalization(to_ord)
     }
 }
 
 impl From<GeocentricAxes> for Normalization {
     fn from(_value: GeocentricAxes) -> Self {
-        Normalization::identity::<3>()
+        Normalization::identity(3)
     }
 }
 
