@@ -188,16 +188,18 @@ pub mod consts {
 
 #[cfg(test)]
 mod tests {
-
+    use crate::cs::geodetic::Lon;
     use super::GeodeticDatum;
     use crate::geodesy::{ellipsoid, geodetic_datum, prime_meridian, Ellipsoid, PrimeMeridian};
+    use crate::units::angle::Degree;
+    use crate::units::length::Meter;
 
     #[test]
     fn clone() {
         let d = GeodeticDatum::new(
             "WGS 84",
-            Ellipsoid::from_ainvf("WGS84", 6_378_137.0, 298.257_223_563),
-            PrimeMeridian::new("Greenwich", 0.0),
+            Ellipsoid::from_ainvf("WGS84", Meter(6_378_137.0), 298.257_223_563),
+            PrimeMeridian::new("Greenwich", Lon::new(Degree(0.0))),
             None,
         );
         let cpy = d.clone();

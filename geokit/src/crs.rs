@@ -159,8 +159,8 @@ pub enum GeocentricAxes {
 
 /// A [`GeodeticAxes`] value defines the *coordinates system* part of a [`GeodeticCrs`], that is:
 /// - the ordering and direction of the axes,
-/// - the angle unit used for longitude and latitude,
-/// - the length unit used for the ellipsoidal height.
+/// - the angle unit used for longitude and latitude as a 'radian_per_unit' conversion factor,
+/// - the length unit used for the ellipsoidal height as a 'meter_per_unit' conversion factor,.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum GeodeticAxes {
     /// Coordinates are given in the following order:

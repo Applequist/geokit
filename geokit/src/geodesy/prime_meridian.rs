@@ -1,4 +1,7 @@
+use std::f64::consts::PI;
 use smol_str::SmolStr;
+use crate::cs::geodetic::Lon;
+use crate::units::angle::Angle;
 
 /// A `PrimeMeridian` defines the origin of longitudes.
 /// It is defined by its longitude with respect to the Greenwich meridian,
@@ -10,28 +13,17 @@ pub struct PrimeMeridian {
 }
 
 impl PrimeMeridian {
-    /// Create a new [`PrimeMeridian`] with the given Greenwich longitude **in radians, positive
+    /// Create a new [`PrimeMeridian`] with the given Greenwich longitude **positive
     /// East of Greenwich**.
-    ///
-    /// # Panics
-    ///
-    /// Panics if the `greenwich_longitude` is not in (-pi, pi].
-    pub fn new(name: &str, gw_lon_rad: f64) -> Self {
-        assert!(
-            gw_lon_rad > -std::f64::consts::PI && gw_lon_rad <= std::f64::consts::PI,
-            "Expected greenwich_longitude in (-pi, pi]. Got {}",
-            gw_lon_rad
-        );
+    pub fn new(name: &str, gw_lon: Lon) -> Self {
         Self {
             name: SmolStr::new(name),
-            gw_lon_rad,
+            gw_lon_rad: gw_lon.normalize().to_radians(),
         }
     }
 
     /// Create a new [PrimeMeridian] with the given Greenwich longitude **in (-pi, pi] radians**
     /// positive east of Greenwich.
-    ///
-    /// Panics if `name.len() > 23` or `gw_lon_rad <= -PI` or `gw_lon_rad > PI`
     #[inline(always)]
     pub(crate) const fn new_static(name: &'static str, gw_lon_rad: f64) -> Self {
         Self {
@@ -44,8 +36,8 @@ impl PrimeMeridian {
         self.name.as_str()
     }
 
-    /// Return this prime meridian's longitude in radians, positive east of the Greenwich
-    /// prime meridian.
+    /// Return this prime meridian's Greenwich longitude **in (-pi..pi] radians, positive east of the Greenwich
+    /// prime meridian**.
     #[inline]
     pub fn lon(&self) -> f64 {
         self.gw_lon_rad
@@ -95,30 +87,20 @@ pub mod consts {
 
 #[cfg(test)]
 mod tests {
+    use std::f64::consts::PI;
+    use crate::cs::geodetic::Lon;
+    use crate::units::angle::{DEG, Degree, RAD, Radian};
     use super::PrimeMeridian;
 
     #[test]
-    #[should_panic = "Expected greenwich_longitude in (-pi, pi]"]
-    fn longitude_lt_mpi() {
-        let _p = PrimeMeridian::new("LT lower bound", -std::f64::consts::PI - f64::EPSILON);
-    }
-
-    #[test]
-    #[should_panic = "Expected greenwich_longitude in (-pi, pi]"]
     fn longitude_eq_mpi() {
-        let _p = PrimeMeridian::new("EQ lower bound", -std::f64::consts::PI);
-    }
-
-    #[test]
-    #[should_panic = "Expected greenwich_longitude in (-pi, pi]"]
-    fn longitude_gt_pi() {
-        // FIX: shoud panic when only add 1.0 * f64::EPSILON!
-        let _p = PrimeMeridian::new("GT upper bound", std::f64::consts::PI + 2.0 * f64::EPSILON);
+        let _p = PrimeMeridian::new("EQ lower bound", Lon::new(-PI * RAD));
+        assert_eq!(_p.lon(), PI);
     }
 
     #[test]
     fn clone() {
-        let pm = PrimeMeridian::new("Paris", 2.23_f64.to_radians());
+        let pm = PrimeMeridian::new("Paris", Lon::new(2.23 * DEG));
         let cpy = pm.clone();
         assert_eq!(pm, cpy);
         let _s = cpy.gw_lon_rad;
@@ -126,13 +108,13 @@ mod tests {
 
     #[test]
     fn parital_eq() {
-        let pm = PrimeMeridian::new("Paris", 2.23_f64.to_radians());
-        let cpy = PrimeMeridian::new("PM", 2.23_f64.to_radians());
+        let pm = PrimeMeridian::new("Paris", Lon::new(2.23 * DEG));
+        let cpy = PrimeMeridian::new("PM", Lon::new(2.23 * DEG));
 
         assert!(pm.eq(&cpy));
         assert!(!pm.ne(&cpy));
 
-        let pm2 = PrimeMeridian::new("Greenwich", 0.0);
+        let pm2 = PrimeMeridian::new("Greenwich", Lon::new(0.0 * DEG));
         assert_ne!(pm, pm2);
     }
 }

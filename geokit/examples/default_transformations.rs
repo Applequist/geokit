@@ -4,6 +4,8 @@ use geokit::{
     operation::Operation,
     providers::{DefaultTransformationProvider, TransformationProvider},
 };
+use geokit::units::angle::{Angle, DEG};
+use geokit::units::length::{Length, M};
 
 fn main() {
     let src = Geographic {
@@ -15,8 +17,8 @@ fn main() {
             None,
         ),
         axes: GeodeticAxes::EastNorthUp {
-            angle_unit: 1.0_f64.to_radians(), // degrees
-            height_unit: 1.0,                 // metres
+            angle_unit: DEG.to_radians(), // degrees
+            height_unit: M.to_meters(),                 // metres
         },
     };
     println!("Source CRS: {:#?}", src);
