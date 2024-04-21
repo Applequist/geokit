@@ -18,7 +18,7 @@ fn main() {
         ),
         axes: GeodeticAxes::EastNorthUp {
             angle_unit: DEG.to_radians(), // degrees
-            height_unit: M.to_meters(),                 // metres
+            height_unit: M.to_meters(),   // metres
         },
     };
     println!("Source CRS: {:#?}", src);
@@ -31,7 +31,7 @@ fn main() {
             prime_meridian::consts::GREENWICH,
             None,
         ),
-        axes: ProjectedAxes::EastNorth { horiz_unit: 1.0 },
+        axes: ProjectedAxes::EastNorth { horiz_unit: M.to_meters() },
         projection: ProjectionSpec::TransverseMercator {
             lon0: 0.0,
             lat0: 0.0,
