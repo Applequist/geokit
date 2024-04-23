@@ -1,7 +1,7 @@
 use std::fmt::{Debug, Display};
 
+use crate::units::length::Length;
 use smol_str::SmolStr;
-use crate::units::length::{Length};
 
 /// An `Ellipsoid` is a mathematical surface defined by rotating an ellipse around
 /// it semi-minor axis.
@@ -24,11 +24,24 @@ impl Ellipsoid {
     /// # Panics
     ///
     /// If `semi_minor_axis` is negative or zero or if `semi_major_axis` is less than `semi_minor_axis`.
-    pub fn from_ab<U: Length + Display>(name: &str, semi_major_axis: U, semi_minor_axis: U) -> Self {
+    pub fn from_ab<U: Length + Display>(
+        name: &str,
+        semi_major_axis: U,
+        semi_minor_axis: U,
+    ) -> Self {
         let a = semi_major_axis.to_meters();
         let b = semi_minor_axis.to_meters();
-        assert!(b > 0., "Expected semi_minor_axis ({}) > 0.", semi_minor_axis);
-        assert!(a >= b, "Expected semi_major_axis ({}) >= semi_minor_axis ({}).", semi_major_axis, semi_minor_axis);
+        assert!(
+            b > 0.,
+            "Expected semi_minor_axis ({}) > 0.",
+            semi_minor_axis
+        );
+        assert!(
+            a >= b,
+            "Expected semi_major_axis ({}) >= semi_minor_axis ({}).",
+            semi_major_axis,
+            semi_minor_axis
+        );
         Self {
             name: SmolStr::new(name),
             a,
@@ -44,7 +57,11 @@ impl Ellipsoid {
     /// if `semi_major_axis` is negative or zero or if `invf` is not greater than 1.
     pub fn from_ainvf<U: Length + Display>(name: &str, semi_major_axis: U, invf: f64) -> Self {
         let a = semi_major_axis.to_meters();
-        assert!(a > 0., "Expected semi_major_axis ({}) > 0.", semi_major_axis);
+        assert!(
+            a > 0.,
+            "Expected semi_major_axis ({}) > 0.",
+            semi_major_axis
+        );
         assert!(invf > 1., "Expected invf ({}) > 1.", invf);
         Self {
             name: SmolStr::new(name),
@@ -59,7 +76,12 @@ impl Ellipsoid {
     /// - `semi_minor_axis`: semi-minor axis length **in meters**. **Must be less than or equal to `semi_major_axis`**
     /// - `invf`: inverse-flattening. **Must be greater than 1, possibly infinite if `semi_major_axis == semi_minor_axis`**
     #[inline(always)]
-    pub(crate) const fn new_static(name: &'static str, semi_major_axis: f64, semi_minor_axis: f64, invf: f64) -> Self {
+    pub(crate) const fn new_static(
+        name: &'static str,
+        semi_major_axis: f64,
+        semi_minor_axis: f64,
+        invf: f64,
+    ) -> Self {
         // TODO: const assert ?
         Self {
             name: SmolStr::new_static(name),
@@ -220,8 +242,8 @@ pub mod consts {
 
 #[cfg(test)]
 mod tests {
-    use crate::units::length::M;
     use super::*;
+    use crate::units::length::M;
 
     #[test]
     #[should_panic(expected = "Expected semi_minor_axis (-0.5 m) > 0")]

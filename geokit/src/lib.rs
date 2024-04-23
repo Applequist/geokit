@@ -7,9 +7,9 @@ extern crate lazy_static;
 
 extern crate nalgebra as na;
 
-pub mod units;
+pub mod crs;
 pub mod cs;
 pub mod geodesy;
-pub mod crs;
 pub mod operation;
 pub mod providers;
+pub mod units;

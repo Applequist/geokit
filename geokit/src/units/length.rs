@@ -1,6 +1,6 @@
 //! This module defines some types used to express length in various units.
 use std::fmt::{Display, Formatter};
-use std::ops::{Add, Sub, Mul, Div};
+use std::ops::{Add, Div, Mul, Sub};
 
 /// A trait implemented by types whose values measuring some length
 /// can be converted to a *raw* value in meter.
@@ -80,7 +80,7 @@ length_unit!(Meter, M, "m", 1.0);
 
 #[cfg(test)]
 mod tests {
-    use crate::units::length::{Meter, Length};
+    use crate::units::length::{Length, Meter};
 
     #[test]
     fn test_to_meters() {
@@ -98,5 +98,4 @@ mod tests {
         assert_eq!(Meter(4.0) / Meter(2.), 2.0);
         assert!(Meter(1.) < Meter(1.1));
     }
-
 }

@@ -154,11 +154,8 @@ struct Identity {
 }
 
 impl Identity {
-
     pub fn new(in_dim: usize, out_dim: usize) -> Self {
-        Self {
-            in_dim, out_dim
-        }
+        Self { in_dim, out_dim }
     }
 
     fn copy(from: &[f64], to: &mut [f64]) {
@@ -276,14 +273,18 @@ mod tests {
         assert_eq!(&output3, &[1., 2., 0.]);
 
         let mut output2 = [0.; 2];
-        identity(2, 3).apply_bwd(&[1., 2., 3.], &mut output2).unwrap();
+        identity(2, 3)
+            .apply_bwd(&[1., 2., 3.], &mut output2)
+            .unwrap();
         assert_eq!(&output2, &[1., 2.]);
     }
 
     #[test]
     fn identity_3_2() {
         let mut output2 = [0.; 2];
-        identity(3, 2).apply_fwd(&[1., 2., 3.], &mut output2).unwrap();
+        identity(3, 2)
+            .apply_fwd(&[1., 2., 3.], &mut output2)
+            .unwrap();
         assert_eq!(&output2, &[1., 2.]);
 
         let mut output3 = [4., 4., 4.];

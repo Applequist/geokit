@@ -248,7 +248,7 @@ impl TransverseMercator {
         } else {
             let q0 = Self::q(e, lat0);
             let beta0 = Self::beta(q0);
-            let xi_o0 = beta0.sin().asin();
+            let xi_o0 = beta0; // From note: simplified beta0.sin().asin() to beta0;
             let xi_os = [
                 xi_o0,
                 h[0] * (2.0 * xi_o0).sin(),
@@ -411,7 +411,7 @@ mod tests {
     use num::traits::real::Real;
     use num::Float;
 
-    use crate::{geodesy::ellipsoid, operation::Operation};
+    use crate::{dms, geodesy::ellipsoid, operation::Operation};
 
     use super::eval_polynom;
     use super::Mercator;
@@ -494,8 +494,8 @@ mod tests {
         // From EPSG Guidance Note 7 part 2
         let proj = TransverseMercator::new(
             &ellipsoid::consts::AIRY,
-            -2.0_f64.to_radians(),
-            49.0_f64.to_radians(),
+            -2.0_f64.to_radians(), // 2 W
+            49.0_f64.to_radians(), // 49 N
             0.9996012717,
             400_000.0,
             -100_000.0,

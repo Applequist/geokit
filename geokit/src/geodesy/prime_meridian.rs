@@ -1,7 +1,6 @@
-use std::f64::consts::PI;
-use smol_str::SmolStr;
 use crate::cs::geodetic::Lon;
 use crate::units::angle::Angle;
+use smol_str::SmolStr;
 
 /// A `PrimeMeridian` defines the origin of longitudes.
 /// It is defined by its longitude with respect to the Greenwich meridian,
@@ -87,10 +86,10 @@ pub mod consts {
 
 #[cfg(test)]
 mod tests {
-    use std::f64::consts::PI;
-    use crate::cs::geodetic::Lon;
-    use crate::units::angle::{DEG, Degree, RAD, Radian};
     use super::PrimeMeridian;
+    use crate::cs::geodetic::Lon;
+    use crate::units::angle::{DEG, RAD};
+    use std::f64::consts::PI;
 
     #[test]
     fn longitude_eq_mpi() {

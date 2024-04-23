@@ -1,12 +1,11 @@
 //! This module defines some types used to express angles in various units.
 use std::f64::consts;
-use std::ops::{Add, Sub, Mul, Div};
 use std::fmt::{Display, Formatter};
+use std::ops::{Add, Div, Mul, Sub};
 
 /// Trait implemented by types whose values measuring some angle
 /// can be converted to radians.
 pub trait Angle {
-
     /// Convert this angle value into a raw angle value expressed in radians.
     fn to_radians(&self) -> f64;
 }
@@ -76,10 +75,20 @@ angle_unit!(Degree, DEG, "deg", consts::PI / 180.0);
 angle_unit!(Gradian, GRAD, "grad", consts::PI / 200.0);
 angle_unit!(Arcsec, SEC, "sec", consts::PI / 648_000.0);
 
+#[macro_export]
+macro_rules! dms {
+    ($d:expr, $m:expr, $s:expr) => {
+        Degree(($d as f64) + ($m as f64) / 60.0 + ($s as f64) / 3600.0)
+    };
+    ($d:expr, $m:expr) => {
+        Degree(($d as f64) + ($m as f64) / 60.0)
+    };
+}
+
 #[cfg(test)]
 mod tests {
-    use std::f64::consts;
     use crate::units::angle::{Angle, Degree, Radian};
+    use std::f64::consts;
 
     #[test]
     fn test_to_radians() {

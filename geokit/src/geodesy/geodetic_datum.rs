@@ -188,8 +188,8 @@ pub mod consts {
 
 #[cfg(test)]
 mod tests {
-    use crate::cs::geodetic::Lon;
     use super::GeodeticDatum;
+    use crate::cs::geodetic::Lon;
     use crate::geodesy::{ellipsoid, geodetic_datum, prime_meridian, Ellipsoid, PrimeMeridian};
     use crate::units::angle::Degree;
     use crate::units::length::Meter;

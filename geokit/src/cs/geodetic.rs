@@ -1,7 +1,7 @@
+use crate::units::angle::{Angle, Radian};
 use std::f64::consts::PI;
 use std::fmt::{Display, Formatter};
 use std::ops::{Add, Sub};
-use crate::units::angle::{Angle, Radian};
 
 /// A longitude value in [-pi..pi] radians.
 #[derive(Copy, Clone, Debug, PartialOrd, PartialEq)]
@@ -38,7 +38,6 @@ impl Lon {
         }
         na
     }
-
 }
 
 impl Angle for Lon {
@@ -47,7 +46,10 @@ impl Angle for Lon {
     }
 }
 
-impl<U> Add<U> for Lon where U: Angle {
+impl<U> Add<U> for Lon
+where
+    U: Angle,
+{
     type Output = Self;
 
     fn add(self, rhs: U) -> Self::Output {
@@ -56,7 +58,10 @@ impl<U> Add<U> for Lon where U: Angle {
     }
 }
 
-impl<U> Sub<U> for Lon where U: Angle {
+impl<U> Sub<U> for Lon
+where
+    U: Angle,
+{
     type Output = Self;
 
     fn sub(self, rhs: U) -> Self::Output {
@@ -73,15 +78,18 @@ impl Display for Lon {
 
 #[cfg(test)]
 mod tests {
+    use crate::cs::geodetic::Lon;
+    use crate::units::angle::{Angle, Degree, Radian, DEG, RAD};
     use std::f64::consts;
     use std::f64::consts::PI;
-    use crate::cs::geodetic::Lon;
-    use crate::units::angle::{Angle, DEG, Degree, RAD, Radian};
 
     #[test]
     fn test_wrapping() {
         assert_eq!(Lon::new(Radian(2.0 * consts::PI)).to_radians(), 0.0);
-        assert_eq!(Lon::new(185.0 * DEG).to_radians(), Degree(-175.0).to_radians());
+        assert_eq!(
+            Lon::new(185.0 * DEG).to_radians(),
+            Degree(-175.0).to_radians()
+        );
     }
 
     #[test]

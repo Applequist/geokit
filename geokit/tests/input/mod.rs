@@ -1,5 +1,5 @@
-use regex::Regex;
 use core::f64;
+use regex::Regex;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 
