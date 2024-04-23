@@ -1,4 +1,4 @@
-use crate::units::angle::{Angle, Radian};
+use crate::units::angle::{Angle, Radians};
 use std::f64::consts::PI;
 use std::fmt::{Display, Formatter};
 use std::ops::{Add, Sub};
@@ -11,7 +11,7 @@ impl Lon {
     /// Create a new longitude value with a given angle.
     /// The angle is wrapped into [-pi..pi]
     pub fn new<U: Angle>(val: U) -> Self {
-        Self(Self::rem_two_pi(val.to_radians()))
+        Self(Self::rem_two_pi(val.to_radians().0))
     }
 
     /// Normalize the longitude into (-pi..pi]
@@ -38,11 +38,16 @@ impl Lon {
         }
         na
     }
+
+    pub fn rad(self) -> f64 {
+        self.0
+    }
 }
 
 impl Angle for Lon {
-    fn to_radians(&self) -> f64 {
-        self.0
+
+    fn to_radians(self) -> Radians {
+        Radians(self.0)
     }
 }
 
@@ -54,7 +59,7 @@ where
 
     fn add(self, rhs: U) -> Self::Output {
         // Watch out for infinite recursion with self + rhs
-        Self::new(Radian(self.0 + rhs.to_radians()))
+        Self::new(Radians(self.0) + rhs.to_radians())
     }
 }
 
@@ -66,7 +71,7 @@ where
 
     fn sub(self, rhs: U) -> Self::Output {
         // Watch out for infinite recursion with self - rhs
-        Self::new(Radian(self.0 - rhs.to_radians()))
+        Self::new(Radians(self.0) - rhs.to_radians())
     }
 }
 
@@ -79,17 +84,14 @@ impl Display for Lon {
 #[cfg(test)]
 mod tests {
     use crate::cs::geodetic::Lon;
-    use crate::units::angle::{Angle, Degree, Radian, DEG, RAD};
+    use crate::units::angle::{Degrees, Radians, DEG, RAD};
     use std::f64::consts;
     use std::f64::consts::PI;
 
     #[test]
     fn test_wrapping() {
-        assert_eq!(Lon::new(Radian(2.0 * consts::PI)).to_radians(), 0.0);
-        assert_eq!(
-            Lon::new(185.0 * DEG).to_radians(),
-            Degree(-175.0).to_radians()
-        );
+        assert_eq!(Lon::new(Radians(2.0 * consts::PI)), Lon::new(Radians(0.0)));
+        assert_eq!(Lon::new(185.0 * DEG), Lon::new(Degrees(-175.0)));
     }
 
     #[test]

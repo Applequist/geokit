@@ -30,7 +30,7 @@ pub trait Operation: DynClone {
     /// Perform the forward operation on the given input.
     fn apply_fwd(&self, input: &[f64], output: &mut [f64]) -> Result<()>;
 
-    /// Perform the backward, eg inverse, operation on the given input.
+    /// Perform the backward, e.g. inverse, operation on the given input.
     fn apply_bwd(&self, _input: &[f64], _output: &mut [f64]) -> Result<()> {
         Err(OperationError::NotInvertible)
     }
@@ -199,7 +199,7 @@ pub fn identity(in_dim: usize, out_dim: usize) -> impl Operation {
     Identity::new(in_dim, out_dim)
 }
 
-/// A [DynOperation] wrapper that selects the backward, eg inverse, operation.
+/// A [DynOperation] wrapper that selects the backward, ie inverse, operation.
 #[derive(Debug, Clone)]
 pub struct Inv<T>(pub T);
 

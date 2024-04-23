@@ -5,7 +5,7 @@ use crate::{
     operation::{self, Operation},
 };
 
-// Polynoms for Mercator backward projection.
+// Polynomials for Mercator backward projection.
 lazy_static! {
     static ref P2: Vec<f64> = vec![0.0, 0.5, 5.0 / 24.0, 1.0 / 12.0, 13.0 / 360.0];
     static ref P4: Vec<f64> = vec![0.0, 0.0, 7.0 / 48.0, 29.0 / 240.0, 811.0 / 11520.0];
@@ -15,7 +15,7 @@ lazy_static! {
 
 /// The [Mercator] map projection.
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub struct Mercator {
+pub(crate) struct Mercator {
     a: f64,
     e: f64,
     e2: f64,
@@ -32,7 +32,7 @@ impl Mercator {
     /// defined. False grid coordinates are applied at the *natural origin* of the projection, the
     /// intersection of the equator and the *longitude of origin* `lon0`.
     /// Know as **EPSG:9804**.
-    pub fn new_1_sp(
+    pub(crate) fn new_1_sp(
         ellipsoid: &Ellipsoid,
         lon0: f64,
         k0: f64,
@@ -56,7 +56,7 @@ impl Mercator {
     /// coordinates are applied at the *natural origin* of the projection, the intersection of the
     /// equator and the *longitude of origin* `lon0`.
     /// Known as EPSG:9805
-    pub fn new_2_sp(
+    pub(crate) fn new_2_sp(
         ellipsoid: &Ellipsoid,
         lon0: f64,
         lat0: f64,
@@ -128,7 +128,7 @@ impl Operation for Mercator {
 /// The [TransverseMercator] projection.
 /// Known as EPSG:9807.
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub struct TransverseMercator {
+pub(crate) struct TransverseMercator {
     e: f64,
     lon0: f64,
     k0: f64,
@@ -164,7 +164,7 @@ impl TransverseMercator {
         lon0_deg.to_radians()
     }
 
-    pub fn new_utm_north(ellipsoid: &Ellipsoid, zone: u8) -> Self {
+    pub(crate) fn new_utm_north(ellipsoid: &Ellipsoid, zone: u8) -> Self {
         Self::new(
             ellipsoid,
             Self::utm_lon0(zone),
@@ -175,7 +175,7 @@ impl TransverseMercator {
         )
     }
 
-    pub fn new_utm_south(ellipsoid: &Ellipsoid, zone: u8) -> Self {
+    pub(crate) fn new_utm_south(ellipsoid: &Ellipsoid, zone: u8) -> Self {
         Self::new(
             ellipsoid,
             Self::utm_lon0(zone),
@@ -186,7 +186,7 @@ impl TransverseMercator {
         )
     }
 
-    pub fn new(
+    pub(crate) fn new(
         ellipsoid: &Ellipsoid,
         lon0: f64,
         lat0: f64,
@@ -361,7 +361,7 @@ pub struct WebMercator {
 
 impl WebMercator {
     /// Creates a new [WebMercator] projection instance.
-    pub fn new(
+    pub(crate) fn new(
         ellipsoid: &Ellipsoid,
         lon0: f64,
         lat0: f64,
@@ -406,12 +406,8 @@ impl Operation for WebMercator {
 #[cfg(test)]
 mod tests {
     use approx::assert_abs_diff_eq;
-    use approx::assert_abs_diff_ne;
-    use num::traits::float::FloatCore;
-    use num::traits::real::Real;
-    use num::Float;
 
-    use crate::{dms, geodesy::ellipsoid, operation::Operation};
+    use crate::{geodesy::ellipsoid, operation::Operation};
 
     use super::eval_polynom;
     use super::Mercator;

@@ -9,7 +9,7 @@ use crate::operation::{self, Operation};
 ///
 /// This epsg:1031.
 #[derive(Debug, Clone, Copy)]
-pub struct GeocentricTranslation {
+pub(crate) struct GeocentricTranslation {
     t: Vector3<f64>,
 }
 
@@ -21,7 +21,7 @@ impl GeocentricTranslation {
     /// - tx :the X coordinates of the origin of source CRS in the target CRS
     /// - ty: the Y coordinates of the origin of source CRS in the target CRS
     /// - tz: the Z coordinates of the origin of source CRS in the target CRS
-    pub fn new(tx: f64, ty: f64, tz: f64) -> Self {
+    pub(crate) fn new(tx: f64, ty: f64, tz: f64) -> Self {
         GeocentricTranslation {
             t: Vector3::new(tx, ty, tz),
         }
@@ -70,20 +70,20 @@ pub enum RotationConvention {
 /// This is epsg:1033 (with PositionVector convention) or
 /// epsg:1032 (with the CoordinateFrame convention).
 #[derive(Debug, Clone, Copy)]
-pub struct Helmert7Params {
+pub(crate) struct Helmert7Params {
     rot: Matrix3<f64>,
     inv_rot: Matrix3<f64>,
     t: Vector3<f64>,
-    ds_ppm: f64,
+    ppm: f64,
 }
 
 impl Helmert7Params {
     /// Create a new [Helmert7Params] transformation.
-    pub fn new(
+    pub(crate) fn new(
         conv: RotationConvention,
         rotation: [f64; 3],
         translation: [f64; 3],
-        ds_ppm: f64,
+        ppm: f64,
     ) -> Self {
         let [rx, ry, rz] = rotation;
         let [tx, ty, tz] = translation;
@@ -100,7 +100,7 @@ impl Helmert7Params {
             rot: Matrix3::identity() + rot,
             inv_rot: Matrix3::identity() - rot,
             t,
-            ds_ppm,
+            ppm,
         }
     }
 }
@@ -116,14 +116,14 @@ impl Operation for Helmert7Params {
 
     fn apply_fwd(&self, input: &[f64], output: &mut [f64]) -> operation::Result<()> {
         let s = Vector3::new(input[0], input[1], input[2]);
-        let x = self.rot * (1.0 + self.ds_ppm * 1e-6) * s + self.t;
+        let x = self.rot * (1.0 + self.ppm * 1e-6) * s + self.t;
         output.copy_from_slice(x.as_ref());
         Ok(())
     }
 
     fn apply_bwd(&self, input: &[f64], output: &mut [f64]) -> operation::Result<()> {
         let t = Vector3::new(input[0], input[1], input[2]);
-        let s = self.inv_rot * (1.0 - self.ds_ppm * 1e-6) * t - self.t;
+        let s = self.inv_rot * (1.0 - self.ppm * 1e-6) * t - self.t;
         output.copy_from_slice(s.as_ref());
         Ok(())
     }

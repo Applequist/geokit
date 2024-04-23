@@ -8,6 +8,9 @@ use crate::operation::{
     transformation::{GeocentricTranslation, Helmert7Params, RotationConvention},
     Operation,
 };
+use crate::units::angle::Radians;
+use crate::units::length::Meters;
+use crate::units::scale::PPM;
 
 /// Coordinates can be transformed between different datum.
 /// A [`DatumTransformation`] specifies how to transform normalized geocentric coordinates from
@@ -16,15 +19,15 @@ use crate::operation::{
 pub enum DatumTransformation {
     /// A simple translation of source normalized geocentric coordinates by adding an offset **in
     /// meters**.
-    GeocentricTranslation { tx: f64, ty: f64, tz: f64 },
+    GeocentricTranslation { tx: Meters, ty: Meters, tz: Meters },
     /// The Helmert 7-parameters transformation transforms normalized geocentric coordinates using
     /// small rotations around x, y and z axes, a translation and a small scaling in ppm.
     /// Rotations angle are in radians, translation along axes are in meters and scale is in ppm.
     Helmert7Params {
         conv: RotationConvention,
-        rotation: [f64; 3],
-        translation: [f64; 3],
-        scale: f64,
+        rotation: [Radians; 3],
+        translation: [Meters; 3],
+        scale: PPM,
     },
 }
 
@@ -33,14 +36,14 @@ impl DatumTransformation {
     pub fn transformation(&self) -> Box<dyn Operation> {
         match *self {
             DatumTransformation::GeocentricTranslation { tx, ty, tz } => {
-                GeocentricTranslation::new(tx, ty, tz).boxed()
+                GeocentricTranslation::new(tx.m(), ty.m(), tz.m()).boxed()
             }
             DatumTransformation::Helmert7Params {
                 conv,
                 rotation,
                 translation,
                 scale,
-            } => Helmert7Params::new(conv, rotation, translation, scale).boxed(),
+            } => Helmert7Params::new(conv, rotation.map(Radians::rad), translation.map(Meters::m), scale.0).boxed(),
         }
     }
 }
@@ -96,12 +99,12 @@ impl GeodeticDatum {
         self.id.as_str()
     }
 
-    /// Return a copy of this datum's ellipsoid.
+    /// Return a reference to this datum's ellipsoid.
     pub fn ellipsoid(&self) -> &Ellipsoid {
         &self.ellipsoid
     }
 
-    /// Return a copy of this datum's prime meridian.
+    /// Return a reference to this datum's prime meridian.
     pub fn prime_meridian(&self) -> &PrimeMeridian {
         &self.prime_meridian
     }
@@ -138,6 +141,9 @@ pub mod consts {
         geodesy::{ellipsoid, prime_meridian},
         operation::transformation::RotationConvention,
     };
+    use crate::units::angle::{Radians };
+    use crate::units::length::{Meters};
+    use crate::units::scale::PPM;
 
     use super::{DatumTransformation, GeodeticDatum};
 
@@ -155,9 +161,9 @@ pub mod consts {
         Some((
             "WGS84",
             DatumTransformation::GeocentricTranslation {
-                tx: -199.87,
-                ty: 74.79,
-                tz: 246.64,
+                tx: Meters(-199.87),
+                ty: Meters(74.79),
+                tz: Meters(246.64),
             },
         )),
     );
@@ -177,10 +183,9 @@ pub mod consts {
             "WGS84",
             DatumTransformation::Helmert7Params {
                 conv: RotationConvention::CoordinateFrame,
-                // TODO: Convert arcsec to radians
-                rotation: [-0.33657, 0.456955, -1.84218],
-                translation: [106.869, -52.2978, 103.724],
-                scale: 0.,
+                rotation: [Radians(-1.63172286E-6), Radians(2.21538036E-6), Radians(-8.9311407E-6)],
+                translation: [Meters(106.869), Meters(-52.2978), Meters(103.724)],
+                scale: PPM(0.),
             },
         )),
     );
@@ -191,15 +196,15 @@ mod tests {
     use super::GeodeticDatum;
     use crate::cs::geodetic::Lon;
     use crate::geodesy::{ellipsoid, geodetic_datum, prime_meridian, Ellipsoid, PrimeMeridian};
-    use crate::units::angle::Degree;
-    use crate::units::length::Meter;
+    use crate::units::angle::Degrees;
+    use crate::units::length::Meters;
 
     #[test]
     fn clone() {
         let d = GeodeticDatum::new(
             "WGS 84",
-            Ellipsoid::from_ainvf("WGS84", Meter(6_378_137.0), 298.257_223_563),
-            PrimeMeridian::new("Greenwich", Lon::new(Degree(0.0))),
+            Ellipsoid::from_ainvf("WGS84", Meters(6_378_137.0), 298.257_223_563),
+            PrimeMeridian::new("Greenwich", Lon::new(Degrees(0.0))),
             None,
         );
         let cpy = d.clone();

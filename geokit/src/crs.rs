@@ -10,6 +10,8 @@ use crate::{
         Inv, Operation,
     },
 };
+use crate::cs::geodetic::Lon;
+use crate::units::length::Meters;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Crs {
@@ -18,7 +20,7 @@ pub enum Crs {
     /// - X: axis from the center of the datum's ellipsoid in the equatorial and prime meridian plane,
     /// - Y: axis from the center of the datum's ellipsoid in the equatorial plane and 90 degrees
     /// meridian plane (east)
-    /// - Z: axis from the center of the datum's ellipsoid through the north pole.
+    /// - Z: axis from the center of the datum's ellipsoid through the North Pole.
     Geocentric {
         id: SmolStr,
         datum: GeodeticDatum,
@@ -160,7 +162,7 @@ pub enum GeocentricAxes {
 /// A [`GeodeticAxes`] value defines the *coordinates system* part of a [`GeodeticCrs`], that is:
 /// - the ordering and direction of the axes,
 /// - the angle unit used for longitude and latitude as a 'radian_per_unit' conversion factor,
-/// - the length unit used for the ellipsoidal height as a 'meter_per_unit' conversion factor,.
+/// - the length unit used for the ellipsoidal height as a 'meter_per_unit' conversion factor.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum GeodeticAxes {
     /// Coordinates are given in the following order:
@@ -197,7 +199,7 @@ pub enum GeodeticAxes {
 }
 
 impl GeodeticAxes {
-    /// Return the dimension (2D or 3D) of the coordinates system.
+    /// Return the dimension (2D or 3D) of the coordinate system.
     pub fn dim(&self) -> usize {
         match self {
             GeodeticAxes::EastNorthUp {
@@ -246,16 +248,16 @@ impl ProjectedAxes {
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum ProjectionSpec {
     Mercator1SP {
-        lon0: f64,
+        lon0: Lon,
         k0: f64,
-        false_easting: f64,
-        false_northing: f64,
+        false_easting: Meters,
+        false_northing: Meters,
     },
     Mercator2SP {
-        lon0: f64,
+        lon0: Lon,
         lat0: f64,
-        false_easting: f64,
-        false_northing: f64,
+        false_easting: Meters,
+        false_northing: Meters,
     },
     UTMNorth {
         zone: u8,
@@ -264,17 +266,17 @@ pub enum ProjectionSpec {
         zone: u8,
     },
     TransverseMercator {
-        lon0: f64,
+        lon0: Lon,
         lat0: f64,
         k0: f64,
-        false_easting: f64,
-        false_northing: f64,
+        false_easting: Meters,
+        false_northing: Meters,
     },
     WebMercator {
-        lon0: f64,
+        lon0: Lon,
         lat0: f64,
-        false_easting: f64,
-        false_northing: f64,
+        false_easting: Meters,
+        false_northing: Meters,
     },
 }
 
@@ -286,13 +288,13 @@ impl ProjectionSpec {
                 k0,
                 false_easting,
                 false_northing,
-            } => Mercator::new_1_sp(ellipsoid, lon0, k0, false_easting, false_northing).boxed(),
+            } => Mercator::new_1_sp(ellipsoid, lon0.rad(), k0, false_easting.m(), false_northing.m()).boxed(),
             Self::Mercator2SP {
                 lon0,
                 lat0,
                 false_easting,
                 false_northing,
-            } => Mercator::new_2_sp(ellipsoid, lon0, lat0, false_easting, false_northing).boxed(),
+            } => Mercator::new_2_sp(ellipsoid, lon0.rad(), lat0, false_easting.m(), false_northing.m()).boxed(),
             Self::UTMNorth { zone } => TransverseMercator::new_utm_north(ellipsoid, zone).boxed(),
             Self::UTMSouth { zone } => TransverseMercator::new_utm_south(ellipsoid, zone).boxed(),
             Self::TransverseMercator {
@@ -301,14 +303,14 @@ impl ProjectionSpec {
                 k0,
                 false_easting,
                 false_northing,
-            } => TransverseMercator::new(ellipsoid, lon0, lat0, k0, false_easting, false_northing)
+            } => TransverseMercator::new(ellipsoid, lon0.rad(), lat0, k0, false_easting.m(), false_northing.m())
                 .boxed(),
             Self::WebMercator {
                 lon0,
                 lat0,
                 false_easting,
                 false_northing,
-            } => WebMercator::new(ellipsoid, lon0, lat0, false_easting, false_northing).boxed(),
+            } => WebMercator::new(ellipsoid, lon0.rad(), lat0, false_easting.m(), false_northing.m()).boxed(),
         }
     }
 }

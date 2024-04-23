@@ -1,11 +1,12 @@
-use geokit::units::angle::{Angle, DEG};
-use geokit::units::length::{Length, M};
+use geokit::units::angle::{DEG, Degrees};
+use geokit::units::length::{M, Meters};
 use geokit::{
     crs::{Crs::Geographic, Crs::Projected, GeodeticAxes, ProjectedAxes, ProjectionSpec},
     geodesy::{ellipsoid, prime_meridian, GeodeticDatum},
     operation::Operation,
     providers::{DefaultTransformationProvider, TransformationProvider},
 };
+use geokit::cs::geodetic::Lon;
 
 fn main() {
     let src = Geographic {
@@ -17,8 +18,8 @@ fn main() {
             None,
         ),
         axes: GeodeticAxes::EastNorthUp {
-            angle_unit: DEG.to_radians(), // degrees
-            height_unit: M.to_meters(),   // metres
+            angle_unit: Degrees::unit(),
+            height_unit: Meters::unit(),
         },
     };
     println!("Source CRS: {:#?}", src);
@@ -32,14 +33,14 @@ fn main() {
             None,
         ),
         axes: ProjectedAxes::EastNorth {
-            horiz_unit: M.to_meters(),
+            horiz_unit: Meters::unit()
         },
         projection: ProjectionSpec::TransverseMercator {
-            lon0: 0.0,
+            lon0: Lon::new(0.0 * DEG),
             lat0: 0.0,
             k0: 0.9996,
-            false_easting: 500_000.0,
-            false_northing: 0.0,
+            false_easting: 500_000.0 * M,
+            false_northing: 0.0 * M,
         },
     };
     println!("Destination CRS: {:#?}", dst);

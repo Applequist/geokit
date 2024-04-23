@@ -1,5 +1,4 @@
 use crate::cs::geodetic::Lon;
-use crate::units::angle::Angle;
 use smol_str::SmolStr;
 
 /// A `PrimeMeridian` defines the origin of longitudes.
@@ -8,7 +7,7 @@ use smol_str::SmolStr;
 #[derive(Debug, Clone)]
 pub struct PrimeMeridian {
     name: SmolStr,
-    gw_lon_rad: f64,
+    lon: f64,
 }
 
 impl PrimeMeridian {
@@ -17,7 +16,7 @@ impl PrimeMeridian {
     pub fn new(name: &str, gw_lon: Lon) -> Self {
         Self {
             name: SmolStr::new(name),
-            gw_lon_rad: gw_lon.normalize().to_radians(),
+            lon: gw_lon.normalize().rad(),
         }
     }
 
@@ -27,7 +26,7 @@ impl PrimeMeridian {
     pub(crate) const fn new_static(name: &'static str, gw_lon_rad: f64) -> Self {
         Self {
             name: SmolStr::new_static(name),
-            gw_lon_rad,
+            lon: gw_lon_rad,
         }
     }
 
@@ -39,13 +38,13 @@ impl PrimeMeridian {
     /// prime meridian**.
     #[inline]
     pub fn lon(&self) -> f64 {
-        self.gw_lon_rad
+        self.lon
     }
 }
 
 impl PartialEq for PrimeMeridian {
     fn eq(&self, other: &Self) -> bool {
-        self.gw_lon_rad == other.gw_lon_rad
+        self.lon == other.lon
     }
 }
 
@@ -102,7 +101,7 @@ mod tests {
         let pm = PrimeMeridian::new("Paris", Lon::new(2.23 * DEG));
         let cpy = pm.clone();
         assert_eq!(pm, cpy);
-        let _s = cpy.gw_lon_rad;
+        let _s = cpy.lon;
     }
 
     #[test]

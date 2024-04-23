@@ -1,6 +1,6 @@
 use approx::assert_abs_diff_eq;
-use geokit::units::angle::{Angle, DEG};
-use geokit::units::length::{Length, M};
+use geokit::units::angle::{DEG};
+use geokit::units::length::{M};
 use geokit::{
     crs::{Crs::Geographic, Crs::Projected, GeodeticAxes, ProjectedAxes, ProjectionSpec},
     geodesy::{ellipsoid, prime_meridian, GeodeticDatum},
@@ -8,6 +8,7 @@ use geokit::{
     providers::{DefaultTransformationProvider, TransformationProvider},
 };
 use std::default::Default;
+use geokit::cs::geodetic::Lon;
 
 fn dist(a: &[f64], b: &[f64]) -> f64 {
     assert_eq!(a.len(), 3);
@@ -49,8 +50,8 @@ fn llh_to_utm0() -> operation::Result<()> {
             None,
         ),
         axes: GeodeticAxes::EastNorthUp {
-            angle_unit: DEG.to_radians(), // degrees
-            height_unit: M.to_meters(),   // metres
+            angle_unit: DEG.rad(), // degrees
+            height_unit: M.m(),   // metres
         },
     };
     println!("Source CRS: {:#?}", src);
@@ -64,14 +65,14 @@ fn llh_to_utm0() -> operation::Result<()> {
             None,
         ),
         axes: ProjectedAxes::EastNorth {
-            horiz_unit: M.to_meters(),
+            horiz_unit: M.m(),
         },
         projection: ProjectionSpec::TransverseMercator {
-            lon0: 0.0,
+            lon0: Lon::new(0.0 * DEG),
             lat0: 0.0,
             k0: 0.9996,
-            false_easting: 500_000.0,
-            false_northing: 0.0,
+            false_easting: 500_000.0 * M,
+            false_northing: 0.0 * M,
         },
     };
 

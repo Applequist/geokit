@@ -1,6 +1,6 @@
 use std::fmt::{Debug, Display};
 
-use crate::units::length::Length;
+use crate::units::length::{Length};
 use smol_str::SmolStr;
 
 /// An `Ellipsoid` is a mathematical surface defined by rotating an ellipse around
@@ -29,18 +29,18 @@ impl Ellipsoid {
         semi_major_axis: U,
         semi_minor_axis: U,
     ) -> Self {
-        let a = semi_major_axis.to_meters();
-        let b = semi_minor_axis.to_meters();
+        let a = semi_major_axis.to_meters().0;
+        let b = semi_minor_axis.to_meters().0;
         assert!(
             b > 0.,
-            "Expected semi_minor_axis ({}) > 0.",
-            semi_minor_axis
+            "Expected semi_minor_axis ({} m) > 0 m",
+            b
         );
         assert!(
             a >= b,
-            "Expected semi_major_axis ({}) >= semi_minor_axis ({}).",
-            semi_major_axis,
-            semi_minor_axis
+            "Expected semi_major_axis ({} m) >= semi_minor_axis ({} m).",
+            a,
+            b
         );
         Self {
             name: SmolStr::new(name),
@@ -56,11 +56,11 @@ impl Ellipsoid {
     ///
     /// if `semi_major_axis` is negative or zero or if `invf` is not greater than 1.
     pub fn from_ainvf<U: Length + Display>(name: &str, semi_major_axis: U, invf: f64) -> Self {
-        let a = semi_major_axis.to_meters();
+        let a = semi_major_axis.to_meters().0;
         assert!(
             a > 0.,
-            "Expected semi_major_axis ({}) > 0.",
-            semi_major_axis
+            "Expected semi_major_axis ({} m) > 0.",
+            a
         );
         assert!(invf > 1., "Expected invf ({}) > 1.", invf);
         Self {
