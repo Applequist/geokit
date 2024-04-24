@@ -1,9 +1,9 @@
 use geokit::crs::{Crs, GeocentricAxes, GeodeticAxes, ProjectedAxes, ProjectionSpec};
 use geokit::cs::geodetic::Lon;
-use geokit::geodesy::{Ellipsoid, ellipsoid, GeodeticDatum, prime_meridian, PrimeMeridian};
 use geokit::geodesy::geodetic_datum::DatumTransformation;
-use geokit::units::angle::{DEG, Degrees};
-use geokit::units::length::{M, Meters};
+use geokit::geodesy::{ellipsoid, prime_meridian, Ellipsoid, GeodeticDatum, PrimeMeridian};
+use geokit::units::angle::{Degrees, DEG};
+use geokit::units::length::{Meters, M};
 
 fn main() {
     let geoc = Crs::Geocentric {
@@ -12,9 +12,9 @@ fn main() {
             "WGS84",
             Ellipsoid::from_ainvf("WGS84", 6_378_137.0 * M, 298.257223563),
             PrimeMeridian::new("Greenwich", Lon::new(0.0 * DEG)),
-            None
+            None,
         ),
-        axes: GeocentricAxes::XYZ
+        axes: GeocentricAxes::XYZ,
     };
 
     println!("CRS: {:#?}", geoc);
@@ -37,7 +37,7 @@ fn main() {
         axes: GeodeticAxes::EastNorthUp {
             angle_unit: Degrees::unit(),
             height_unit: Meters::unit(),
-        }
+        },
     };
     println!("CRS: {:#?}", geog);
 
@@ -50,7 +50,7 @@ fn main() {
             None,
         ),
         axes: ProjectedAxes::EastNorth {
-            horiz_unit: Meters::unit()
+            horiz_unit: Meters::unit(),
         },
         projection: ProjectionSpec::TransverseMercator {
             lon0: Lon::new(0.0 * DEG),

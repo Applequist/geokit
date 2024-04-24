@@ -43,7 +43,13 @@ impl DatumTransformation {
                 rotation,
                 translation,
                 scale,
-            } => Helmert7Params::new(conv, rotation.map(Radians::rad), translation.map(Meters::m), scale.0).boxed(),
+            } => Helmert7Params::new(
+                conv,
+                rotation.map(Radians::rad),
+                translation.map(Meters::m),
+                scale.0,
+            )
+            .boxed(),
         }
     }
 }
@@ -137,13 +143,13 @@ impl PartialEq for GeodeticDatum {
 
 pub mod consts {
 
+    use crate::units::angle::Radians;
+    use crate::units::length::Meters;
+    use crate::units::scale::PPM;
     use crate::{
         geodesy::{ellipsoid, prime_meridian},
         operation::transformation::RotationConvention,
     };
-    use crate::units::angle::{Radians };
-    use crate::units::length::{Meters};
-    use crate::units::scale::PPM;
 
     use super::{DatumTransformation, GeodeticDatum};
 
@@ -183,7 +189,11 @@ pub mod consts {
             "WGS84",
             DatumTransformation::Helmert7Params {
                 conv: RotationConvention::CoordinateFrame,
-                rotation: [Radians(-1.63172286E-6), Radians(2.21538036E-6), Radians(-8.9311407E-6)],
+                rotation: [
+                    Radians(-1.63172286E-6),
+                    Radians(2.21538036E-6),
+                    Radians(-8.9311407E-6),
+                ],
                 translation: [Meters(106.869), Meters(-52.2978), Meters(103.724)],
                 scale: PPM(0.),
             },

@@ -23,7 +23,6 @@ macro_rules! angle_unit {
             pub fn rad(self) -> f64 {
                 self.0 * Self::RAD_PER_UNIT
             }
-
         }
 
         impl Add for $name {
@@ -84,7 +83,6 @@ angle_unit!(Arcsecs, SEC, "sec", consts::PI / 648_000.0);
 /// Trait implemented by types whose values measuring some angle
 /// can be converted to radians.
 pub trait Angle {
-
     /// Convert this angle value into a raw angle value expressed in radians.
     fn to_radians(self) -> Radians;
 }

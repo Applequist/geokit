@@ -2,7 +2,7 @@
 
 resolver = "2"
 
-members = ["geokit"]
+members = ["geokit", "geoview"]
 
 [workspace.package]
 version = "0.1.0"

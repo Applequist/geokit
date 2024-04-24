@@ -105,7 +105,7 @@ impl_length!(Meters);
 
 #[cfg(test)]
 mod tests {
-    use crate::units::length::{Meters};
+    use crate::units::length::Meters;
 
     #[test]
     fn test_to_meters() {

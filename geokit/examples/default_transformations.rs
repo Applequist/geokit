@@ -1,12 +1,12 @@
-use geokit::units::angle::{DEG, Degrees};
-use geokit::units::length::{M, Meters};
+use geokit::cs::geodetic::Lon;
+use geokit::units::angle::{Degrees, DEG};
+use geokit::units::length::{Meters, M};
 use geokit::{
     crs::{Crs::Geographic, Crs::Projected, GeodeticAxes, ProjectedAxes, ProjectionSpec},
     geodesy::{ellipsoid, prime_meridian, GeodeticDatum},
     operation::Operation,
     providers::{DefaultTransformationProvider, TransformationProvider},
 };
-use geokit::cs::geodetic::Lon;
 
 fn main() {
     let src = Geographic {
@@ -33,7 +33,7 @@ fn main() {
             None,
         ),
         axes: ProjectedAxes::EastNorth {
-            horiz_unit: Meters::unit()
+            horiz_unit: Meters::unit(),
         },
         projection: ProjectionSpec::TransverseMercator {
             lon0: Lon::new(0.0 * DEG),

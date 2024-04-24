@@ -5,6 +5,7 @@
       <sourceFolder url="file://$MODULE_DIR$/geokit/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/geokit/tests" isTestSource="true" />
       <sourceFolder url="file://$MODULE_DIR$/geokit/examples" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/geoview/src" isTestSource="false" />
       <excludeFolder url="file://$MODULE_DIR$/target" />
     </content>
     <orderEntry type="inheritedJdk" />

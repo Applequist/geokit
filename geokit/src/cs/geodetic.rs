@@ -45,7 +45,6 @@ impl Lon {
 }
 
 impl Angle for Lon {
-
     fn to_radians(self) -> Radians {
         Radians(self.0)
     }
