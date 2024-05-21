@@ -2,6 +2,13 @@
 use std::fmt::{Display, Formatter};
 use std::ops::{Add, Div, Mul, Sub};
 
+/// A trait implemented by types whose values are measuring some length
+/// and can be converted to the same length expressed in [Meters](meters).
+pub trait Length {
+    /// Convert this length into [Meters].
+    fn to_meters(self) -> Meters;
+}
+
 macro_rules! length_unit {
     ( $name:ident, $unit:ident, $abbr:literal, $to_meters:expr) => {
         /// A length expressed in `$abbr`($name).
@@ -22,6 +29,13 @@ macro_rules! length_unit {
             #[inline]
             pub fn m(self) -> f64 {
                 self.0 * Self::M_PER_UNIT
+            }
+        }
+
+        impl Length for $name {
+            #[inline]
+            fn to_meters(self) -> Meters {
+                Meters(self.m())
             }
         }
 
@@ -84,26 +98,6 @@ macro_rules! length_unit {
 }
 
 length_unit!(Meters, M, "m", 1.0);
-
-/// A trait implemented by types whose values measuring some length
-/// can be converted to a *raw* value in meter.
-pub trait Length {
-    /// Convert this length into [Meters].
-    fn to_meters(self) -> Meters;
-}
-
-macro_rules! impl_length {
-    ($($name:ident),*) => {
-        $(impl Length for $name {
-            fn to_meters(self) -> Meters {
-                Meters(self.m())
-            }
-
-        })*
-    };
-}
-
-impl_length!(Meters);
 
 #[cfg(test)]
 mod tests {
