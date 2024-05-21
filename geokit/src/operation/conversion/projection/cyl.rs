@@ -4,13 +4,14 @@ use crate::{
     geodesy::Ellipsoid,
     operation::{self, Operation},
 };
+use crate::math::polynomial::Polynomial;
 
 // Polynomials for Mercator backward projection.
 lazy_static! {
-    static ref P2: Vec<f64> = vec![0.0, 0.5, 5.0 / 24.0, 1.0 / 12.0, 13.0 / 360.0];
-    static ref P4: Vec<f64> = vec![0.0, 0.0, 7.0 / 48.0, 29.0 / 240.0, 811.0 / 11520.0];
-    static ref P6: Vec<f64> = vec![0.0, 0.0, 0.0, 7.0 / 120.0, 81.0 / 1120.0];
-    static ref P8: Vec<f64> = vec![0.0, 0.0, 0.0, 0.0, 4279.0 / 161280.0];
+    static ref P2: Polynomial<5> = Polynomial::new([0.0, 0.5, 5.0 / 24.0, 1.0 / 12.0, 13.0 / 360.0]);
+    static ref P4: Polynomial<5> = Polynomial::new([0.0, 0.0, 7.0 / 48.0, 29.0 / 240.0, 811.0 / 11520.0]);
+    static ref P6: Polynomial<5> = Polynomial::new([0.0, 0.0, 0.0, 7.0 / 120.0, 81.0 / 1120.0]);
+    static ref P8: Polynomial<5> = Polynomial::new([0.0, 0.0, 0.0, 0.0, 4279.0 / 161280.0]);
 }
 
 /// The [Mercator] map projection.
@@ -77,9 +78,10 @@ impl Mercator {
     }
 }
 
-pub fn eval_polynom(coef: &[f64], x: f64) -> f64 {
-    coef.iter().rev().fold(0.0, |v, a| x * v + a)
-}
+/// Eval a polynom
+// pub fn eval_polynom(coef: &[f64], x: f64) -> f64 {
+//     coef.iter().rev().fold(0.0, |acc, coef_i| x * acc + coef_i)
+// }
 
 impl Operation for Mercator {
     fn in_dim(&self) -> usize {
@@ -115,10 +117,10 @@ impl Operation for Mercator {
 
         output[0] = self.lon0 + (input[0] - self.false_easting) / (self.a * self.k0);
         output[1] = xi
-            + eval_polynom(&P2, e2) * sin_2xi
-            + eval_polynom(&P4, e2) * sin_4xi
-            + eval_polynom(&P6, e2) * sin_6xi
-            + eval_polynom(&P8, e2) * sin_8xi;
+            + P2.eval_at(e2) * sin_2xi
+            + P4.eval_at(e2) * sin_4xi
+            + P6.eval_at(e2) * sin_6xi
+            + P8.eval_at(e2) * sin_8xi;
         output[2] = input[2];
 
         Ok(())
@@ -198,19 +200,19 @@ impl TransverseMercator {
         let f = 1.0 / ellipsoid.invf();
         let n = f / (2.0 - f);
         let upper_b =
-            ellipsoid.a() / (1.0 + n) * eval_polynom(&[1.0, 0.0, 0.25, 0.0, 1.0 / 64.0], n);
+            ellipsoid.a() / (1.0 + n) * Polynomial::new([1.0, 0.0, 0.25, 0.0, 1.0 / 64.0]).eval_at(n);
         let h = [
-            eval_polynom(&[0.0, 0.5, -2.0 / 3.0, 5.0 / 16.0, 41.0 / 180.0], n),
-            eval_polynom(&[0.0, 0.0, 13.0 / 48.0, -3.0 / 5.0, 557.0 / 1440.0], n),
-            eval_polynom(&[0.0, 0.0, 0.0, 61.0 / 240.0, -103.0 / 140.0], n),
-            eval_polynom(&[0.0, 0.0, 0.0, 0.0, 49561.0 / 161280.0], n),
+            Polynomial::new([0.0, 0.5, -2.0 / 3.0, 5.0 / 16.0, 41.0 / 180.0]).eval_at(n),
+            Polynomial::new([0.0, 0.0, 13.0 / 48.0, -3.0 / 5.0, 557.0 / 1440.0]).eval_at(n),
+            Polynomial::new([0.0, 0.0, 0.0, 61.0 / 240.0, -103.0 / 140.0]).eval_at(n),
+            Polynomial::new([0.0, 0.0, 0.0, 0.0, 49561.0 / 161280.0]).eval_at(n),
         ];
 
         let h_p = [
-            eval_polynom(&[0.0, 0.5, -2.0 / 3.0, 37.0 / 96.0, -1.0 / 360.0], n),
-            eval_polynom(&[0.0, 0.0, 1.0 / 48.0, 1.0 / 15.0, -437.0 / 1440.0], n),
-            eval_polynom(&[0.0, 0.0, 0.0, 17.0 / 480.0, -37.0 / 840.0], n),
-            eval_polynom(&[0.0, 0.0, 0.0, 0.0, 4397.0 / 161280.0], n),
+            Polynomial::new([0.0, 0.5, -2.0 / 3.0, 37.0 / 96.0, -1.0 / 360.0]).eval_at(n),
+            Polynomial::new([0.0, 0.0, 1.0 / 48.0, 1.0 / 15.0, -437.0 / 1440.0]).eval_at(n),
+            Polynomial::new([0.0, 0.0, 0.0, 17.0 / 480.0, -37.0 / 840.0]).eval_at(n),
+            Polynomial::new([0.0, 0.0, 0.0, 0.0, 4397.0 / 161280.0]).eval_at(n),
         ];
 
         let m0 = Self::m0(lat0, upper_b, e, h);
@@ -409,16 +411,9 @@ mod tests {
 
     use crate::{geodesy::ellipsoid, operation::Operation};
 
-    use super::eval_polynom;
     use super::Mercator;
     use super::TransverseMercator;
     use super::WebMercator;
-
-    #[test]
-    fn test_eval_polynom() {
-        assert_eq!(eval_polynom(&[1.0, 0.0, 2.0], 1.0), 3.0);
-        assert_eq!(eval_polynom(&[1.0, 0.0, 2.0], 2.0), 9.0);
-    }
 
     #[test]
     fn web_mercator() {

@@ -4,6 +4,7 @@ use std::ops::{Add, Div, Mul, Sub};
 
 macro_rules! length_unit {
     ( $name:ident, $unit:ident, $abbr:literal, $to_meters:expr) => {
+        /// A length expressed in `$abbr`($name).
         #[derive(Copy, Clone, Debug, PartialOrd, PartialEq)]
         pub struct $name(pub f64);
 
@@ -11,12 +12,13 @@ macro_rules! length_unit {
             pub const ABBR: &'static str = $abbr;
             pub const M_PER_UNIT: f64 = $to_meters;
 
-            /// Returns the unit value, aka how many meters per unit
+            /// Returns the unit value, aka how many meters per unit.
             #[inline]
             pub fn unit() -> f64 {
                 Self::M_PER_UNIT
             }
 
+            /// Convert this length into a raw length value expressed in **meters**.
             #[inline]
             pub fn m(self) -> f64 {
                 self.0 * Self::M_PER_UNIT
@@ -86,7 +88,7 @@ length_unit!(Meters, M, "m", 1.0);
 /// A trait implemented by types whose values measuring some length
 /// can be converted to a *raw* value in meter.
 pub trait Length {
-    /// Convert this length value into a raw length value expressed in meters.
+    /// Convert this length into [Meters].
     fn to_meters(self) -> Meters;
 }
 

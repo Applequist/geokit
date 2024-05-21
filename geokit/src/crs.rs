@@ -1,3 +1,7 @@
+//! This module defines [Crs](Coordinates Reference Systems).
+//! A [Crs] ties a coordinates system to the Earth using a [GeodeticDatum](datum) and allows to
+//! unambiguously assign coordinates to location on Earth.
+
 use smol_str::SmolStr;
 
 use crate::cs::geodetic::Lon;
