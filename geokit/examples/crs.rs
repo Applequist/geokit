@@ -11,7 +11,7 @@ fn main() {
         datum: GeodeticDatum::new(
             "WGS84",
             Ellipsoid::from_ainvf("WGS84", 6_378_137.0 * M, 298.257223563),
-            PrimeMeridian::new("Greenwich", Lon::new(0.0 * DEG)),
+            PrimeMeridian::new("Greenwich", 0.0 * DEG),
             None,
         ),
         axes: GeocentricAxes::XYZ,

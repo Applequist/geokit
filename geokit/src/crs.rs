@@ -5,7 +5,7 @@
 use smol_str::SmolStr;
 
 use crate::cs::geodetic::Lon;
-use crate::units::length::Meters;
+use crate::units::length::{Meters};
 use crate::{
     geodesy::{Ellipsoid, GeodeticDatum},
     operation::{
@@ -16,6 +16,7 @@ use crate::{
         Inv, Operation,
     },
 };
+use crate::units::angle::Radians;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Crs {
@@ -30,7 +31,7 @@ pub enum Crs {
         datum: GeodeticDatum,
         axes: GeocentricAxes,
     },
-    /// A `GeographicCrs` is a **2D/3D geodetic coordinates reference system** in which
+    /// A [Geographic] Crs is a **2D/3D geodetic coordinates reference system** in which
     /// coordinates are made up of longitude, latitude and optionally ellipsoidal height in various order, direction
     /// and units.
     Geographic {
@@ -38,6 +39,10 @@ pub enum Crs {
         datum: GeodeticDatum,
         axes: GeodeticAxes,
     },
+    /// A [Projected] Crs is a **2D/3D cartesian coordinates reference system** derived from a
+    /// 2D or 3D [Geographic] Crs using a projection.
+    /// Coordinates are made up of easting, northing and optionally ellipsoidal height in various order,
+    /// direction and units.
     Projected {
         id: SmolStr,
         datum: GeodeticDatum,
@@ -103,7 +108,7 @@ impl Crs {
                     height_unit,
                 } = axes
                 {
-                    *angle_unit == 1.0 && *height_unit == 1.0
+                    *angle_unit == Radians::unit() && *height_unit == Meters::unit()
                 } else {
                     false
                 }
@@ -114,7 +119,7 @@ impl Crs {
                     height_unit,
                 } = axes
                 {
-                    *horiz_unit == 1.0 && *height_unit == 1.0
+                    horiz_unit == &Meters::unit() && height_unit == &Meters::unit()
                 } else {
                     false
                 }
@@ -165,8 +170,8 @@ pub enum GeocentricAxes {
 
 /// A [`GeodeticAxes`] value defines the *coordinates system* part of a [`GeodeticCrs`], that is:
 /// - the ordering and direction of the axes,
-/// - the angle unit used for longitude and latitude as a 'radian_per_unit' conversion factor,
-/// - the length unit used for the ellipsoidal height as a 'meter_per_unit' conversion factor.
+/// - the angle unit used for longitude and latitude as a number of radians per unit.
+/// - the length unit used for the ellipsoidal height as a number of meters per unit.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum GeodeticAxes {
     /// Coordinates are given in the following order:
@@ -174,31 +179,43 @@ pub enum GeodeticAxes {
     /// - latitude positive north of equatorial plane,
     /// - ellipsoidal height positive upward.
     EastNorthUp {
-        angle_unit: f64,
-        height_unit: f64,
+        /// The angle unit used for longitude and latitude as a number of radians per unit, eg
+        /// `Degrees::unit()` or `Gradians::unit()`
+        angle_unit: Radians,
+        /// The length unit used for ellipsoidal height as a number of meters per unit.
+        height_unit: Meters,
     },
     /// Coordinates are given in the following order:
     /// - latitude positive north of equatorial plane,
     /// - longitude positive east of prime meridian,
     /// - ellipsoidal height positive upward.
     NorthEastUp {
-        angle_unit: f64,
-        height_unit: f64,
+        /// The angle unit used for longitude and latitude as a number of radians per unit, eg
+        /// `Degrees::unit()` or `Gradians::unit()`
+        angle_unit: Radians,
+        /// The length unit used for ellipsoidal height as a number of meters per unit.
+        height_unit: Meters,
     },
     /// Coordinates are, in the given order:
     /// - longitude positive east of prime meridian,
     /// - latitude positive north of equatorial plane.
     EastNorth {
-        angle_unit: f64,
+        /// The angle unit used for longitude and latitude as a number of radians per unit, eg
+        /// `Degrees::unit()` or `Gradians::unit()`
+        angle_unit: Radians,
     },
     /// Coordinates are, in the given order:
     /// - latitude positive north of equatorial plane,
     /// - longitude positive east of prime meridian.
     NorthEast {
-        angle_unit: f64,
+        /// The angle unit used for longitude and latitude as a number of radians per unit, eg
+        /// `Degrees::unit()` or `Gradians::unit()`
+        angle_unit: Radians,
     },
     NorthWest {
-        angle_unit: f64,
+        /// The angle unit used for longitude and latitude as a number of radians per unit, eg
+        /// `Degrees::unit()` or `Gradians::unit()`
+        angle_unit: Radians,
     },
 }
 
@@ -225,16 +242,33 @@ impl Default for GeodeticAxes {
     /// Return the [`GeodeticAxes`] used in **normalized geodetic coordinates**.
     fn default() -> Self {
         Self::EastNorthUp {
-            angle_unit: 1.0,
-            height_unit: 1.0,
+            angle_unit: Radians::unit(),
+            height_unit: Meters::unit(),
         }
     }
 }
 
+/// A [ProjectedAxes] value defines the **coordinates system** part of a [Crs::Projected] CRS.
+/// That is:
+/// - the ordering and direction of the axes,
+/// - the horizontal length unit used for easting and northing,
+/// - the height length unit used for the ellipsoidal height.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum ProjectedAxes {
-    EastNorthUp { horiz_unit: f64, height_unit: f64 },
-    EastNorth { horiz_unit: f64 },
+    /// The axes for a 3D projected Crs. Coordinates are, in order:
+    /// - easting positive eastward,
+    /// - northing positive northward,
+    /// - ellipsoidal height positive up.
+    EastNorthUp {
+        /// the length unit for easting and northing expressed **in meters**, aka the number of meters
+        /// in 1 unit of this unit, aka the *to meter conversion factor*.
+        horiz_unit: Meters,
+        /// the length unit for the ellipsoidal height expressed **in meters**.
+        height_unit: Meters },
+    /// The axes for a 2D projected Crs. Coordinates are, in order:
+    /// - easting positive eastward,
+    /// - northing positive northward,
+    EastNorth { horiz_unit: Meters },
 }
 
 impl ProjectedAxes {
@@ -352,6 +386,7 @@ mod tests {
 
     use super::*;
     use crate::geodesy::*;
+    use crate::units::length::M;
 
     #[test]
     fn clone() {
@@ -377,8 +412,8 @@ mod tests {
                 None,
             ),
             axes: GeodeticAxes::EastNorthUp {
-                angle_unit: 1.,
-                height_unit: 1.,
+                angle_unit: Radians::unit(),
+                height_unit: Meters::unit(),
             },
         };
 
@@ -437,8 +472,8 @@ mod tests {
                 None,
             ),
             axes: GeodeticAxes::EastNorthUp {
-                angle_unit: 1.0,
-                height_unit: 1.0,
+                angle_unit: Radians::unit(),
+                height_unit: Meters::unit(),
             },
         };
 
@@ -451,8 +486,8 @@ mod tests {
                 None,
             ),
             axes: GeodeticAxes::EastNorthUp {
-                angle_unit: 1.0,
-                height_unit: 1.0,
+                angle_unit: Radians::unit(),
+                height_unit: Meters::unit(),
             },
         };
         assert!(!geod3d.eq(&different_id));
@@ -469,8 +504,8 @@ mod tests {
                 None,
             ),
             axes: GeodeticAxes::EastNorthUp {
-                angle_unit: 1.0,
-                height_unit: 1.0,
+                angle_unit: Radians::unit(),
+                height_unit: Meters::unit(),
             },
         };
         assert!(!geod3d.eq(&different_datum));
@@ -487,8 +522,8 @@ mod tests {
                 None,
             ),
             axes: GeodeticAxes::NorthEastUp {
-                angle_unit: 1.0,
-                height_unit: 1.0,
+                angle_unit: Radians::unit(),
+                height_unit: Meters::unit(),
             },
         };
         assert!(!geod3d.eq(&different_axes));
@@ -505,8 +540,8 @@ mod tests {
                 None,
             ),
             axes: GeodeticAxes::NorthEastUp {
-                angle_unit: 1.0_f64.to_radians(),
-                height_unit: 1.,
+                angle_unit: Radians::unit(),
+                height_unit: Meters::unit(),
             },
         };
         assert!(!geod3d.eq(&different_angle_unit));
@@ -523,8 +558,8 @@ mod tests {
                 None,
             ),
             axes: GeodeticAxes::NorthEastUp {
-                angle_unit: 1.,
-                height_unit: 0.29,
+                angle_unit: Radians::unit(),
+                height_unit: 0.29 * M, // a length unit which 29 cm per unit.
             },
         };
         assert!(!geod3d.eq(&different_height_unit));

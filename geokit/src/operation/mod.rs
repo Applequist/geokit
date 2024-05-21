@@ -1,3 +1,6 @@
+//! The [operation] module defines operations to convert coordinates between Crs.
+//! Except for the [Normalization], all operations take **normalized coordinates as input.
+//! See [Crs::is_normalized] for the definition of normalized coordinates.
 use core::f64;
 use std::fmt::Debug;
 

@@ -3,7 +3,6 @@
 pub struct Polynomial<const D: usize>([f64; D]);
 
 impl<const D: usize> Polynomial<D> {
-
     /// Create a new polynomial of degree less than `D`.
     /// The n-th coefficient in the array is the coefficient of degree n
     /// of the polynomial.
@@ -13,9 +12,11 @@ impl<const D: usize> Polynomial<D> {
 
     /// Evaluate this polynomial at the given real value `x` using Horner's method.
     pub fn eval_at(&self, x: f64) -> f64 {
-        self.0.into_iter().rev().fold(0.0, |acc, coef_i| x * acc + coef_i)
+        self.0
+            .into_iter()
+            .rev()
+            .fold(0.0, |acc, coef_i| x * acc + coef_i)
     }
-
 }
 
 #[cfg(test)]

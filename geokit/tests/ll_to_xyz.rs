@@ -6,6 +6,7 @@ use geokit::{
     providers::{DefaultTransformationProvider, TransformationProvider},
 };
 use std::default::Default;
+use geokit::units::angle::{Degrees, Radians};
 
 fn dist(a: &[f64], b: &[f64]) -> f64 {
     assert_eq!(a.len(), 3);
@@ -41,7 +42,7 @@ fn llh_to_xyz() -> operation::Result<()> {
         id: "WGS84".into(),
         datum: geodetic_datum::consts::WGS84,
         axes: GeodeticAxes::EastNorth {
-            angle_unit: 1.0_f64.to_radians(),
+            angle_unit: Degrees::unit(),
         },
     };
     println!("Source CRS: {:#?}", src);

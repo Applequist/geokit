@@ -1,15 +1,17 @@
 use std::f64::consts::{FRAC_PI_2, FRAC_PI_4};
 
+use crate::math::polynomial::Polynomial;
 use crate::{
     geodesy::Ellipsoid,
     operation::{self, Operation},
 };
-use crate::math::polynomial::Polynomial;
 
 // Polynomials for Mercator backward projection.
 lazy_static! {
-    static ref P2: Polynomial<5> = Polynomial::new([0.0, 0.5, 5.0 / 24.0, 1.0 / 12.0, 13.0 / 360.0]);
-    static ref P4: Polynomial<5> = Polynomial::new([0.0, 0.0, 7.0 / 48.0, 29.0 / 240.0, 811.0 / 11520.0]);
+    static ref P2: Polynomial<5> =
+        Polynomial::new([0.0, 0.5, 5.0 / 24.0, 1.0 / 12.0, 13.0 / 360.0]);
+    static ref P4: Polynomial<5> =
+        Polynomial::new([0.0, 0.0, 7.0 / 48.0, 29.0 / 240.0, 811.0 / 11520.0]);
     static ref P6: Polynomial<5> = Polynomial::new([0.0, 0.0, 0.0, 7.0 / 120.0, 81.0 / 1120.0]);
     static ref P8: Polynomial<5> = Polynomial::new([0.0, 0.0, 0.0, 0.0, 4279.0 / 161280.0]);
 }
@@ -199,8 +201,8 @@ impl TransverseMercator {
         let e = ellipsoid.e();
         let f = 1.0 / ellipsoid.invf();
         let n = f / (2.0 - f);
-        let upper_b =
-            ellipsoid.a() / (1.0 + n) * Polynomial::new([1.0, 0.0, 0.25, 0.0, 1.0 / 64.0]).eval_at(n);
+        let upper_b = ellipsoid.a() / (1.0 + n)
+            * Polynomial::new([1.0, 0.0, 0.25, 0.0, 1.0 / 64.0]).eval_at(n);
         let h = [
             Polynomial::new([0.0, 0.5, -2.0 / 3.0, 5.0 / 16.0, 41.0 / 180.0]).eval_at(n),
             Polynomial::new([0.0, 0.0, 13.0 / 48.0, -3.0 / 5.0, 557.0 / 1440.0]).eval_at(n),

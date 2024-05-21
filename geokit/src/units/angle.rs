@@ -1,7 +1,15 @@
 //! This module defines some types used to express angles in various units.
 use std::f64::consts;
+use std::f64::consts::PI;
 use std::fmt::{Display, Formatter};
 use std::ops::{Add, Div, Mul, Sub};
+
+/// Trait implemented by types whose values are measuring some angle
+/// and can be converted to the same angle expressed in [Radians](radians).
+pub trait Angle {
+    /// Convert this angle value into a raw angle value expressed in radians.
+    fn to_radians(self) -> Radians;
+}
 
 macro_rules! angle_unit {
     ( $name:ident, $unit:ident, $abbr:literal, $to_radians:expr) => {
@@ -14,14 +22,21 @@ macro_rules! angle_unit {
 
             /// Returns the unit value, aka how many radians per unit
             #[inline]
-            pub fn unit() -> f64 {
-                Self::RAD_PER_UNIT
+            pub fn unit() -> Radians {
+                Radians(Self::RAD_PER_UNIT)
             }
 
             /// Returns the raw angle value **in radians**.
             #[inline]
             pub fn rad(self) -> f64 {
                 self.0 * Self::RAD_PER_UNIT
+            }
+        }
+
+        impl Angle for $name {
+            #[inline]
+            fn to_radians(self) -> Radians {
+                Radians(self.rad())
             }
         }
 
@@ -76,28 +91,28 @@ macro_rules! angle_unit {
 }
 
 angle_unit!(Radians, RAD, "rad", 1.0);
+
+impl Radians {
+    /// Warning: hacky code!
+    /// This function aims at reproducing the C/C++ remainder function.
+    /// It is mainly used to normalize longitude in [-pi, pi].
+    pub fn rem_two_pi(self) -> f64 {
+        let mut na = self.0;
+        let q = (na / (2.0 * PI)).trunc();
+        na -= q * 2.0 * PI;
+        while na < -PI {
+            na += 2.0 * PI
+        }
+        while na > PI {
+            na -= 2.0 * PI
+        }
+        na
+    }
+}
+
 angle_unit!(Degrees, DEG, "deg", consts::PI / 180.0);
 angle_unit!(Gradians, GRAD, "grad", consts::PI / 200.0);
 angle_unit!(Arcsecs, SEC, "sec", consts::PI / 648_000.0);
-
-/// Trait implemented by types whose values measuring some angle
-/// can be converted to radians.
-pub trait Angle {
-    /// Convert this angle value into a raw angle value expressed in radians.
-    fn to_radians(self) -> Radians;
-}
-
-macro_rules! angle_impl {
-    ( $($name:ident),* ) => {
-        $(impl Angle for $name {
-            fn to_radians(self) -> Radians {
-                Radians(self.rad())
-            }
-        })*
-    };
-}
-
-angle_impl!(Radians, Degrees, Gradians, Arcsecs);
 
 #[cfg(test)]
 mod tests {

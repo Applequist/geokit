@@ -36,7 +36,7 @@ impl DatumTransformation {
     pub fn transformation(&self) -> Box<dyn Operation> {
         match *self {
             DatumTransformation::GeocentricTranslation { tx, ty, tz } => {
-                GeocentricTranslation::new(tx.m(), ty.m(), tz.m()).boxed()
+                GeocentricTranslation::new(tx, ty, tz).boxed()
             }
             DatumTransformation::Helmert7Params {
                 conv,
@@ -45,9 +45,9 @@ impl DatumTransformation {
                 scale,
             } => Helmert7Params::new(
                 conv,
-                rotation.map(Radians::rad),
-                translation.map(Meters::m),
-                scale.0,
+                rotation,
+                translation,
+                scale,
             )
             .boxed(),
         }
@@ -55,9 +55,16 @@ impl DatumTransformation {
 }
 
 /// A `datum` is the information required to fix a coordinate system to an object.
-/// A `GeodeticDatum` is a `datum` describing the relationship of an ellipsoidal model of the Earth
+/// A [GeodeticDatum] is a `datum` describing the relationship of an ellipsoidal model of the Earth
 /// with the real Earth.
-/// It is defined by an [Ellipsoid] and a [PrimeMeridian].
+/// It is defined by an id, an [Ellipsoid] and a [PrimeMeridian].
+/// It can also come with an optional transformation to a reference datum, usually `WGS84`.
+///
+/// # Equality
+///
+/// 2 datums are considered equal if they have **the same id**, the same ellipsoid and prime meridian.
+/// That is: it is not enough to use the same ellipsoid and prime meridian for 2 datums to be considered
+/// the same.
 #[derive(Debug, Clone)]
 pub struct GeodeticDatum {
     id: SmolStr,
@@ -68,6 +75,7 @@ pub struct GeodeticDatum {
 
 impl GeodeticDatum {
     /// Creates a new [`GeodeticDatum`].
+    /// Used to define well known datum as constant.
     pub const fn new_static(
         id: &'static str,
         ellipsoid: Ellipsoid,
@@ -85,7 +93,7 @@ impl GeodeticDatum {
         }
     }
 
-    /// Creates a new [`GeodeticDatum`].
+    /// Creates a new [`GeodeticDatum`] from the given parts.
     pub fn new<T: AsRef<str>>(
         id: T,
         ellipsoid: Ellipsoid,
@@ -100,7 +108,7 @@ impl GeodeticDatum {
         }
     }
 
-    /// Return this datum's id as a reference.
+    /// Return this datum's id.
     pub fn id(&self) -> &str {
         self.id.as_str()
     }
@@ -141,6 +149,7 @@ impl PartialEq for GeodeticDatum {
     }
 }
 
+/// Well known datum definition.
 pub mod consts {
 
     use crate::units::angle::Radians;
@@ -204,7 +213,6 @@ pub mod consts {
 #[cfg(test)]
 mod tests {
     use super::GeodeticDatum;
-    use crate::cs::geodetic::Lon;
     use crate::geodesy::{ellipsoid, geodetic_datum, prime_meridian, Ellipsoid, PrimeMeridian};
     use crate::units::angle::Degrees;
     use crate::units::length::Meters;
@@ -214,7 +222,7 @@ mod tests {
         let d = GeodeticDatum::new(
             "WGS 84",
             Ellipsoid::from_ainvf("WGS84", Meters(6_378_137.0), 298.257_223_563),
-            PrimeMeridian::new("Greenwich", Lon::new(Degrees(0.0))),
+            PrimeMeridian::new("Greenwich", Degrees(0.0)),
             None,
         );
         let cpy = d.clone();

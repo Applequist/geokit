@@ -5,7 +5,7 @@ use crate::{
 
 use super::{Operation, Result};
 
-pub type ToOrd = (usize, f64);
+type ToOrd = (usize, f64);
 
 /// [Normalization] is used to normalize(fwd)/denormalize(bwd) coordinates by:
 /// - reordering coordinates
@@ -36,14 +36,14 @@ impl From<GeodeticAxes> for Normalization {
             GeodeticAxes::EastNorthUp {
                 angle_unit,
                 height_unit,
-            } => vec![(0, angle_unit), (1, angle_unit), (2, height_unit)],
-            GeodeticAxes::EastNorth { angle_unit } => vec![(0, angle_unit), (1, angle_unit)],
+            } => vec![(0, angle_unit.rad()), (1, angle_unit.rad()), (2, height_unit.m())],
+            GeodeticAxes::EastNorth { angle_unit } => vec![(0, angle_unit.rad()), (1, angle_unit.rad())],
             GeodeticAxes::NorthEastUp {
                 angle_unit,
                 height_unit,
-            } => vec![(1, angle_unit), (0, angle_unit), (2, height_unit)],
-            GeodeticAxes::NorthEast { angle_unit } => vec![(1, angle_unit), (0, angle_unit)],
-            GeodeticAxes::NorthWest { angle_unit } => vec![(1, -angle_unit), (0, angle_unit)],
+            } => vec![(1, angle_unit.rad()), (0, angle_unit.rad()), (2, height_unit.m())],
+            GeodeticAxes::NorthEast { angle_unit } => vec![(1, angle_unit.rad()), (0, angle_unit.rad())],
+            GeodeticAxes::NorthWest { angle_unit } => vec![(1, -angle_unit.rad()), (0, angle_unit.rad())],
         };
         Normalization(to_ord)
     }
@@ -55,8 +55,8 @@ impl From<ProjectedAxes> for Normalization {
             ProjectedAxes::EastNorthUp {
                 horiz_unit,
                 height_unit,
-            } => vec![(0, horiz_unit), (1, horiz_unit), (2, height_unit)],
-            ProjectedAxes::EastNorth { horiz_unit } => vec![(0, horiz_unit), (1, horiz_unit)],
+            } => vec![(0, horiz_unit.m()), (1, horiz_unit.m()), (2, height_unit.m())],
+            ProjectedAxes::EastNorth { horiz_unit } => vec![(0, horiz_unit.m()), (1, horiz_unit.m())],
         };
         Normalization(to_ord)
     }
@@ -87,7 +87,7 @@ impl Operation for Normalization {
     }
 }
 
-/// `GeogToGeoc` converts **normalized geographic coordinates** to **normalized geocentric coordinates**
+/// [GeogToGeoc] converts **normalized geographic coordinates** to **normalized geocentric coordinates**
 /// between a [GeographicCrs] and a [GeocentricCrs] that share the same [GeodeticDatum].
 ///
 /// As mentioned in the EPSG guidance note 7 part 2, paragraph 4.1.1, this transformation
@@ -213,11 +213,12 @@ mod tests {
     use crate::crs::GeodeticAxes;
     use crate::operation::conversion::Normalization;
     use crate::operation::Operation;
+    use crate::units::angle::{Degrees};
 
     #[test]
     fn normalization() {
         let latlondeg = GeodeticAxes::NorthWest {
-            angle_unit: 1.0_f64.to_radians(),
+            angle_unit: Degrees::unit(),
         };
         let t = Normalization::from(latlondeg);
         assert_eq!(t.in_dim(), 2);

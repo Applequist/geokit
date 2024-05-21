@@ -11,7 +11,7 @@ impl Lon {
     /// Create a new longitude value with a given angle.
     /// The angle is wrapped into [-pi..pi]
     pub fn new<U: Angle>(val: U) -> Self {
-        Self(Self::rem_two_pi(val.to_radians().0))
+        Self(val.to_radians().rem_two_pi())
     }
 
     /// Normalize the longitude into (-pi..pi]
@@ -23,30 +23,18 @@ impl Lon {
         Self(lon)
     }
 
-    /// Warning: hacky code!
-    /// This function aims at reproducing the C/C++ remainder function.
-    /// It is mainly used to normalize longitude in [-pi, pi].
-    fn rem_two_pi(val: f64) -> f64 {
-        let mut na = val;
-        let q = (na / (2.0 * PI)).trunc();
-        na -= q * 2.0 * PI;
-        while na < -PI {
-            na += 2.0 * PI
-        }
-        while na > PI {
-            na -= 2.0 * PI
-        }
-        na
-    }
-
+    #[inline]
     pub fn rad(self) -> f64 {
         self.0
     }
 }
 
-impl Angle for Lon {
-    fn to_radians(self) -> Radians {
-        Radians(self.0)
+impl<T> From<T> for Lon
+where
+    T: Angle,
+{
+    fn from(value: T) -> Self {
+        Self::new(value)
     }
 }
 

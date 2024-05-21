@@ -155,6 +155,7 @@ impl PartialEq for Ellipsoid {
     }
 }
 
+/// Well known ellipsoid definitions.
 pub mod consts {
     use super::Ellipsoid;
 

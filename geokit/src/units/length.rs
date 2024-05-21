@@ -19,10 +19,10 @@ macro_rules! length_unit {
             pub const ABBR: &'static str = $abbr;
             pub const M_PER_UNIT: f64 = $to_meters;
 
-            /// Returns the unit value, aka how many meters per unit.
+            /// Returns the unit value in [Meters]
             #[inline]
-            pub fn unit() -> f64 {
-                Self::M_PER_UNIT
+            pub fn unit() -> Meters {
+                Meters(Self::M_PER_UNIT)
             }
 
             /// Convert this length into a raw length value expressed in **meters**.
