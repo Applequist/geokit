@@ -2,6 +2,8 @@ use crate::{
     crs::{GeocentricAxes, GeodeticAxes, ProjectedAxes},
     geodesy::{Ellipsoid, GeodeticDatum, PrimeMeridian},
 };
+use crate::units::angle::Angle;
+use crate::units::length::Length;
 
 use super::{Operation, Result};
 
@@ -213,7 +215,7 @@ mod tests {
     use crate::crs::GeodeticAxes;
     use crate::operation::conversion::Normalization;
     use crate::operation::Operation;
-    use crate::units::angle::{Degrees};
+    use crate::units::angle::Degrees;
 
     #[test]
     fn normalization() {

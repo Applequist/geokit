@@ -2,8 +2,8 @@ use nalgebra::Matrix3;
 use nalgebra::Vector3;
 
 use crate::operation::{self, Operation};
-use crate::units::angle::Radians;
-use crate::units::length::Meters;
+use crate::units::angle::{Angle, Radians};
+use crate::units::length::{Length, Meters};
 use crate::units::scale::PPM;
 
 /// The [GeocentricTranslation] transforms **normalized goecentric coordinates** between 2 [GeocentricCrs] whose
@@ -141,6 +141,7 @@ mod tests {
     use crate::units::length::M;
     use crate::units::scale::PPM;
 
+    use super::{Helmert7Params, RotationConvention};
     use super::GeocentricTranslation;
 
     #[test]
@@ -166,8 +167,6 @@ mod tests {
         assert_relative_eq!(xyz[1], xs[1], epsilon = 1e-6);
         assert_relative_eq!(xyz[2], xs[2], epsilon = 1e-6);
     }
-
-    use super::{Helmert7Params, RotationConvention};
 
     #[test]
     fn helmert_fwd() {

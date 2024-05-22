@@ -4,19 +4,19 @@
 
 use smol_str::SmolStr;
 
-use crate::cs::geodetic::Lon;
-use crate::units::length::{Meters};
 use crate::{
     geodesy::{Ellipsoid, GeodeticDatum},
     operation::{
         conversion::{
-            projection::cyl::{Mercator, TransverseMercator, WebMercator},
-            GeogToGeoc, Normalization,
+            GeogToGeoc,
+            Normalization, projection::cyl::{Mercator, TransverseMercator, WebMercator},
         },
         Inv, Operation,
     },
 };
+use crate::cs::geodetic::Lon;
 use crate::units::angle::Radians;
+use crate::units::length::{Length, Meters};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Crs {
@@ -383,10 +383,10 @@ impl ProjectionSpec {
 
 #[cfg(test)]
 mod tests {
-
-    use super::*;
     use crate::geodesy::*;
     use crate::units::length::M;
+
+    use super::*;
 
     #[test]
     fn clone() {

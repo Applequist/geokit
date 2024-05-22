@@ -1,7 +1,8 @@
-use crate::units::angle::{Angle, Radians};
 use std::f64::consts::PI;
 use std::fmt::{Display, Formatter};
 use std::ops::{Add, Sub};
+
+use crate::units::angle::{Angle, Radians};
 
 /// A longitude value in [-pi..pi] radians.
 #[derive(Copy, Clone, Debug, PartialOrd, PartialEq)]
@@ -70,10 +71,11 @@ impl Display for Lon {
 
 #[cfg(test)]
 mod tests {
-    use crate::cs::geodetic::Lon;
-    use crate::units::angle::{Degrees, Radians, DEG, RAD};
     use std::f64::consts;
     use std::f64::consts::PI;
+
+    use crate::cs::geodetic::Lon;
+    use crate::units::angle::{DEG, Degrees, RAD, Radians};
 
     #[test]
     fn test_wrapping() {

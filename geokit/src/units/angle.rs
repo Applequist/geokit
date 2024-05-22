@@ -7,8 +7,13 @@ use std::ops::{Add, Div, Mul, Sub};
 /// Trait implemented by types whose values are measuring some angle
 /// and can be converted to the same angle expressed in [Radians](radians).
 pub trait Angle {
-    /// Convert this angle value into a raw angle value expressed in radians.
-    fn to_radians(self) -> Radians;
+    /// Convert this angle value into [Radians].
+    fn to_radians(self) -> Radians where Self: Sized {
+        Radians(self.rad())
+    }
+
+    /// Convert this angle value into a raw angle value **in radians**.
+    fn rad(self) -> f64;
 }
 
 macro_rules! angle_unit {
@@ -26,17 +31,12 @@ macro_rules! angle_unit {
                 Radians(Self::RAD_PER_UNIT)
             }
 
-            /// Returns the raw angle value **in radians**.
-            #[inline]
-            pub fn rad(self) -> f64 {
-                self.0 * Self::RAD_PER_UNIT
-            }
         }
 
         impl Angle for $name {
             #[inline]
-            fn to_radians(self) -> Radians {
-                Radians(self.rad())
+            fn rad(self) -> f64 {
+                self.0 * Self::RAD_PER_UNIT
             }
         }
 
@@ -116,8 +116,9 @@ angle_unit!(Arcsecs, SEC, "sec", consts::PI / 648_000.0);
 
 #[cfg(test)]
 mod tests {
-    use crate::units::angle::{Angle, Degrees, Radians};
     use std::f64::consts;
+
+    use crate::units::angle::{Angle, Degrees, Radians};
 
     #[test]
     fn test_to_radians() {

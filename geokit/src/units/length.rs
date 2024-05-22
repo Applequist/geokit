@@ -6,7 +6,12 @@ use std::ops::{Add, Div, Mul, Sub};
 /// and can be converted to the same length expressed in [Meters](meters).
 pub trait Length {
     /// Convert this length into [Meters].
-    fn to_meters(self) -> Meters;
+    fn to_meters(self) -> Meters where Self: Sized {
+        Meters(self.m())
+    }
+
+    /// Convert this length value into a raw length value **in meters**.
+    fn m(self) -> f64;
 }
 
 macro_rules! length_unit {
@@ -25,19 +30,14 @@ macro_rules! length_unit {
                 Meters(Self::M_PER_UNIT)
             }
 
-            /// Convert this length into a raw length value expressed in **meters**.
-            #[inline]
-            pub fn m(self) -> f64 {
-                self.0 * Self::M_PER_UNIT
-            }
         }
 
         impl Length for $name {
             #[inline]
-            fn to_meters(self) -> Meters {
-                Meters(self.m())
+            fn m(self) -> f64 {
+                self.0 * Self::M_PER_UNIT
             }
-        }
+       }
 
         impl Add for $name {
             type Output = $name;
@@ -101,7 +101,7 @@ length_unit!(Meters, M, "m", 1.0);
 
 #[cfg(test)]
 mod tests {
-    use crate::units::length::Meters;
+    use crate::units::length::{Length, Meters};
 
     #[test]
     fn test_to_meters() {

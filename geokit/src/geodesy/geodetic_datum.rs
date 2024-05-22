@@ -2,15 +2,16 @@ use std::fmt::Debug;
 
 use smol_str::SmolStr;
 
-use super::{Ellipsoid, PrimeMeridian};
 use crate::operation::{
     identity,
-    transformation::{GeocentricTranslation, Helmert7Params, RotationConvention},
     Operation,
+    transformation::{GeocentricTranslation, Helmert7Params, RotationConvention},
 };
 use crate::units::angle::Radians;
 use crate::units::length::Meters;
 use crate::units::scale::PPM;
+
+use super::{Ellipsoid, PrimeMeridian};
 
 /// Coordinates can be transformed between different datum.
 /// A [`DatumTransformation`] specifies how to transform normalized geocentric coordinates from
@@ -151,14 +152,13 @@ impl PartialEq for GeodeticDatum {
 
 /// Well known datum definition.
 pub mod consts {
-
-    use crate::units::angle::Radians;
-    use crate::units::length::Meters;
-    use crate::units::scale::PPM;
     use crate::{
         geodesy::{ellipsoid, prime_meridian},
         operation::transformation::RotationConvention,
     };
+    use crate::units::angle::Radians;
+    use crate::units::length::Meters;
+    use crate::units::scale::PPM;
 
     use super::{DatumTransformation, GeodeticDatum};
 
@@ -212,10 +212,11 @@ pub mod consts {
 
 #[cfg(test)]
 mod tests {
-    use super::GeodeticDatum;
-    use crate::geodesy::{ellipsoid, geodetic_datum, prime_meridian, Ellipsoid, PrimeMeridian};
+    use crate::geodesy::{ellipsoid, Ellipsoid, geodetic_datum, prime_meridian, PrimeMeridian};
     use crate::units::angle::Degrees;
     use crate::units::length::Meters;
+
+    use super::GeodeticDatum;
 
     #[test]
     fn clone() {

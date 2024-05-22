@@ -1,5 +1,6 @@
-use crate::cs::geodetic::Lon;
 use smol_str::SmolStr;
+
+use crate::cs::geodetic::Lon;
 
 /// A `PrimeMeridian` defines the origin of longitudes.
 /// It is defined by its longitude with respect to the Greenwich meridian,
@@ -50,7 +51,6 @@ impl PartialEq for PrimeMeridian {
 
 /// Well known prime meridians.
 pub mod consts {
-
     use super::PrimeMeridian;
 
     macro_rules! deg {
@@ -86,9 +86,11 @@ pub mod consts {
 
 #[cfg(test)]
 mod tests {
-    use super::PrimeMeridian;
-    use crate::units::angle::{DEG, RAD};
     use std::f64::consts::PI;
+
+    use crate::units::angle::{DEG, RAD};
+
+    use super::PrimeMeridian;
 
     #[test]
     fn longitude_eq_mpi() {

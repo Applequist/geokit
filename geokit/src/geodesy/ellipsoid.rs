@@ -1,7 +1,8 @@
 use std::fmt::{Debug, Display};
 
-use crate::units::length::Length;
 use smol_str::SmolStr;
+
+use crate::units::length::Length;
 
 /// An `Ellipsoid` is a mathematical surface defined by rotating an ellipse around
 /// it semi-minor axis.
@@ -116,6 +117,11 @@ impl Ellipsoid {
         self.b * self.b
     }
 
+    /// Return the flattening.
+    #[inline]
+    pub fn f(&self) -> f64 {
+        1. / self.invf
+    }
     /// Return the inverse flattening: `a / (a - b)`.
     #[inline]
     pub fn invf(&self) -> f64 {
@@ -235,8 +241,9 @@ pub mod consts {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::units::length::M;
+
+    use super::*;
 
     #[test]
     #[should_panic(expected = "Expected semi_minor_axis (-0.5 m) > 0")]

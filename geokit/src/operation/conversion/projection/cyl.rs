@@ -1,10 +1,10 @@
 use std::f64::consts::{FRAC_PI_2, FRAC_PI_4};
 
-use crate::math::polynomial::Polynomial;
 use crate::{
     geodesy::Ellipsoid,
     operation::{self, Operation},
 };
+use crate::math::polynomial::Polynomial;
 
 // Polynomials for Mercator backward projection.
 lazy_static! {
