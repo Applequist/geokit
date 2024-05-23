@@ -93,7 +93,7 @@ impl Ellipsoid {
         self.invf.is_infinite()
     }
 
-    /// Return the semi-major axis length in meters.
+    /// Return the semi-major axis length **in meters**.
     #[inline]
     pub fn a(&self) -> f64 {
         self.a
@@ -105,7 +105,7 @@ impl Ellipsoid {
         self.a * self.a
     }
 
-    /// Return the semi-minor axis length in meters.
+    /// Return the semi-minor axis length **in meters**.
     #[inline]
     pub fn b(&self) -> f64 {
         self.b
@@ -128,6 +128,12 @@ impl Ellipsoid {
         self.invf
     }
 
+    /// Return the 3rd flattening: `(a - b) / (a + b)`
+    #[inline]
+    pub fn n(&self) -> f64 {
+        (self.a - self.b ) / (self.a + self.b)
+    }
+
     /// Return the first eccentricity squared: `(a^2 -b^2) / a^2`
     #[inline]
     pub fn e_sq(&self) -> f64 {
@@ -142,6 +148,17 @@ impl Ellipsoid {
     /// at the given latitude **in radians**.
     pub fn prime_vertical_radius(&self, lat: f64) -> f64 {
         self.a / (1.0 - self.e_sq() * lat.sin().powi(2)).sqrt()
+    }
+
+    /// Return the second eccentricity squared.
+    /// See [e_prime]
+    pub fn e_prime_sq(&self) -> f64 {
+        (self.a_sq() - self.b_sq()) / self.b_sq()
+    }
+
+    /// Return the second eccentricity: `(a^2 - b^2) / b^2`
+    pub fn e_prime(&self) -> f64 {
+        self.e_prime_sq().sqrt()
     }
 
     /// Return the radius of curvature **in meters** in the north-south direction
