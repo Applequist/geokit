@@ -3,12 +3,13 @@
 pub struct PPM(pub f64);
 
 impl PPM {
-    /// Return the *unitless* scaling factor
+    /// Return the *unitless* scaling factor.
     #[inline]
     pub fn factor(&self) -> f64 {
         1.0 + self.0 * 1e-6
     }
 
+    /// Return the *unitless* inverse scaling factor.
     #[inline]
     pub fn inv_factor(&self) -> f64 {
         1.0 - self.0 * 1e-6

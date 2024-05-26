@@ -6,7 +6,10 @@ use std::ops::{Add, Div, Mul, Sub};
 /// and can be converted to the same length expressed in [Meters](meters).
 pub trait Length {
     /// Convert this length into [Meters].
-    fn to_meters(self) -> Meters where Self: Sized {
+    fn to_meters(self) -> Meters
+    where
+        Self: Sized,
+    {
         Meters(self.m())
     }
 
@@ -15,13 +18,15 @@ pub trait Length {
 }
 
 macro_rules! length_unit {
-    ( $name:ident, $unit:ident, $abbr:literal, $to_meters:expr) => {
-        /// A length expressed in `$abbr`($name).
+    ( $(#[$outer:meta])* ($name:ident, $unit:ident, $abbr:literal, $to_meters:expr) ) => {
+        $(#[$outer])*
         #[derive(Copy, Clone, Debug, PartialOrd, PartialEq)]
         pub struct $name(pub f64);
 
         impl $name {
+            /// The length unit abbreviation.
             pub const ABBR: &'static str = $abbr;
+            /// How many meters per unit.
             pub const M_PER_UNIT: f64 = $to_meters;
 
             /// Returns the unit value in [Meters]
@@ -93,11 +98,15 @@ macro_rules! length_unit {
             }
         }
 
+        /// A constant length value of 1 unit.
         pub const $unit: $name = $name(1.);
     };
 }
 
-length_unit!(Meters, M, "m", 1.0);
+length_unit!(
+    /// A length measured in meters (abbr 'm').
+    (Meters, M, "m", 1.0)
+);
 
 #[cfg(test)]
 mod tests {

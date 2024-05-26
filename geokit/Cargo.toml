@@ -10,7 +10,7 @@ num = { workspace = true }
 smol_str = { workspace = true }
 thiserror = { workspace = true }
 lazy_static = { workspace = true }
+approx = { workspace = true }
 
 [dev-dependencies]
-approx = { workspace = true }
 regex = { workspace = true }

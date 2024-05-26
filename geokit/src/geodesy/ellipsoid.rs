@@ -1,6 +1,10 @@
 use std::fmt::{Debug, Display};
 
 use smol_str::SmolStr;
+use crate::cs::geodetic::Lon;
+use crate::math::complex::Complex;
+use crate::math::polynomial::Polynomial;
+use crate::units::angle::{Angle, Radians};
 
 use crate::units::length::Length;
 
@@ -30,8 +34,8 @@ impl Ellipsoid {
         semi_major_axis: U,
         semi_minor_axis: U,
     ) -> Self {
-        let a = semi_major_axis.to_meters().0;
-        let b = semi_minor_axis.to_meters().0;
+        let a = semi_major_axis.m();
+        let b = semi_minor_axis.m();
         assert!(b > 0., "Expected semi_minor_axis ({} m) > 0 m", b);
         assert!(
             a >= b,
@@ -53,7 +57,7 @@ impl Ellipsoid {
     ///
     /// if `semi_major_axis` is negative or zero or if `invf` is not greater than 1.
     pub fn from_ainvf<U: Length + Display>(name: &str, semi_major_axis: U, invf: f64) -> Self {
-        let a = semi_major_axis.to_meters().0;
+        let a = semi_major_axis.m();
         assert!(a > 0., "Expected semi_major_axis ({} m) > 0.", a);
         assert!(invf > 1., "Expected invf ({}) > 1.", invf);
         Self {
@@ -128,10 +132,10 @@ impl Ellipsoid {
         self.invf
     }
 
-    /// Return the 3rd flattening: `(a - b) / (a + b)`
+    /// Return the 3rd flattening: `n = (a - b) / (a + b)`
     #[inline]
     pub fn n(&self) -> f64 {
-        (self.a - self.b ) / (self.a + self.b)
+        (self.a - self.b) / (self.a + self.b)
     }
 
     /// Return the first eccentricity squared: `(a^2 -b^2) / a^2`
@@ -142,12 +146,6 @@ impl Ellipsoid {
 
     pub fn e(&self) -> f64 {
         self.e_sq().sqrt()
-    }
-
-    /// Return the radius of curvature **in meters** in the east-west direction
-    /// at the given latitude **in radians**.
-    pub fn prime_vertical_radius(&self, lat: f64) -> f64 {
-        self.a / (1.0 - self.e_sq() * lat.sin().powi(2)).sqrt()
     }
 
     /// Return the second eccentricity squared.
@@ -161,8 +159,36 @@ impl Ellipsoid {
         self.e_prime_sq().sqrt()
     }
 
-    /// Return the radius of curvature **in meters** in the north-south direction
-    /// at the given latitude **in radians**.
+    /// Return the reduce latitude, aka parametric latitude, `beta`: `tan(beta) = (1 - f)tan(lat)`
+    /// where `lat` is the geodetic latitude.
+    ///
+    /// The reduced latitude of a point P on the ellipsoid is the angle at the center of a sphere
+    /// tangent to the ellipsoid on the equator (radius = a), between the equatorial plane and a
+    /// radius to a point Q on the sphere whose projection along the z-axis intersect the ellipsoid
+    /// at P.
+    pub fn reduced_latitude(&self, lat: f64) -> f64 {
+        ((1. - self.f()) * lat.tan()).atan()
+    }
+
+    /// Return the geocentric latitude, `psi`: `tan(psi) = (1 - e^2)tan(lat)`
+    /// where `lat` is the geodetic latitude.
+    ///
+    /// The geocentric latitude of a point P on the ellipsoid is the angle at the centre of the
+    /// ellipsoid between the equatorial plane and a line to the point P.
+    pub fn geocentric_latitude(&self, lat: f64) -> f64 {
+        ((1. - self.e_sq()) * lat.tan()).atan()
+    }
+
+    /// Return the radius of curvature `N` **in meters** at the given geodetic latitude **in radians**
+    /// of the prime vertical normal section, i.e. the normal section perpendicular to the meridional
+    /// normal section.
+    /// See [prime_meridional_radius]
+    pub fn prime_vertical_radius(&self, lat: f64) -> f64 {
+        self.a / (1.0 - self.e_sq() * lat.sin().powi(2)).sqrt()
+    }
+
+    /// Return the radius of curvature `M` **in meters** at the given geodetic latitude **in radians**
+    /// of the meridional normal section, i.e. the normal section passing through the poles.
     pub fn prime_meridional_radius(&self, lat: f64) -> f64 {
         self.a * (1.0 - self.e_sq()) / (1.0 - self.e_sq() * lat.sin().powi(2)).powf(1.5)
     }
@@ -170,6 +196,168 @@ impl Ellipsoid {
     pub fn conformal_sphere_radius(&self, lat: f64) -> f64 {
         (self.prime_meridional_radius(lat) * self.prime_vertical_radius(lat)).sqrt()
     }
+
+    /// Compute the coordinates and forward azimuth of the point at `s12` meters away
+    /// from `p1` following the geodesic in the azimuth `alpha1` at `p1`.
+    ///
+    /// # Parameters
+    ///
+    /// - ellipsoid: the ellipsoid on which the geodesic is solved
+    /// - p1: the **normalized geodetic** coordinates of the starting point
+    /// - alpha1: the azimuth **in radians** of the geodesic at `p1`,
+    /// - s12: the distance **in meters** along the geodesic from `p1` of the returned point coordinates.
+    pub fn solve_direct<A: Angle, S: Length>(&self, p1: &[f64], alpha1: A, s12: S) -> ([f64; 2], f64) {
+        // Step 1: solve NEP_1 to give alpha0, sigma1 and omega1
+        let lat1 = p1[1];
+        let beta1 = self.reduced_latitude(lat1);
+        let (sin_beta1, cos_beta1) = beta1.sin_cos();
+        let (sin_alpha1, cos_alpha1) = alpha1.rad().sin_cos();
+        // alpha0 is the azimuth at the equator of the spherical triangle NEP_1, N: north pole,
+        // E: intersection of the geodesic and the equator
+        // Karney - Algorithms for geodesics eqn 10
+        let alpha0 = Complex::new(
+            Complex::new(cos_alpha1, sin_alpha1 * sin_beta1).abs(),
+            sin_alpha1 * cos_beta1).theta();
+        let (sin_alpha0, cos_alpha0) = alpha0.sin_cos();
+        // Karney - Algorithms for geodesics eqn 11
+        let sigma1 = Complex::new(cos_alpha1 * cos_beta1, sin_beta1).theta();
+        let (sin_sigma1, cos_sigma1) = sigma1.sin_cos();
+        // Karney - Algorithms for geodesics eqn 12
+        let omega1 = Complex::new(cos_sigma1, sin_alpha0 * sin_sigma1).theta();
+
+        // Step 2: Determine sigma2
+        // Karney - Algorithms for geodesics eqn 9
+        let k = self.e_prime() * cos_alpha0;
+        // Karney - Algorithms for geodesics eqn 16
+        let t = (1. + k * k).sqrt();
+        let epsilon = (t - 1.) / (t + 1.);
+
+        let a1 = Self::a1(epsilon);
+        // geodesic arc length from E to p1 in meters
+        let s1 = self.b() * Self::i1(a1, epsilon, sigma1);
+
+        // geodesic arc length from E to p2 in meters (p2 is what we are looking for)
+        let s2 = s1 + s12.m();
+
+        let tau2 = s2 / (self.b() * a1);
+        // arc length on the auxiliary sphere from E to p2 in radians
+        let sigma2 = Self::sigma(epsilon, tau2);
+        let (sin_sigma2, cos_sigma2) = sigma2.sin_cos();
+
+        // Step 3: Solve NEB to give alpha2, beta2 (hence p2.lat) and omega2
+        // Karney - Algorithms for geodesics eqn 14
+        let alpha2 = Complex::new(cos_alpha0 * cos_sigma2, sin_alpha0).theta();
+        // Karney - Algorithms for geodesics eqn 13
+        let beta2 = Complex::new(Complex::new(cos_alpha0 * cos_sigma2, sin_alpha0).abs(), cos_alpha0 * sin_sigma2).theta();
+        // Karney - Algorithms for geodesics eqn 12
+        let omega2 = Complex::new(cos_sigma2, sin_alpha0 * sin_sigma2).theta();
+
+        // Step 4: finally determine lambda2 and lambda12
+        let a3 = Self::a3(self.n(), epsilon);
+        // Karney - Algorithms for geodesics eqn 8
+        let lambda1 = omega1 - self.f() * sin_alpha0 * Self::i3(a3, self.n(), epsilon, sigma1);
+        let lambda2 = omega2 - self.f() * sin_alpha0 * Self::i3(a3, self.n(), epsilon, sigma2);
+
+        let lambda12 = lambda2 - lambda1;
+
+        // from: tan(beta) = (1 - f)*tan(lat)
+        let lat2 = (beta2.tan() / (1. - self.f())).atan();
+
+        // wrap the longitude in [-pi, pi]
+        ([Lon::new(Radians(p1[0] + lambda12)).rad(), lat2], alpha2)
+
+    }
+
+    /// From Karney - Algorithms for geodesics eqn 17:
+    /// A1 = (1 + 1/4 eps^2 + 1/64 eps^4 + 1/256 eps^6 + ...) / (1 - eps)
+    fn a1(epsilon: f64) -> f64 {
+        Polynomial::new([1., 0., 1. / 4., 0., 1. / 64., 0., 1. / 256.]).eval_at(epsilon) / (1. - epsilon)
+    }
+
+    /// From Karney - Algorithms for geodesics eqn 15:
+    /// I1(sigma) = A1 * (sigma + sum(1, inf, C1l * sin(2l * sigma)))
+    fn i1(a1: f64, epsilon: f64, sigma: f64) -> f64 {
+        let c1xs = [
+            Polynomial::new([0., -0.5, 0., 3. / 16., 0., -1. / 32.0]).eval_at(epsilon),
+            Polynomial::new([0., 0., -1. / 16., 0., 1. / 32., 0., -9. / 2048.]).eval_at(epsilon),
+            Polynomial::new([0., 0., 0., -1. / 48., 0., 3. / 256.]).eval_at(epsilon),
+            Polynomial::new([0., 0., 0., 0., -5. / 512., 0., 3. / 512.]).eval_at(epsilon),
+            Polynomial::new([0., 0., 0., 0., 0., -7. / 1280.]).eval_at(epsilon),
+            Polynomial::new([0., 0., 0., 0., 0., 0., -7. / 2048.]).eval_at(epsilon),
+        ];
+
+        a1 * (sigma + c1xs.into_iter().enumerate().map(|(ix, c1x)| c1x * (2. * sigma * (ix + 1) as f64).sin()).sum::<f64>())
+    }
+
+    /// From Karney - Algorithms for geodesics eqn 20:
+    /// sigma = tau + sum(1, inf, Cp1l * sin(2l * tau)) where tau = s / (b * A1)
+    fn sigma(epsilon: f64, tau: f64) -> f64 {
+        let cp1xs = [
+            Polynomial::new([0., 1. / 2., 0., -9. / 32., 0., 205. / 1536.]).eval_at(epsilon),
+            Polynomial::new([0., 0., 5. / 16., 0., -37. / 96., 0., 1335. / 4096.]).eval_at(epsilon),
+            Polynomial::new([0., 0., 0., 29. / 96., 0., -75. / 128.]).eval_at(epsilon),
+            Polynomial::new([0., 0., 0., 0., 539. / 1536., -2391. / 2560.]).eval_at(epsilon),
+            Polynomial::new([0., 0., 0., 0., 0., 3467. / 7680.]).eval_at(epsilon),
+            Polynomial::new([0., 0., 0., 0., 0., 0., 38081. / 61440.]).eval_at(epsilon),
+        ];
+
+        tau + cp1xs.into_iter().enumerate().map(|(ix, cp1x)| cp1x * (2. * tau * (ix + 1) as f64).sin()).sum::<f64>()
+    }
+
+    /// From Karney - Algorithms for geodesics eqn 24:
+    fn a3(n: f64, epsilon: f64) -> f64 {
+        Polynomial::new([
+            1.,                                                 // x^0
+            -Polynomial::new([1. / 2., -1. / 2.]).eval_at(n),            // x^1
+            -Polynomial::new([1. / 4., 1. / 8., -3. / 8.]).eval_at(n),    // x^2
+            -Polynomial::new([1. / 16., 3. / 16., 1. / 16.]).eval_at(n), // x^3
+            -Polynomial::new([3. / 64., 1. / 32.]).eval_at(n),            // x^4
+            -3. / 128.,
+        ]).eval_at(epsilon)
+    }
+
+    /// From Karney - Algorithms for geodesics eqn 23
+    /// I3(sigma) = A3 * (sigma + sum(1, inf, C3l * sin(2l * sigma))
+    fn i3(a3: f64, n: f64, epsilon: f64, sigma: f64) -> f64 {
+        let c3xs = [
+            Polynomial::new([
+                0.,  // x^0
+                Polynomial::new([1. / 4., -1. / 4.]).eval_at(n),             // x^1
+                Polynomial::new([1. / 8., 0., -1. / 8.]).eval_at(n),             // x^2
+                Polynomial::new([3. / 64., 3. / 64., -1. / 64.]).eval_at(n), // x^3
+                Polynomial::new([5. / 128., 1. / 64.]).eval_at(n),           // x^4
+                3. / 128.,                                         // x^5
+            ]).eval_at(epsilon),
+            Polynomial::new([
+                0.,
+                0.,
+                Polynomial::new([1. / 16., -3. / 32., 1. / 32.]).eval_at(n),
+                Polynomial::new([3. / 64., -1. / 32., -3. / 64.]).eval_at(n),
+                Polynomial::new([3. / 128., 1. / 128.]).eval_at(n),
+                5. / 256.,
+            ]).eval_at(epsilon),
+            Polynomial::new([
+                0.,
+                0.,
+                0.,
+                Polynomial::new([5. / 192., -3. / 64., 5. / 192.]).eval_at(n),
+                Polynomial::new([3. / 128., -5. / 192.]).eval_at(n),
+                7. / 512.,
+            ]).eval_at(epsilon),
+            Polynomial::new([
+                0.,
+                0.,
+                0.,
+                0.,
+                Polynomial::new([7. / 512., -7. / 256.]).eval_at(n),
+                7. / 512.,
+            ]).eval_at(epsilon),
+            Polynomial::new([0., 0., 0., 0., 0., 21. / 2560.]).eval_at(epsilon),
+        ];
+
+        a3 * (sigma + c3xs.into_iter().enumerate().map(|(ix, c3x)| c3x * (2. * sigma * (ix + 1) as f64).sin()).sum::<f64>())
+    }
+
 }
 
 impl PartialEq for Ellipsoid {
@@ -258,7 +446,9 @@ pub mod consts {
 
 #[cfg(test)]
 mod tests {
-    use crate::units::length::M;
+    use crate::units::length::{M, Meters};
+    use approx::assert_abs_diff_eq;
+    use crate::units::angle::Degrees;
 
     use super::*;
 
@@ -299,6 +489,32 @@ mod tests {
     }
 
     #[test]
+    fn test_prime_meridional_radius() {
+        let wgs84 = consts::WGS84;
+        assert_abs_diff_eq!(
+            wgs84.prime_meridional_radius(0.0),
+            wgs84.a() * (1. - wgs84.e_sq()),
+            epsilon = 1e-10
+        );
+        assert_abs_diff_eq!(
+            wgs84.prime_meridional_radius(std::f64::consts::FRAC_PI_2),
+            wgs84.a_sq() / wgs84.b(),
+            epsilon = 1e-8
+        );
+    }
+
+    #[test]
+    fn test_prime_vertical_radius() {
+        let wgs84 = consts::WGS84;
+        assert_abs_diff_eq!(wgs84.prime_vertical_radius(0.0), wgs84.a(), epsilon = 1e-10);
+        assert_abs_diff_eq!(
+            wgs84.prime_vertical_radius(std::f64::consts::FRAC_PI_2),
+            wgs84.a_sq() / wgs84.b(),
+            epsilon = 1e-8
+        );
+    }
+
+    #[test]
     fn clone() {
         let e = Ellipsoid::from_ab("Cloned", 1. * M, 0.9 * M);
         let cpy = e.clone();
@@ -320,5 +536,14 @@ mod tests {
         let e3 = Ellipsoid::from_ainvf("E3", 1. * M, 10.0);
         assert!(!e.eq(&e3));
         assert!(e.ne(&e3));
+    }
+
+    #[test]
+    fn test_solve_direct() {
+        let wgs84 = consts::WGS84;
+        let ([lon, lat], alpha2) = wgs84.solve_direct(&[0.0, Degrees(40.).rad()], Degrees(30.), Meters(10_000_000.0));
+        assert_abs_diff_eq!(Degrees::from_rad(lon), Degrees(137.84490004377), epsilon=1e-11);
+        assert_abs_diff_eq!(Degrees::from_rad(lat), Degrees(41.79331020506), epsilon=1e-10);
+        assert_abs_diff_eq!(Degrees::from_rad(alpha2), Degrees(149.09016931807), epsilon=1e-10);
     }
 }

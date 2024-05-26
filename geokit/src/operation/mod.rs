@@ -5,7 +5,7 @@ use core::f64;
 use std::fmt::Debug;
 
 use dyn_clone::DynClone;
-use na::min;
+use nalgebra::min;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
