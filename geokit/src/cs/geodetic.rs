@@ -12,7 +12,7 @@ impl Lon {
     /// Create a new longitude value with a given angle.
     /// The angle is wrapped into [-pi..pi]
     pub fn new<U: Angle>(val: U) -> Self {
-        Self(val.to_radians().rem_two_pi())
+        Self(val.to_radians().wrap(-PI))
     }
 
     /// Normalize the longitude into (-pi..pi]

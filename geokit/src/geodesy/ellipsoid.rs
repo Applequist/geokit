@@ -206,12 +206,12 @@ impl Ellipsoid {
     /// - p1: the **normalized geodetic** coordinates of the starting point
     /// - alpha1: the azimuth **in radians** of the geodesic at `p1`,
     /// - s12: the distance **in meters** along the geodesic from `p1` of the returned point coordinates.
-    pub fn solve_direct<A: Angle, S: Length>(&self, p1: &[f64], alpha1: A, s12: S) -> ([f64; 2], f64) {
+    pub fn solve_direct(&self, p1: &[f64], alpha1: f64, s12: f64) -> ([f64; 2], f64) {
         // Step 1: solve NEP_1 to give alpha0, sigma1 and omega1
         let lat1 = p1[1];
         let beta1 = self.reduced_latitude(lat1);
         let (sin_beta1, cos_beta1) = beta1.sin_cos();
-        let (sin_alpha1, cos_alpha1) = alpha1.rad().sin_cos();
+        let (sin_alpha1, cos_alpha1) = alpha1.sin_cos();
         // alpha0 is the azimuth at the equator of the spherical triangle NEP_1, N: north pole,
         // E: intersection of the geodesic and the equator
         // Karney - Algorithms for geodesics eqn 10
@@ -237,7 +237,7 @@ impl Ellipsoid {
         let s1 = self.b() * Self::i1(a1, epsilon, sigma1);
 
         // geodesic arc length from E to p2 in meters (p2 is what we are looking for)
-        let s2 = s1 + s12.m();
+        let s2 = s1 + s12;
 
         let tau2 = s2 / (self.b() * a1);
         // arc length on the auxiliary sphere from E to p2 in radians
@@ -264,7 +264,7 @@ impl Ellipsoid {
         let lat2 = (beta2.tan() / (1. - self.f())).atan();
 
         // wrap the longitude in [-pi, pi]
-        ([Lon::new(Radians(p1[0] + lambda12)).rad(), lat2], alpha2)
+        ([Lon::new(Radians(p1[0] + lambda12)).rad(), lat2], Radians(alpha2).wrap(0.))
 
     }
 
@@ -305,6 +305,7 @@ impl Ellipsoid {
     }
 
     /// From Karney - Algorithms for geodesics eqn 24:
+    /// TODO: All the polynomial in n only need to be evaluated once and could be cached
     fn a3(n: f64, epsilon: f64) -> f64 {
         Polynomial::new([
             1.,                                                 // x^0
@@ -318,6 +319,7 @@ impl Ellipsoid {
 
     /// From Karney - Algorithms for geodesics eqn 23
     /// I3(sigma) = A3 * (sigma + sum(1, inf, C3l * sin(2l * sigma))
+    /// TODO: All the polynomial in n only need to be evaluated once and could be cached
     fn i3(a3: f64, n: f64, epsilon: f64, sigma: f64) -> f64 {
         let c3xs = [
             Polynomial::new([
@@ -448,7 +450,7 @@ pub mod consts {
 mod tests {
     use crate::units::length::{M, Meters};
     use approx::assert_abs_diff_eq;
-    use crate::units::angle::Degrees;
+    use crate::units::angle::{DEG, Degrees};
 
     use super::*;
 
@@ -540,10 +542,163 @@ mod tests {
 
     #[test]
     fn test_solve_direct() {
+        // From Karney - Algorithms for geodesics
         let wgs84 = consts::WGS84;
-        let ([lon, lat], alpha2) = wgs84.solve_direct(&[0.0, Degrees(40.).rad()], Degrees(30.), Meters(10_000_000.0));
+        let ([lon, lat], alpha2) = wgs84.solve_direct(&[0.0, Degrees(40.).rad()], Degrees(30.).rad(), 10_000_000.0);
         assert_abs_diff_eq!(Degrees::from_rad(lon), Degrees(137.84490004377), epsilon=1e-11);
         assert_abs_diff_eq!(Degrees::from_rad(lat), Degrees(41.79331020506), epsilon=1e-10);
         assert_abs_diff_eq!(Degrees::from_rad(alpha2), Degrees(149.09016931807), epsilon=1e-10);
+
+        // From Rapp - Geometric Geodesy 1.71 Standard Test Lines
+        // Geodesics are given as (ph1, ph2, L, s, alpha12, alpha2)
+        let intl = consts::INTL;
+        struct Geodesic {
+            lat1: Degrees,
+            lat2: Degrees,
+            delta_lon: Degrees,
+            s: Meters,
+            alpha12: Degrees,
+            alpha2: Degrees,
+        }
+
+        let standard_lines = [
+            // Line 1
+            Geodesic {
+                lat1: Degrees::dms(37., 19., 54.95367),
+                lat2: Degrees::dms(26., 7., 42.83946),
+                delta_lon: Degrees::dms(41., 28., 35.50729),
+                s: Meters(4_085_966.7026),
+                alpha12: Degrees::dms(95., 27., 59.630888),
+                alpha2: Degrees::dms(118., 5., 58.961608),
+            },
+            // Line 2
+            Geodesic {
+                lat1: Degrees::dms(35., 16., 11.24862),
+                lat2: Degrees::dms(67., 22., 14.77638),
+                delta_lon: Degrees::dms(137., 47., 28.31435),
+                s: Meters(8_084_823.8383),
+                alpha12: Degrees::dms(15., 44., 23.748498),
+                alpha2: Degrees::dms(144., 55., 39.921473),
+            },
+            // Line 3
+            Geodesic {
+                lat1: Degrees::dms(1., 0., 0.),
+                lat2: Degrees::dms(-0., 59., 53.83076),
+                delta_lon: Degrees::dms(179., 17., 48.02997),
+                s: Meters(19_959_999.9998),
+                alpha12: Degrees::dms(88., 59., 59.998970),
+                alpha2: Degrees::dms(91., 0., 6.118357),
+            },
+            // Line 4
+            Geodesic {
+                lat1: Degrees::dms(1., 0., 0.),
+                lat2: Degrees::dms(1., 1., 15.18952),
+                delta_lon: Degrees::dms(179., 46., 17.84244),
+                s: Meters(19_780_006.5588),
+                alpha12: Degrees::dms(4., 59., 59.999953),
+                alpha2: Degrees::dms(174., 59., 59.884804),
+            },
+            // Line 5
+            Geodesic {
+                lat1: Degrees::dms(41., 41., 45.88000),
+                lat2: Degrees::dms(41., 41., 46.20000),
+                delta_lon: Degrees::dms(0., 0., 0.56000),
+                s: Meters(16.2839751),
+                alpha12: Degrees::dms(52., 40., 39.390667),
+                alpha2: Degrees::dms(52., 40., 39.763168),
+            },
+            // Line 6
+            Geodesic {
+                lat1: Degrees::dms(30., 0., 0.),
+                lat2: Degrees::dms(37., 53., 32.46584),
+                delta_lon: Degrees::dms(116., 19., 16.68843),
+                s: Meters(10002499.9999),
+                alpha12: Degrees::dms(45., 0., 0.000004),
+                alpha2: Degrees::dms(129., 8., 12.326010),
+            },
+            // Line 7
+            Geodesic {
+                lat1: Degrees::dms(37., 0., 0.),
+                lat2: Degrees::dms(28., 15., 36.69535),
+                delta_lon: Degrees::dms(-2., 37., 39.52918),
+                s: Meters(1_000_000.0),
+                alpha12: Degrees::dms(195., 0., 0.),
+                alpha2: Degrees::dms(193., 34., 43.74060),
+            }
+        ];
+        for (ix, g) in standard_lines.iter().enumerate() {
+            println!("Test Line {}", ix + 1);
+            let ([lon, lat], alpha2) = intl.solve_direct(&[0.0, g.lat1.rad()], g.alpha12.rad(), g.s.m());
+            assert_abs_diff_eq!(Degrees::from_rad(lon), g.delta_lon, epsilon = 2e-9);
+            assert_abs_diff_eq!(Degrees::from_rad(lat), g.lat2, epsilon = 2e-9);
+            assert_abs_diff_eq!(Degrees::from_rad(alpha2), g.alpha2, epsilon = 1e-9);
+        }
+
+        // From Rapp - Geometric Geodesy Table 1.3
+        let antipodal_lines = [
+            // Line A
+            Geodesic {
+                lat1: Degrees::dms(41., 41., 45.88),
+                lat2: Degrees::dms(-41., 41., 46.20),
+                delta_lon: Degrees::dms(179., 59., 59.99985),
+                s: Meters(20004566.7228),
+                alpha12: Degrees::dms(179., 58., 49.16255),
+                alpha2: Degrees::dms(0., 1., 10.8376),
+            },
+            // Line B
+            Geodesic {
+                lat1: Degrees(0.),
+                lat2: Degrees(0.),
+                delta_lon: Degrees(180.),
+                s: Meters(19996147.4168),
+                alpha12: Degrees::dms(29., 59., 59.9999),
+                alpha2: Degrees(150.),
+            },
+            // Line C
+            Geodesic {
+                lat1: Degrees(30.),
+                lat2: Degrees(-30.),
+                delta_lon: Degrees(180.),
+                s: Meters(19994364.6069),
+                alpha12: Degrees::dms(39., 24., 51.8058),
+                alpha2: Degrees::dms(140., 35., 8.1942),
+            },
+            // Line D
+            Geodesic {
+                lat1: Degrees(60.),
+                lat2: Degrees::dms(-59., 59., 0.),
+                delta_lon: Degrees::dms(179., 58., 53.03674),
+                s: Meters(20000433.9629),
+                alpha12: Degrees::dms(29., 11., 51.0700),
+                alpha2: Degrees::dms(150., 49., 6.8680),
+            },
+            // Line E
+            Geodesic {
+                lat1: Degrees(30.),
+                lat2: Degrees::dms(-29., 50., 0.),
+                delta_lon: Degrees::dms(179., 56., 41.64754),
+                s: Meters(19983420.1536),
+                alpha12: Degrees::dms(16., 2., 28.3389),
+                alpha2: Degrees::dms(163., 59., 10.3369),
+            },
+            // Line F
+            Geodesic {
+                lat1: Degrees(30.),
+                lat2: Degrees::dms(-29., 55., 0.),
+                delta_lon: Degrees::dms(179., 58., 3.57082),
+                s: Meters(19992241.7634),
+                alpha12: Degrees::dms(18., 38., 12.5568),
+                alpha2: Degrees::dms(161., 22., 45.4373),
+            }
+        ];
+
+        for (ix, g) in antipodal_lines.iter().enumerate() {
+            println!("Test Line {}", ix + 1);
+            let ([lon, lat], alpha2) = intl.solve_direct(&[0.0, g.lat1.rad()], g.alpha12.rad(), g.s.m());
+            assert_abs_diff_eq!(Degrees::from_rad(lon), g.delta_lon, epsilon = 4e-1); // from 2e-9 to 4e-1 because of Line B
+            assert_abs_diff_eq!(Degrees::from_rad(lat), g.lat2, epsilon = 2e-9);
+            assert_abs_diff_eq!(Degrees::from_rad(alpha2), g.alpha2, epsilon = 1e-7);
+        }
+
     }
 }

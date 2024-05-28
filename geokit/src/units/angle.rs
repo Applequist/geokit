@@ -127,18 +127,16 @@ angle_unit!(
 );
 
 impl Radians {
-    /// Warning: hacky code!
-    /// This function aims at reproducing the C/C++ remainder function.
-    /// It is mainly used to normalize longitude in [-pi, pi].
-    pub fn rem_two_pi(self) -> f64 {
+    /// Wrap the angle value in `[min, min + 2 * PI]`
+    /// Typical values of `min` are `-PI` and `2. * PI`.
+    pub fn wrap(self, min: f64) -> f64 {
         let mut na = self.0;
-        let q = (na / (2.0 * PI)).trunc();
-        na -= q * 2.0 * PI;
-        while na < -PI {
-            na += 2.0 * PI
+        na = na % (2. * PI);
+        while na < min {
+            na += 2. * PI;
         }
-        while na > PI {
-            na -= 2.0 * PI
+        while na > min + (2. * PI) {
+            na -= 2. * PI;
         }
         na
     }
@@ -162,6 +160,14 @@ angle_unit!(
     (Arcsecs, SEC, "sec", consts::PI / 648_000.0)
 );
 
+impl Degrees {
+    pub fn dms(deg: f64, min: f64, sec: f64) -> Self {
+        let f = deg.signum();
+        let deg = deg as f64 + f * min as f64 / 60. + f * sec / 3600.;
+        Self(deg)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::f64::consts::FRAC_PI_2;
@@ -184,5 +190,16 @@ mod tests {
         assert_eq!(Degrees(90.0) * 2.0, Degrees(180.0));
         assert_eq!(Degrees(90.0) / 2.0, Degrees(45.0));
         assert!(Degrees(90.0) < Degrees(90.1));
+    }
+
+    #[test]
+    fn test_dms() {
+        let deg = Degrees::dms(26., 30., 0.0);
+        assert_eq!(deg.0, 26.5);
+        let deg = Degrees::dms(-26., 30., 0.0);
+        assert_eq!(deg.0, -26.5);
+        let deg = Degrees::dms(-0., 30., 0.0);
+        assert_eq!(deg.0, -0.5);
+
     }
 }
