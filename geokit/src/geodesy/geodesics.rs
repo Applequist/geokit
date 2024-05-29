@@ -204,14 +204,12 @@ impl<'e> GeodesicSolver<'e> {
     }
 
     /// From Karney - Algorithms for geodesics eqn 24:
-    /// TODO: All the polynomial in n only need to be evaluated once and could be cached
     fn a3(&self, epsilon: f64) -> f64 {
         self.a3.eval_at(epsilon)
     }
 
     /// From Karney - Algorithms for geodesics eqn 23
     /// I3(sigma) = A3 * (sigma + sum(1, inf, C3l * sin(2l * sigma))
-    /// TODO: All the polynomial in n only need to be evaluated once and could be cached
     fn i3(&self, a3: f64, epsilon: f64, sigma: f64) -> f64 {
         let c3xs = self.c3xs.map(|p| p.eval_at(epsilon));
         a3 * (sigma + c3xs.into_iter().enumerate().map(|(ix, c3x)| c3x * (2. * sigma * (ix + 1) as f64).sin()).sum::<f64>())
