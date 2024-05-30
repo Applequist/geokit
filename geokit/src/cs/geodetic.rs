@@ -82,10 +82,90 @@ impl AbsDiffEq for Lon {
     }
 }
 
+impl Sub for Lon {
+    type Output = LonInterval;
+
+    fn sub(self, rhs: Self) -> Self::Output {
+        LonInterval::new(rhs, self)
+    }
+}
+
 impl Display for Lon {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "lon = {} rad", self.0)
     }
+}
+
+/// A **closed** longitude interval represented by its lower and upper bounds (inclusive).
+/// Note that the lower may be greater that the higher bound, in this case the interval contains
+/// the point on the ante-meridian.
+/// The lower and higher bound representations may also be inverted in special cases to allow the
+/// empty and the full intervals as well:
+/// - the empty interval is represented as the inverted interval `[pi..-pi]`
+/// - the full interval is represented as the `[-pi..pi]`
+/// - other intervals are represented as:
+///     - `[lo..hi]` for lo != -pi
+///     - `[pi..hi]` for lo == -pi and hi != pi,
+///     - `[lo..hi]` otherwise
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub struct LonInterval {
+    lo: f64,
+    hi: f64,
+}
+
+impl LonInterval {
+    /// Return an empty interval.
+    pub fn empty() -> Self {
+        Self {
+            lo: PI,
+            hi: -PI,
+        }
+    }
+
+    /// Return a full interval.
+    pub fn full() -> Self {
+        Self {
+            lo: -PI,
+            hi: PI,
+        }
+    }
+
+    /// Create a new interval.
+    pub fn new(lo: Lon, hi: Lon) -> Self {
+        let mut low = lo;
+        if lo == Lon::MIN && hi != Lon::MAX {
+            low = Lon::MAX;
+        }
+        Self {
+            lo: low.rad(),
+            hi: hi.rad(),
+        }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.lo == PI && self.hi == -PI
+    }
+
+    pub fn is_full(&self) -> bool {
+        self.lo == -PI && self.hi == PI
+    }
+
+    fn is_inverted(&self) -> bool {
+        self.lo > self.hi
+    }
+
+    pub fn length(&self) -> Option<Radians> {
+        let mut length = self.hi - self.lo;
+        if length < 0. {
+            length += 2. * PI;
+        }
+        if length > 0. {
+            Some(Radians(length))
+        } else {
+            None
+        }
+    }
+
 }
 
 /// A latitude coordinate in [-pi/2..pi/2]  radians.
@@ -162,8 +242,9 @@ impl Display for Lat {
 mod tests {
     use std::f64::consts;
     use std::f64::consts::{FRAC_PI_4, PI};
+    use approx::assert_abs_diff_eq;
 
-    use crate::cs::geodetic::{Lat, Lon};
+    use crate::cs::geodetic::{Lat, Lon, LonInterval};
     use crate::units::angle::{Degrees, Radians, DEG, RAD};
 
     #[test]
@@ -210,5 +291,18 @@ mod tests {
             format!("{}", Lat::new(Degrees(45.))),
             "lat = 0.7853981633974483 rad"
         );
+    }
+
+    #[test]
+    fn test_lon_interval() {
+        assert!(LonInterval::empty().is_empty());
+        assert!(LonInterval::empty().is_inverted());
+        assert!(LonInterval::full().is_full());
+
+        // Length
+        assert_eq!(LonInterval::empty().length(), None);
+        assert_eq!(LonInterval::full().length(), Some(Radians(2. * PI)));
+        assert_eq!(LonInterval::new(Lon::new(Degrees(0.)), Lon::new(Degrees(160.))).length(), Some(Radians::from_angle(Degrees(160.))));
+        assert_abs_diff_eq!(LonInterval::new(Lon::new(Degrees(170.)), Lon::new(Degrees(-170.))).length().unwrap(), Radians::from_angle(Degrees(20.)), epsilon = 1e-15);
     }
 }
