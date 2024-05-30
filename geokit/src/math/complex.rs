@@ -43,11 +43,32 @@ impl<T: Float> Complex<T> {
     }
 }
 
+impl<T: Float> Zero for Complex<T> {
+    fn zero() -> Self {
+        Self::new(T::zero(), T::zero())
+    }
+
+    fn is_zero(&self) -> bool {
+        self.re.is_zero() && self.im.is_zero()
+    }
+}
+
 impl<T: Float> Add for Complex<T> {
     type Output = Self;
 
     fn add(self, rhs: Self) -> Self::Output {
         Self::new(self.re + rhs.re, self.im + rhs.im)
+    }
+}
+
+impl<T: Float> Add<T> for Complex<T> {
+    type Output = Self;
+
+    fn add(self, rhs: T) -> Self::Output {
+        Self {
+            re: self.re + rhs,
+            im: self.im,
+        }
     }
 }
 
@@ -62,6 +83,23 @@ impl<T: Float> Sub for Complex<T> {
     }
 }
 
+impl<T: Float> Sub<T> for Complex<T> {
+    type Output = Complex<T>;
+
+    fn sub(self, rhs: T) -> Self::Output {
+        Self {
+            re: self.re - rhs,
+            im: self.im,
+        }
+    }
+}
+
+impl<T: Float> One for Complex<T> {
+    fn one() -> Self {
+        Self::new(T::one(), T::zero())
+    }
+}
+
 impl<T: Float> Mul for Complex<T> {
     type Output = Self;
 
@@ -73,30 +111,6 @@ impl<T: Float> Mul for Complex<T> {
     }
 }
 
-impl<T: Float> Div for Complex<T> {
-    type Output = Self;
-
-    fn div(self, rhs: Self) -> Self::Output {
-        self * rhs.inv()
-    }
-}
-
-impl<T: Float> Zero for Complex<T> {
-    fn zero() -> Self {
-        Self::new(T::zero(), T::zero())
-    }
-
-    fn is_zero(&self) -> bool {
-        self.re.is_zero() && self.im.is_zero()
-    }
-}
-
-impl<T: Float> One for Complex<T> {
-    fn one() -> Self {
-        Self::new(T::one(), T::zero())
-    }
-}
-
 impl<T: Float> Mul<T> for Complex<T> {
     type Output = Complex<T>;
 
@@ -105,6 +119,14 @@ impl<T: Float> Mul<T> for Complex<T> {
             re: self.re * rhs,
             im: self.im * rhs,
         }
+    }
+}
+
+impl<T: Float> Div for Complex<T> {
+    type Output = Self;
+
+    fn div(self, rhs: Self) -> Self::Output {
+        self * rhs.inv()
     }
 }
 
