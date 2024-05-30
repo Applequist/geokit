@@ -1,9 +1,10 @@
-use approx::AbsDiffEq;
-use num::traits::WrappingAdd;
-use num::Bounded;
 use std::f64::consts::{FRAC_PI_2, PI};
 use std::fmt::{Display, Formatter};
 use std::ops::{Add, Neg, Sub};
+
+use approx::AbsDiffEq;
+use num::traits::WrappingAdd;
+use num::Bounded;
 
 use crate::units::angle::{Angle, Radians};
 
@@ -116,18 +117,12 @@ pub struct LonInterval {
 impl LonInterval {
     /// Return an empty interval.
     pub fn empty() -> Self {
-        Self {
-            lo: PI,
-            hi: -PI,
-        }
+        Self { lo: PI, hi: -PI }
     }
 
     /// Return a full interval.
     pub fn full() -> Self {
-        Self {
-            lo: -PI,
-            hi: PI,
-        }
+        Self { lo: -PI, hi: PI }
     }
 
     /// Create a new interval.
@@ -165,7 +160,6 @@ impl LonInterval {
             None
         }
     }
-
 }
 
 /// A latitude coordinate in [-pi/2..pi/2]  radians.
@@ -242,6 +236,7 @@ impl Display for Lat {
 mod tests {
     use std::f64::consts;
     use std::f64::consts::{FRAC_PI_4, PI};
+
     use approx::assert_abs_diff_eq;
 
     use crate::cs::geodetic::{Lat, Lon, LonInterval};
@@ -302,7 +297,16 @@ mod tests {
         // Length
         assert_eq!(LonInterval::empty().length(), None);
         assert_eq!(LonInterval::full().length(), Some(Radians(2. * PI)));
-        assert_eq!(LonInterval::new(Lon::new(Degrees(0.)), Lon::new(Degrees(160.))).length(), Some(Radians::from_angle(Degrees(160.))));
-        assert_abs_diff_eq!(LonInterval::new(Lon::new(Degrees(170.)), Lon::new(Degrees(-170.))).length().unwrap(), Radians::from_angle(Degrees(20.)), epsilon = 1e-15);
+        assert_eq!(
+            LonInterval::new(Lon::new(Degrees(0.)), Lon::new(Degrees(160.))).length(),
+            Some(Radians::from_angle(Degrees(160.)))
+        );
+        assert_abs_diff_eq!(
+            LonInterval::new(Lon::new(Degrees(170.)), Lon::new(Degrees(-170.)))
+                .length()
+                .unwrap(),
+            Radians::from_angle(Degrees(20.)),
+            epsilon = 1e-15
+        );
     }
 }

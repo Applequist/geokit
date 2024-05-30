@@ -1,5 +1,6 @@
-use crate::units::angle::Angle;
 use approx::AbsDiffEq;
+
+use crate::units::angle::Angle;
 
 /// An azimuth direction starting at 0 pointing in the geographic North direction and
 /// positive **clockwise**.

@@ -1,9 +1,9 @@
-use num::{Float, One, Zero};
 use std::ops::{Add, Div, Mul, Sub};
-use num::traits::real::Real;
+
+use num::{Float, One, Zero};
 
 #[derive(Debug, Copy, Clone, PartialEq)]
-pub struct Complex<T: Real = f64> {
+pub struct Complex<T: Float = f64> {
     re: T,
     im: T,
 }
@@ -144,7 +144,9 @@ impl<T: Float> Div<T> for Complex<T> {
 #[cfg(test)]
 mod tests {
     use std::f64::consts::{FRAC_PI_4, PI};
+
     use num::complex::ComplexFloat;
+
     use crate::math::complex::Complex;
 
     #[test]
@@ -170,18 +172,29 @@ mod tests {
     #[test]
     fn test_ops() {
         // Addition
-        assert_eq!(Complex::new(1., 0.) + Complex::new(0., 1.), Complex::new(1., 1.));
+        assert_eq!(
+            Complex::new(1., 0.) + Complex::new(0., 1.),
+            Complex::new(1., 1.)
+        );
 
         // Subtraction
-        assert_eq!(Complex::new(1., 0.) - Complex::new(0., 1.), Complex::new(1., -1.));
+        assert_eq!(
+            Complex::new(1., 0.) - Complex::new(0., 1.),
+            Complex::new(1., -1.)
+        );
 
         // Multiplication
-        assert_eq!(Complex::new(1., 1.) * Complex::new(1., -1.), Complex::new(2., 0.));
+        assert_eq!(
+            Complex::new(1., 1.) * Complex::new(1., -1.),
+            Complex::new(2., 0.)
+        );
         assert_eq!(Complex::new(1., 1.) * 2., Complex::new(2., 2.));
 
         // Division
-        assert_eq!(Complex::new(1., 1.) / Complex::new(1., -1.), Complex::new(0., 2. / 2f64.sqrt()));
+        assert_eq!(
+            Complex::new(1., 1.) / Complex::new(1., -1.),
+            Complex::new(0., 2. / 2f64.sqrt())
+        );
         assert_eq!(Complex::new(1., 1.) / 2., Complex::new(1. / 2., 1. / 2.));
     }
-
 }

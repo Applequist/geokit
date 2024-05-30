@@ -283,8 +283,8 @@ pub mod consts {
 mod tests {
     use approx::assert_abs_diff_eq;
 
-    use crate::units::angle::{DEG, Degrees};
-    use crate::units::length::{M, Meters};
+    use crate::units::angle::{Degrees, DEG};
+    use crate::units::length::{Meters, M};
 
     use super::*;
 

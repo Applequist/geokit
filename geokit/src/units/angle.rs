@@ -1,9 +1,10 @@
 //! This module defines some types used to express angles in various units.
-use approx::AbsDiffEq;
 use std::f64::consts;
 use std::f64::consts::{FRAC_PI_2, PI};
 use std::fmt::{Display, Formatter};
 use std::ops::{Add, Div, Mul, Neg, Sub};
+
+use approx::AbsDiffEq;
 
 /// Trait implemented by types whose values are measuring some angle
 /// and can be converted to the same angle expressed in [Radians](radians).

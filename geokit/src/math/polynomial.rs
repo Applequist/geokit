@@ -1,4 +1,5 @@
 use std::ops::{Add, Mul};
+
 use num::{Num, Zero};
 
 /// A polynomial of a single variable of degree less than `D`.
@@ -32,6 +33,7 @@ where
 #[cfg(test)]
 mod tests {
     use num::Zero;
+
     use crate::math::complex::Complex;
     use crate::math::polynomial::Polynomial;
 
@@ -44,7 +46,10 @@ mod tests {
         assert_eq!(Polynomial::new([1.0, 0.0, 2.0]).eval_at(2.0), 9.0);
 
         // eval_at(V)
-        assert_eq!(Polynomial::new([1., 0., 1.]).eval_at(Complex::new(0., 1.)), Complex::zero());
+        assert_eq!(
+            Polynomial::new([1., 0., 1.]).eval_at(Complex::new(0., 1.)),
+            Complex::zero()
+        );
     }
 
     #[test]
