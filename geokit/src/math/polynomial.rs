@@ -1,4 +1,5 @@
-use num::Num;
+use std::ops::{Add, Mul};
+use num::{Num, Zero};
 
 /// A polynomial of a single variable of degree less than `D`.
 /// All coefficients are stored on the stack.
@@ -16,25 +17,34 @@ where
         Self(coef)
     }
 
-    /// Evaluate this polynomial at the given real value `x` using Horner's method.
-    pub fn eval_at(&self, x: T) -> T {
+    /// Evaluate this polynomial at the given value `x` using Horner's method.
+    pub fn eval_at<V>(&self, x: V) -> V
+    where
+        V: Copy + Zero + Mul<Output = V> + Add<T, Output = V>,
+    {
         self.0
             .into_iter()
             .rev()
-            .fold(T::zero(), |acc, coef_i| x * acc + coef_i)
+            .fold(V::zero(), |acc, coef_i| x * acc + coef_i)
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use num::Zero;
+    use crate::math::complex::Complex;
     use crate::math::polynomial::Polynomial;
 
     #[test]
     fn eval_at() {
+        // eval_at(T)
         assert_eq!(Polynomial::new([0.0; 3]).eval_at(1.0), 0.0);
         assert_eq!(Polynomial::new([1., -1.0, 1.0]).eval_at(1.0), 1.0);
         assert_eq!(Polynomial::new([1.0, 0.0, 2.0]).eval_at(1.0), 3.0);
         assert_eq!(Polynomial::new([1.0, 0.0, 2.0]).eval_at(2.0), 9.0);
+
+        // eval_at(V)
+        assert_eq!(Polynomial::new([1., 0., 1.]).eval_at(Complex::new(0., 1.)), Complex::zero());
     }
 
     #[test]
