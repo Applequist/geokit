@@ -1,7 +1,7 @@
 use approx::assert_abs_diff_eq;
 use geokit::cs::geodetic::Lon;
-use geokit::units::angle::{DEG, Degrees};
-use geokit::units::length::{M, Meters};
+use geokit::units::angle::{Degrees, DEG};
+use geokit::units::length::{Meters, M};
 use geokit::{
     crs::{Crs::Geographic, Crs::Projected, GeodeticAxes, ProjectedAxes, ProjectionSpec},
     geodesy::{ellipsoid, prime_meridian, GeodeticDatum},
@@ -64,7 +64,9 @@ fn llh_to_utm0() -> operation::Result<()> {
             prime_meridian::consts::GREENWICH,
             None,
         ),
-        axes: ProjectedAxes::EastNorth { horiz_unit: Meters::unit() },
+        axes: ProjectedAxes::EastNorth {
+            horiz_unit: Meters::unit(),
+        },
         projection: ProjectionSpec::TransverseMercator {
             lon0: Lon::new(0.0 * DEG),
             lat0: 0.0,

@@ -1,11 +1,8 @@
 use std::fmt::{Debug, Display};
 
 use smol_str::SmolStr;
-use crate::cs::geodetic::Lon;
-use crate::math::complex::Complex;
-use crate::math::polynomial::Polynomial;
-use crate::units::angle::{Angle, Radians};
 
+use crate::units::angle::Angle;
 use crate::units::length::Length;
 
 /// An `Ellipsoid` is a mathematical surface defined by rotating an ellipse around
@@ -159,8 +156,8 @@ impl Ellipsoid {
         self.e_prime_sq().sqrt()
     }
 
-    /// Return the reduce latitude, aka parametric latitude, `beta`: `tan(beta) = (1 - f)tan(lat)`
-    /// where `lat` is the geodetic latitude.
+    /// Return the reduced latitude, aka parametric latitude, `beta`: `tan(beta) = (1 - f)tan(lat)`
+    /// where `lat` is the **geodetic latitude** in radians.
     ///
     /// The reduced latitude of a point P on the ellipsoid is the angle at the center of a sphere
     /// tangent to the ellipsoid on the equator (radius = a), between the equatorial plane and a
@@ -171,7 +168,7 @@ impl Ellipsoid {
     }
 
     /// Return the geocentric latitude, `psi`: `tan(psi) = (1 - e^2)tan(lat)`
-    /// where `lat` is the geodetic latitude.
+    /// where `lat` is the **geodetic latitude** in radians.
     ///
     /// The geocentric latitude of a point P on the ellipsoid is the angle at the centre of the
     /// ellipsoid between the equatorial plane and a line to the point P.
@@ -179,7 +176,7 @@ impl Ellipsoid {
         ((1. - self.e_sq()) * lat.tan()).atan()
     }
 
-    /// Return the radius of curvature `N` **in meters** at the given geodetic latitude **in radians**
+    /// Return the radius of curvature `N` **in meters** at the given **geodetic latitude in radians**
     /// of the prime vertical normal section, i.e. the normal section perpendicular to the meridional
     /// normal section.
     /// See [prime_meridional_radius]
@@ -187,7 +184,7 @@ impl Ellipsoid {
         self.a / (1.0 - self.e_sq() * lat.sin().powi(2)).sqrt()
     }
 
-    /// Return the radius of curvature `M` **in meters** at the given geodetic latitude **in radians**
+    /// Return the radius of curvature `M` **in meters** at the given **geodetic latitude in radians**
     /// of the meridional normal section, i.e. the normal section passing through the poles.
     pub fn prime_meridional_radius(&self, lat: f64) -> f64 {
         self.a * (1.0 - self.e_sq()) / (1.0 - self.e_sq() * lat.sin().powi(2)).powf(1.5)
@@ -196,8 +193,6 @@ impl Ellipsoid {
     pub fn conformal_sphere_radius(&self, lat: f64) -> f64 {
         (self.prime_meridional_radius(lat) * self.prime_vertical_radius(lat)).sqrt()
     }
-
-
 }
 
 impl PartialEq for Ellipsoid {
@@ -286,9 +281,10 @@ pub mod consts {
 
 #[cfg(test)]
 mod tests {
-    use crate::units::length::{M, Meters};
     use approx::assert_abs_diff_eq;
+
     use crate::units::angle::{DEG, Degrees};
+    use crate::units::length::{M, Meters};
 
     use super::*;
 
@@ -377,5 +373,4 @@ mod tests {
         assert!(!e.eq(&e3));
         assert!(e.ne(&e3));
     }
-
 }

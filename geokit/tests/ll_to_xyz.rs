@@ -1,4 +1,5 @@
 use approx::assert_abs_diff_eq;
+use geokit::units::angle::{Degrees, Radians};
 use geokit::{
     crs::{Crs::Geocentric, Crs::Geographic, GeocentricAxes, GeodeticAxes},
     geodesy::geodetic_datum,
@@ -6,7 +7,6 @@ use geokit::{
     providers::{DefaultTransformationProvider, TransformationProvider},
 };
 use std::default::Default;
-use geokit::units::angle::{Degrees, Radians};
 
 fn dist(a: &[f64], b: &[f64]) -> f64 {
     assert_eq!(a.len(), 3);

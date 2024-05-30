@@ -1,10 +1,10 @@
 use std::f64::consts::{FRAC_PI_2, FRAC_PI_4};
 
+use crate::math::polynomial::Polynomial;
 use crate::{
     geodesy::Ellipsoid,
     operation::{self, Operation},
 };
-use crate::math::polynomial::Polynomial;
 
 /// The [Mercator] map projection.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -20,7 +20,6 @@ pub(crate) struct Mercator {
 }
 
 impl Mercator {
-
     /// Creates a new [Mercator] projection instance known as *Mercator (1SP)*. The projection is
     /// defined with the equator as the single standard parallel and the scale at the equator also
     /// defined. False grid coordinates are applied at the *natural origin* of the projection, the
@@ -110,8 +109,10 @@ impl Operation for Mercator {
 
         output[0] = self.lon0 + (input[0] - self.false_easting) / (self.a * self.k0);
         output[1] = xi
-            + Polynomial::new([0.0, 0.5, 5.0 / 24.0, 1.0 / 12.0, 13.0 / 360.0]).eval_at(e2) * sin_2xi
-            + Polynomial::new([0.0, 0.0, 7.0 / 48.0, 29.0 / 240.0, 811.0 / 11520.0]).eval_at(e2) * sin_4xi
+            + Polynomial::new([0.0, 0.5, 5.0 / 24.0, 1.0 / 12.0, 13.0 / 360.0]).eval_at(e2)
+                * sin_2xi
+            + Polynomial::new([0.0, 0.0, 7.0 / 48.0, 29.0 / 240.0, 811.0 / 11520.0]).eval_at(e2)
+                * sin_4xi
             + Polynomial::new([0.0, 0.0, 0.0, 7.0 / 120.0, 81.0 / 1120.0]).eval_at(e2) * sin_6xi
             + Polynomial::new([0.0, 0.0, 0.0, 0.0, 4279.0 / 161280.0]).eval_at(e2) * sin_8xi;
         output[2] = input[2];

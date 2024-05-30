@@ -1,5 +1,5 @@
-use std::ops::{Add, Mul};
 use num::{Float, One, Zero};
+use std::ops::{Add, Mul};
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub struct Complex<T: Float = f64> {
@@ -9,10 +9,7 @@ pub struct Complex<T: Float = f64> {
 
 impl<T: Float> Complex<T> {
     pub fn new(re: T, im: T) -> Self {
-        Self {
-            re,
-            im,
-        }
+        Self { re, im }
     }
 
     pub fn abs(&self) -> T {

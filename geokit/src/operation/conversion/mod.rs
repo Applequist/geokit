@@ -1,9 +1,9 @@
+use crate::units::angle::Angle;
+use crate::units::length::Length;
 use crate::{
     crs::{GeocentricAxes, GeodeticAxes, ProjectedAxes},
     geodesy::{Ellipsoid, GeodeticDatum, PrimeMeridian},
 };
-use crate::units::angle::Angle;
-use crate::units::length::Length;
 
 use super::{Operation, Result};
 
@@ -38,14 +38,28 @@ impl From<GeodeticAxes> for Normalization {
             GeodeticAxes::EastNorthUp {
                 angle_unit,
                 height_unit,
-            } => vec![(0, angle_unit.rad()), (1, angle_unit.rad()), (2, height_unit.m())],
-            GeodeticAxes::EastNorth { angle_unit } => vec![(0, angle_unit.rad()), (1, angle_unit.rad())],
+            } => vec![
+                (0, angle_unit.rad()),
+                (1, angle_unit.rad()),
+                (2, height_unit.m()),
+            ],
+            GeodeticAxes::EastNorth { angle_unit } => {
+                vec![(0, angle_unit.rad()), (1, angle_unit.rad())]
+            }
             GeodeticAxes::NorthEastUp {
                 angle_unit,
                 height_unit,
-            } => vec![(1, angle_unit.rad()), (0, angle_unit.rad()), (2, height_unit.m())],
-            GeodeticAxes::NorthEast { angle_unit } => vec![(1, angle_unit.rad()), (0, angle_unit.rad())],
-            GeodeticAxes::NorthWest { angle_unit } => vec![(1, -angle_unit.rad()), (0, angle_unit.rad())],
+            } => vec![
+                (1, angle_unit.rad()),
+                (0, angle_unit.rad()),
+                (2, height_unit.m()),
+            ],
+            GeodeticAxes::NorthEast { angle_unit } => {
+                vec![(1, angle_unit.rad()), (0, angle_unit.rad())]
+            }
+            GeodeticAxes::NorthWest { angle_unit } => {
+                vec![(1, -angle_unit.rad()), (0, angle_unit.rad())]
+            }
         };
         Normalization(to_ord)
     }
@@ -57,8 +71,14 @@ impl From<ProjectedAxes> for Normalization {
             ProjectedAxes::EastNorthUp {
                 horiz_unit,
                 height_unit,
-            } => vec![(0, horiz_unit.m()), (1, horiz_unit.m()), (2, height_unit.m())],
-            ProjectedAxes::EastNorth { horiz_unit } => vec![(0, horiz_unit.m()), (1, horiz_unit.m())],
+            } => vec![
+                (0, horiz_unit.m()),
+                (1, horiz_unit.m()),
+                (2, height_unit.m()),
+            ],
+            ProjectedAxes::EastNorth { horiz_unit } => {
+                vec![(0, horiz_unit.m()), (1, horiz_unit.m())]
+            }
         };
         Normalization(to_ord)
     }

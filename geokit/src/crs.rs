@@ -4,19 +4,19 @@
 
 use smol_str::SmolStr;
 
+use crate::cs::geodetic::Lon;
+use crate::units::angle::Radians;
+use crate::units::length::{Length, Meters};
 use crate::{
     geodesy::{Ellipsoid, GeodeticDatum},
     operation::{
         conversion::{
-            GeogToGeoc,
-            Normalization, projection::cyl::{Mercator, TransverseMercator, WebMercator},
+            projection::cyl::{Mercator, TransverseMercator, WebMercator},
+            GeogToGeoc, Normalization,
         },
         Inv, Operation,
     },
 };
-use crate::cs::geodetic::Lon;
-use crate::units::angle::Radians;
-use crate::units::length::{Length, Meters};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Crs {
@@ -264,7 +264,8 @@ pub enum ProjectedAxes {
         /// in 1 unit of this unit, aka the *to meter conversion factor*.
         horiz_unit: Meters,
         /// the length unit for the ellipsoidal height expressed **in meters**.
-        height_unit: Meters },
+        height_unit: Meters,
+    },
     /// The axes for a 2D projected Crs. Coordinates are, in order:
     /// - easting positive eastward,
     /// - northing positive northward,

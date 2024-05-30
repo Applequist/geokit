@@ -4,8 +4,8 @@ use smol_str::SmolStr;
 
 use crate::operation::{
     identity,
-    Operation,
     transformation::{GeocentricTranslation, Helmert7Params, RotationConvention},
+    Operation,
 };
 use crate::units::angle::Radians;
 use crate::units::length::Meters;
@@ -44,13 +44,7 @@ impl DatumTransformation {
                 rotation,
                 translation,
                 scale,
-            } => Helmert7Params::new(
-                conv,
-                rotation,
-                translation,
-                scale,
-            )
-            .boxed(),
+            } => Helmert7Params::new(conv, rotation, translation, scale).boxed(),
         }
     }
 }
@@ -152,13 +146,13 @@ impl PartialEq for GeodeticDatum {
 
 /// Well known datum definition.
 pub mod consts {
+    use crate::units::angle::Radians;
+    use crate::units::length::Meters;
+    use crate::units::scale::PPM;
     use crate::{
         geodesy::{ellipsoid, prime_meridian},
         operation::transformation::RotationConvention,
     };
-    use crate::units::angle::Radians;
-    use crate::units::length::Meters;
-    use crate::units::scale::PPM;
 
     use super::{DatumTransformation, GeodeticDatum};
 
@@ -212,7 +206,7 @@ pub mod consts {
 
 #[cfg(test)]
 mod tests {
-    use crate::geodesy::{ellipsoid, Ellipsoid, geodetic_datum, prime_meridian, PrimeMeridian};
+    use crate::geodesy::{ellipsoid, geodetic_datum, prime_meridian, Ellipsoid, PrimeMeridian};
     use crate::units::angle::Degrees;
     use crate::units::length::Meters;
 

@@ -141,8 +141,8 @@ mod tests {
     use crate::units::length::M;
     use crate::units::scale::PPM;
 
-    use super::{Helmert7Params, RotationConvention};
     use super::GeocentricTranslation;
+    use super::{Helmert7Params, RotationConvention};
 
     #[test]
     fn geocentric_translation_fwd() {
@@ -174,7 +174,7 @@ mod tests {
             RotationConvention::PositionVector,
             [0.0 * RAD, 0.0 * RAD, 2.685868e-6 * RAD],
             [0.0 * M, 0.0 * M, 4.5 * M],
-            PPM(0.219)
+            PPM(0.219),
         );
         let xs = [3_657_660.66, 255_768.55, 5_201_382.11];
         let mut xyz = [0.; 3];

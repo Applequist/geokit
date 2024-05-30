@@ -1,9 +1,9 @@
 //! This module defines some types used to express angles in various units.
-use std::f64::consts;
-use std::f64::consts::PI;
-use std::fmt::{Display, Formatter};
-use std::ops::{Add, Div, Mul, Sub};
 use approx::AbsDiffEq;
+use std::f64::consts;
+use std::f64::consts::{FRAC_PI_2, PI};
+use std::fmt::{Display, Formatter};
+use std::ops::{Add, Div, Mul, Neg, Sub};
 
 /// Trait implemented by types whose values are measuring some angle
 /// and can be converted to the same angle expressed in [Radians](radians).
@@ -73,6 +73,14 @@ macro_rules! angle_unit {
             }
         }
 
+        impl Neg for $name {
+            type Output = $name;
+            #[inline]
+            fn neg(self) -> Self::Output {
+                Self(-self.0)
+            }
+        }
+
         impl Mul<f64> for $name {
             type Output = $name;
             #[inline]
@@ -127,6 +135,10 @@ angle_unit!(
 );
 
 impl Radians {
+    pub const PI_2: Radians = Radians(FRAC_PI_2);
+    pub const PI: Radians = Radians(PI);
+    pub const TWO_PI: Radians = Radians(2. * PI);
+
     /// Wrap the angle value in `[min, min + 2 * PI]`
     /// Typical values of `min` are `-PI` and `2. * PI`.
     pub fn wrap(self, min: f64) -> f64 {
@@ -139,6 +151,11 @@ impl Radians {
             na -= 2. * PI;
         }
         na
+    }
+
+    /// Clamp the angle value in [min, max].
+    pub fn clamp(self, min: f64, max: f64) -> f64 {
+        self.0.clamp(min, max)
     }
 }
 
@@ -200,6 +217,5 @@ mod tests {
         assert_eq!(deg.0, -26.5);
         let deg = Degrees::dms(-0., 30., 0.0);
         assert_eq!(deg.0, -0.5);
-
     }
 }

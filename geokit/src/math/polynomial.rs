@@ -39,6 +39,9 @@ mod tests {
 
     #[test]
     fn eq() {
-        assert_eq!(Polynomial::new([1., -2., 1.]), Polynomial::new([1., -2., 1.]));
+        assert_eq!(
+            Polynomial::new([1., -2., 1.]),
+            Polynomial::new([1., -2., 1.])
+        );
     }
 }
