@@ -1,9 +1,11 @@
+use std::f64::consts::PI;
+
 use crate::cs::geodetic::{Lat, Lon};
 use crate::cs::Azimuth;
 use crate::geodesy::Ellipsoid;
 use crate::math::complex::Complex;
 use crate::math::polynomial::Polynomial;
-use crate::units::angle::{Degrees, Radians};
+use crate::units::angle::{Angle, Degrees, Radians};
 use crate::units::length::Meters;
 
 /// Solve direct and inverse geodesic problems on an ellipsoid.
@@ -157,6 +159,32 @@ impl<'e> GeodesicSolver<'e> {
     }
 
     pub fn solve_inverse(&self, p1: (Lon, Lat), p2: (Lon, Lat)) -> ([Azimuth; 2], Meters) {
+        let (lon1, lat1) = p1;
+        let (lon2, lat2) = p2;
+        let beta1 = self.ellipsoid.reduced_latitude(lat1.rad());
+        let beta2 = self.ellipsoid.reduced_latitude(lat2.rad());
+
+        let (sin_beta1, cos_beta1) = beta1.sin_cos();
+        let (sin_beta2, cos_beta2) = beta2.sin_cos();
+
+        let omega_bar =
+            (1. - self.ellipsoid.e_sq() * ((cos_beta1 + cos_beta2) / 2.).powi(2)).sqrt();
+
+        let delta = self.ellipsoid.f() * self.ellipsoid.a() * cos_beta1.powi(2);
+
+        let y = (beta1 + beta2) * self.ellipsoid.a() / delta;
+        println!("y = {}", y);
+
+        let lambda12 = (lon2 - lon1).length().unwrap_or(Radians(0.)).rad();
+        println!("lambda12 = {}", Degrees::from_rad(lambda12));
+
+        let x = (lambda12 - PI) * self.ellipsoid.a() * cos_beta1 / delta;
+        println!("x = {}", x);
+
+        let x2 = x * x;
+        let y2 = y * y;
+        let mu_polynomial = Polynomial::new([-y2, -2. * y2, (1. - x2 - y2), 2., 1.]);
+
         // TODO:
         (
             [Azimuth::new(Degrees(0.)), Azimuth::new(Degrees(0.))],
@@ -252,54 +280,28 @@ impl<'e> GeodesicSolver<'e> {
 
 #[cfg(test)]
 mod tests {
+    use approx::assert_abs_diff_eq;
+
     use crate::cs::geodetic::{Lat, Lon};
     use crate::cs::Azimuth;
+    use crate::geodesy::ellipsoid;
     use crate::geodesy::ellipsoid::consts;
     use crate::geodesy::geodesics::GeodesicSolver;
     use crate::units::angle::{Angle, Degrees};
     use crate::units::length::{Length, Meters};
-    use approx::assert_abs_diff_eq;
 
-    #[test]
-    fn test_solve_direct() {
-        // From Karney - Algorithms for geodesics
-        let wgs84 = consts::WGS84;
-        let solver = GeodesicSolver::new(&wgs84);
-        let (lon, lat, alpha2) = solver.solve_direct(
-            (Lon::new(Degrees(0.0)), Lat::new(Degrees(40.))),
-            Azimuth::new(Degrees(30.)),
-            10_000_000.0,
-        );
-        assert_abs_diff_eq!(
-            Degrees::from_rad(lon.rad()),
-            Degrees(137.84490004377),
-            epsilon = 1e-11
-        );
-        assert_abs_diff_eq!(
-            Degrees::from_rad(lat.rad()),
-            Degrees(41.79331020506),
-            epsilon = 1e-10
-        );
-        assert_abs_diff_eq!(
-            Degrees::from_rad(alpha2.rad()),
-            Degrees(149.09016931807),
-            epsilon = 1e-10
-        );
+    struct Geodesic {
+        lat1: Lat,
+        lat2: Lat,
+        delta_lon: Degrees,
+        s: Meters,
+        alpha12: Azimuth,
+        alpha2: Azimuth,
+    }
 
-        // From Rapp - Geometric Geodesy 1.71 Standard Test Lines
-        // Geodesics are given as (ph1, ph2, L, s, alpha12, alpha2)
-        let intl = consts::INTL;
-        let solver = GeodesicSolver::new(&intl);
-        struct Geodesic {
-            lat1: Lat,
-            lat2: Lat,
-            delta_lon: Degrees,
-            s: Meters,
-            alpha12: Azimuth,
-            alpha2: Azimuth,
-        }
-
-        let standard_lines = [
+    // From Rapp - Geometric Geodesy 1.71 Standard Test Lines
+    fn standard_lines() -> Vec<Geodesic> {
+        vec![
             // Line 1
             Geodesic {
                 lat1: Lat::new(Degrees::dms(37., 19., 54.95367)),
@@ -363,18 +365,12 @@ mod tests {
                 alpha12: Azimuth::new(Degrees::dms(195., 0., 0.)),
                 alpha2: Azimuth::new(Degrees::dms(193., 34., 43.74060)),
             },
-        ];
-        for (ix, g) in standard_lines.iter().enumerate() {
-            println!("Test Line {}", ix + 1);
-            let lon1 = Lon::new(Degrees(0.0));
-            let (lon, lat, alpha2) = solver.solve_direct((lon1, g.lat1), g.alpha12, g.s.m());
-            assert_abs_diff_eq!(lon, lon1 + g.delta_lon, epsilon = 2e-9);
-            assert_abs_diff_eq!(lat, g.lat2, epsilon = 2e-9);
-            assert_abs_diff_eq!(alpha2, g.alpha2, epsilon = 1e-9);
-        }
+        ]
+    }
 
-        // From Rapp - Geometric Geodesy Table 1.3
-        let antipodal_lines = [
+    // From Rapp - Geometric Geodesy Table 1.3
+    fn antipodal_lines() -> Vec<Geodesic> {
+        vec![
             // Line A
             Geodesic {
                 lat1: Lat::new(Degrees::dms(41., 41., 45.88)),
@@ -429,9 +425,48 @@ mod tests {
                 alpha12: Azimuth::new(Degrees::dms(18., 38., 12.5568)),
                 alpha2: Azimuth::new(Degrees::dms(161., 22., 45.4373)),
             },
-        ];
+        ]
+    }
 
-        for (ix, g) in antipodal_lines.iter().enumerate() {
+    #[test]
+    fn test_solve_direct() {
+        // From Karney - Algorithms for geodesics
+        let wgs84 = consts::WGS84;
+        let solver = GeodesicSolver::new(&wgs84);
+        let (lon, lat, alpha2) = solver.solve_direct(
+            (Lon::new(Degrees(0.0)), Lat::new(Degrees(40.))),
+            Azimuth::new(Degrees(30.)),
+            10_000_000.0,
+        );
+        assert_abs_diff_eq!(
+            Degrees::from_rad(lon.rad()),
+            Degrees(137.84490004377),
+            epsilon = 1e-11
+        );
+        assert_abs_diff_eq!(
+            Degrees::from_rad(lat.rad()),
+            Degrees(41.79331020506),
+            epsilon = 1e-10
+        );
+        assert_abs_diff_eq!(
+            Degrees::from_rad(alpha2.rad()),
+            Degrees(149.09016931807),
+            epsilon = 1e-10
+        );
+
+        let intl = consts::INTL;
+        let solver = GeodesicSolver::new(&intl);
+
+        for (ix, g) in standard_lines().iter().enumerate() {
+            println!("Test Line {}", ix + 1);
+            let lon1 = Lon::new(Degrees(0.));
+            let (lon, lat, alpha2) = solver.solve_direct((lon1, g.lat1), g.alpha12, g.s.m());
+            assert_abs_diff_eq!(lon, lon1 + g.delta_lon, epsilon = 2e-9);
+            assert_abs_diff_eq!(lat, g.lat2, epsilon = 2e-9);
+            assert_abs_diff_eq!(alpha2, g.alpha2, epsilon = 1e-7);
+        }
+
+        for (ix, g) in antipodal_lines().iter().enumerate() {
             println!("Test Line {}", ix + 1);
             let lon1 = Lon::new(Degrees(0.));
             let (lon, lat, alpha2) = solver.solve_direct((lon1, g.lat1), g.alpha12, g.s.m());
@@ -439,5 +474,15 @@ mod tests {
             assert_abs_diff_eq!(lat, g.lat2, epsilon = 2e-9);
             assert_abs_diff_eq!(alpha2, g.alpha2, epsilon = 1e-7);
         }
+    }
+
+    #[test]
+    fn test_solve_inverse() {
+        let wgs84 = consts::WGS84;
+        let solver = GeodesicSolver::new(&wgs84);
+        let ([az1, az2], s) = solver.solve_inverse(
+            (Lon::new(Degrees(0.)), Lat::new(Degrees(-30.))),
+            (Lon::new(Degrees(179.8)), Lat::new(Degrees(29.9))),
+        );
     }
 }
