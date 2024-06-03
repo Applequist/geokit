@@ -1,7 +1,7 @@
 use approx::assert_abs_diff_eq;
-use geokit::cs::geodetic::Lon;
-use geokit::units::angle::{Degrees, DEG};
-use geokit::units::length::{Meters, M};
+use geokit::cs::geodetic::{Lat, Lon};
+use geokit::quantity::angle::units::DEG;
+use geokit::quantity::length::units::M;
 use geokit::{
     crs::{Crs::Geographic, Crs::Projected, GeodeticAxes, ProjectedAxes, ProjectionSpec},
     geodesy::{ellipsoid, prime_meridian, GeodeticDatum},
@@ -50,8 +50,8 @@ fn llh_to_utm0() -> operation::Result<()> {
             None,
         ),
         axes: GeodeticAxes::EastNorthUp {
-            angle_unit: Degrees::unit(),
-            height_unit: Meters::unit(),
+            angle_unit: DEG,
+            height_unit: M,
         },
     };
     println!("Source CRS: {:#?}", src);
@@ -64,12 +64,10 @@ fn llh_to_utm0() -> operation::Result<()> {
             prime_meridian::consts::GREENWICH,
             None,
         ),
-        axes: ProjectedAxes::EastNorth {
-            horiz_unit: Meters::unit(),
-        },
+        axes: ProjectedAxes::EastNorth { horiz_unit: M },
         projection: ProjectionSpec::TransverseMercator {
             lon0: Lon::new(0.0 * DEG),
-            lat0: 0.0,
+            lat0: Lat::new(0.0),
             k0: 0.9996,
             false_easting: 500_000.0 * M,
             false_northing: 0.0 * M,

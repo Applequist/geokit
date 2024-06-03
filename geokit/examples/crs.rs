@@ -1,9 +1,9 @@
 use geokit::crs::{Crs, GeocentricAxes, GeodeticAxes, ProjectedAxes, ProjectionSpec};
-use geokit::cs::geodetic::Lon;
+use geokit::cs::geodetic::{Lat, Lon};
 use geokit::geodesy::geodetic_datum::DatumTransformation;
 use geokit::geodesy::{ellipsoid, prime_meridian, Ellipsoid, GeodeticDatum, PrimeMeridian};
-use geokit::units::angle::{Degrees, DEG};
-use geokit::units::length::{Meters, M};
+use geokit::quantity::angle::units::DEG;
+use geokit::quantity::length::units::M;
 
 fn main() {
     let geoc = Crs::Geocentric {
@@ -35,8 +35,8 @@ fn main() {
             )),
         ),
         axes: GeodeticAxes::EastNorthUp {
-            angle_unit: Degrees::unit(),
-            height_unit: Meters::unit(),
+            angle_unit: DEG,
+            height_unit: M,
         },
     };
     println!("CRS: {:#?}", geog);
@@ -49,15 +49,13 @@ fn main() {
             prime_meridian::consts::GREENWICH,
             None,
         ),
-        axes: ProjectedAxes::EastNorth {
-            horiz_unit: Meters::unit(),
-        },
+        axes: ProjectedAxes::EastNorth { horiz_unit: M },
         projection: ProjectionSpec::TransverseMercator {
             lon0: Lon::new(0.0 * DEG),
-            lat0: 0.0,
+            lat0: Lat::new(0.0),
             k0: 0.9996,
-            false_easting: 500_000.0 * M,
-            false_northing: 0.0 * M,
+            false_easting: 500_000.0,
+            false_northing: 0.0,
         },
     };
     println!("Destination CRS: {:#?}", proj);

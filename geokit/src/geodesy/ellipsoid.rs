@@ -2,9 +2,6 @@ use std::fmt::{Debug, Display};
 
 use smol_str::SmolStr;
 
-use crate::units::angle::Angle;
-use crate::units::length::Length;
-
 /// An `Ellipsoid` is a mathematical surface defined by rotating an ellipse around
 /// it semi-minor axis.
 /// It is used in a [GeodeticDatum] as a model of the Earth surface.
@@ -21,18 +18,12 @@ pub struct Ellipsoid {
 }
 
 impl Ellipsoid {
-    /// Create a new ellipsoid using semi-major and semi-minor axes.
+    /// Create a new ellipsoid using semi-major and semi-minor axes **in meters**.
     ///
     /// # Panics
     ///
-    /// If `semi_minor_axis` is negative or zero or if `semi_major_axis` is less than `semi_minor_axis`.
-    pub fn from_ab<U: Length + Display>(
-        name: &str,
-        semi_major_axis: U,
-        semi_minor_axis: U,
-    ) -> Self {
-        let a = semi_major_axis.m();
-        let b = semi_minor_axis.m();
+    /// If `a` is negative or zero or if `a` is less than `b`.
+    pub fn from_ab(name: &str, a: f64, b: f64) -> Self {
         assert!(b > 0., "Expected semi_minor_axis ({} m) > 0 m", b);
         assert!(
             a >= b,
@@ -48,13 +39,12 @@ impl Ellipsoid {
         }
     }
 
-    /// Create a new ellipsoid using semi-major axis and inverse flattening.
+    /// Create a new ellipsoid using semi-major axis in meters and inverse flattening.
     ///
     /// # Panics
     ///
-    /// if `semi_major_axis` is negative or zero or if `invf` is not greater than 1.
-    pub fn from_ainvf<U: Length + Display>(name: &str, semi_major_axis: U, invf: f64) -> Self {
-        let a = semi_major_axis.m();
+    /// if `a` is negative or zero or if `invf` is not greater than 1.
+    pub fn from_ainvf(name: &str, a: f64, invf: f64) -> Self {
         assert!(a > 0., "Expected semi_major_axis ({} m) > 0.", a);
         assert!(invf > 1., "Expected invf ({}) > 1.", invf);
         Self {
@@ -66,21 +56,16 @@ impl Ellipsoid {
     }
 
     /// Creates a new [Ellipsoid] with the given precomputed elements:
-    /// - `semi_major_axis`: semi-major axis length **in meters**,
-    /// - `semi_minor_axis`: semi-minor axis length **in meters**. **Must be less than or equal to `semi_major_axis`**
-    /// - `invf`: inverse-flattening. **Must be greater than 1, possibly infinite if `semi_major_axis == semi_minor_axis`**
+    /// - `a` semi-major axis length **in meters**,
+    /// - `b`: semi-minor axis length **in meters**. **Must be less than or equal to `a`**
+    /// - `invf`: inverse-flattening. **Must be greater than 1, possibly infinite if `a == b`**
     #[inline(always)]
-    pub(crate) const fn new_static(
-        name: &'static str,
-        semi_major_axis: f64,
-        semi_minor_axis: f64,
-        invf: f64,
-    ) -> Self {
+    pub(crate) const fn new_static(name: &'static str, a: f64, b: f64, invf: f64) -> Self {
         // TODO: const assert ?
         Self {
             name: SmolStr::new_static(name),
-            a: semi_major_axis,
-            b: semi_minor_axis,
+            a,
+            b,
             invf,
         }
     }
@@ -135,23 +120,25 @@ impl Ellipsoid {
         (self.a - self.b) / (self.a + self.b)
     }
 
-    /// Return the first eccentricity squared: `(a^2 -b^2) / a^2`
+    /// Return the first eccentricity squared: `(a^2 -b^2) / a^2`.
     #[inline]
     pub fn e_sq(&self) -> f64 {
         (self.a_sq() - self.b_sq()) / self.a_sq()
     }
 
+    /// Return the first eccentricity.
+    /// See [e_sq]
     pub fn e(&self) -> f64 {
         self.e_sq().sqrt()
     }
 
-    /// Return the second eccentricity squared.
-    /// See [e_prime]
+    /// Return the second eccentricity squared: `(a^2 - b^2) / b^2`.
     pub fn e_prime_sq(&self) -> f64 {
         (self.a_sq() - self.b_sq()) / self.b_sq()
     }
 
-    /// Return the second eccentricity: `(a^2 - b^2) / b^2`
+    /// Return the second eccentricity.
+    /// See [e_prime_sq]
     pub fn e_prime(&self) -> f64 {
         self.e_prime_sq().sqrt()
     }
@@ -283,45 +270,44 @@ pub mod consts {
 mod tests {
     use approx::assert_abs_diff_eq;
 
-    use crate::units::angle::{Degrees, DEG};
-    use crate::units::length::{Meters, M};
+    use crate::quantity::angle::units::DEG;
 
     use super::*;
 
     #[test]
     #[should_panic(expected = "Expected semi_minor_axis (-0.5 m) > 0")]
     fn negative_b() {
-        let _ellipsoid = Ellipsoid::from_ab("Negative b", 1.0 * M, -0.5 * M);
+        let _ellipsoid = Ellipsoid::from_ab("Negative b", 1.0, -0.5);
     }
 
     #[test]
     #[should_panic(expected = "Expected semi_minor_axis (0 m) > 0")]
     fn zero_b() {
-        let _e = Ellipsoid::from_ab("Zero b", 1.0 * M, 0.0 * M);
+        let _e = Ellipsoid::from_ab("Zero b", 1.0, 0.0);
     }
 
     #[test]
     #[should_panic(expected = "Expected semi_major_axis (1 m) >= semi_minor_axis (2 m)")]
     fn a_less_then_b() {
-        let _ellipsoid = Ellipsoid::from_ab("a < b", 1.0 * M, 2.0 * M);
+        let _ellipsoid = Ellipsoid::from_ab("a < b", 1.0, 2.0);
     }
 
     #[test]
     #[should_panic(expected = "Expected semi_major_axis (-0.1 m) > 0")]
     fn negative_a() {
-        let _ellipsoid = Ellipsoid::from_ainvf("Negative a", -0.1 * M, 297.0);
+        let _ellipsoid = Ellipsoid::from_ainvf("Negative a", -0.1, 297.0);
     }
 
     #[test]
     #[should_panic(expected = "Expected invf (0.5) > 1")]
     fn small_invf() {
-        let _ellipsoid = Ellipsoid::from_ainvf("Small invf", 1. * M, 0.5);
+        let _ellipsoid = Ellipsoid::from_ainvf("Small invf", 1., 0.5);
     }
 
     #[test]
     #[should_panic(expected = "Expected invf (1) > 1")]
     fn unit_invf() {
-        let _ellipsoid = Ellipsoid::from_ainvf("invf = 1", 1. * M, 1.);
+        let _ellipsoid = Ellipsoid::from_ainvf("invf = 1", 1., 1.);
     }
 
     #[test]
@@ -352,7 +338,7 @@ mod tests {
 
     #[test]
     fn clone() {
-        let e = Ellipsoid::from_ab("Cloned", 1. * M, 0.9 * M);
+        let e = Ellipsoid::from_ab("Cloned", 1., 0.9);
         let cpy = e.clone();
         assert_eq!(e, cpy);
         let _a = e.a;
@@ -360,16 +346,16 @@ mod tests {
 
     #[test]
     fn partial_eq() {
-        let e = Ellipsoid::from_ab("E", 1. * M, 0.9 * M);
-        let eq = Ellipsoid::from_ab("E'", 1. * M, 0.9 * M);
+        let e = Ellipsoid::from_ab("E", 1., 0.9);
+        let eq = Ellipsoid::from_ab("E'", 1., 0.9);
         assert!(e.eq(&eq));
         assert!(!e.ne(&eq));
 
-        let e2 = Ellipsoid::from_ab("E2", 1.01 * M, 0.9 * M);
+        let e2 = Ellipsoid::from_ab("E2", 1.01, 0.9);
         assert!(!e.eq(&e2));
         assert!(e.ne(&e2));
 
-        let e3 = Ellipsoid::from_ainvf("E3", 1. * M, 10.0);
+        let e3 = Ellipsoid::from_ainvf("E3", 1., 10.0);
         assert!(!e.eq(&e3));
         assert!(e.ne(&e3));
     }

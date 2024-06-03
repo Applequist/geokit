@@ -1,5 +1,3 @@
-use crate::units::angle::Angle;
-use crate::units::length::Length;
 use crate::{
     crs::{GeocentricAxes, GeodeticAxes, ProjectedAxes},
     geodesy::{Ellipsoid, GeodeticDatum, PrimeMeridian},
@@ -11,7 +9,7 @@ type ToOrd = (usize, f64);
 
 /// [Normalization] is used to normalize(fwd)/denormalize(bwd) coordinates by:
 /// - reordering coordinates
-/// - converting coordinates units
+/// - converting coordinates quantity
 /// - zeroing input coordinates in excess or output coordinates in excess.
 ///
 /// Normalized geocentric coordinates are (x, y, z) measured in metres.
@@ -38,27 +36,19 @@ impl From<GeodeticAxes> for Normalization {
             GeodeticAxes::EastNorthUp {
                 angle_unit,
                 height_unit,
-            } => vec![
-                (0, angle_unit.rad()),
-                (1, angle_unit.rad()),
-                (2, height_unit.m()),
-            ],
+            } => vec![(0, angle_unit), (1, angle_unit), (2, height_unit)],
             GeodeticAxes::EastNorth { angle_unit } => {
-                vec![(0, angle_unit.rad()), (1, angle_unit.rad())]
+                vec![(0, angle_unit), (1, angle_unit)]
             }
             GeodeticAxes::NorthEastUp {
                 angle_unit,
                 height_unit,
-            } => vec![
-                (1, angle_unit.rad()),
-                (0, angle_unit.rad()),
-                (2, height_unit.m()),
-            ],
+            } => vec![(1, angle_unit), (0, angle_unit), (2, height_unit)],
             GeodeticAxes::NorthEast { angle_unit } => {
-                vec![(1, angle_unit.rad()), (0, angle_unit.rad())]
+                vec![(1, angle_unit), (0, angle_unit)]
             }
             GeodeticAxes::NorthWest { angle_unit } => {
-                vec![(1, -angle_unit.rad()), (0, angle_unit.rad())]
+                vec![(1, -angle_unit), (0, angle_unit)]
             }
         };
         Normalization(to_ord)
@@ -71,13 +61,9 @@ impl From<ProjectedAxes> for Normalization {
             ProjectedAxes::EastNorthUp {
                 horiz_unit,
                 height_unit,
-            } => vec![
-                (0, horiz_unit.m()),
-                (1, horiz_unit.m()),
-                (2, height_unit.m()),
-            ],
+            } => vec![(0, horiz_unit), (1, horiz_unit), (2, height_unit)],
             ProjectedAxes::EastNorth { horiz_unit } => {
-                vec![(0, horiz_unit.m()), (1, horiz_unit.m())]
+                vec![(0, horiz_unit), (1, horiz_unit)]
             }
         };
         Normalization(to_ord)
@@ -235,13 +221,11 @@ mod tests {
     use crate::crs::GeodeticAxes;
     use crate::operation::conversion::Normalization;
     use crate::operation::Operation;
-    use crate::units::angle::Degrees;
+    use crate::quantity::angle::units::DEG;
 
     #[test]
     fn normalization() {
-        let latlondeg = GeodeticAxes::NorthWest {
-            angle_unit: Degrees::unit(),
-        };
+        let latlondeg = GeodeticAxes::NorthWest { angle_unit: DEG };
         let t = Normalization::from(latlondeg);
         assert_eq!(t.in_dim(), 2);
         assert_eq!(t.out_dim(), 3);

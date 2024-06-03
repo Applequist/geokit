@@ -14,10 +14,10 @@ pub struct PrimeMeridian {
 impl PrimeMeridian {
     /// Create a new [`PrimeMeridian`] with the given Greenwich longitude **positive
     /// East of Greenwich**.
-    pub fn new<T: Into<Lon>>(name: &str, gw_lon: T) -> Self {
+    pub fn new(name: &str, gw_lon: f64) -> Self {
         Self {
             name: SmolStr::new(name),
-            lon: gw_lon.into().normalize().rad(),
+            lon: Lon::new(gw_lon).normalize().rad(),
         }
     }
 
@@ -88,13 +88,13 @@ pub mod consts {
 mod tests {
     use std::f64::consts::PI;
 
-    use crate::units::angle::{DEG, RAD};
+    use crate::quantity::angle::units::DEG;
 
     use super::PrimeMeridian;
 
     #[test]
     fn longitude_eq_mpi() {
-        let _p = PrimeMeridian::new("EQ lower bound", -PI * RAD);
+        let _p = PrimeMeridian::new("EQ lower bound", -PI);
         assert_eq!(_p.lon(), PI);
     }
 

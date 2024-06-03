@@ -1,18 +1,19 @@
 use approx::AbsDiffEq;
+use std::fmt::{Display, Formatter};
 
-use crate::units::angle::Angle;
+use crate::quantity::angle::wrap;
 
-/// An azimuth direction starting at 0 pointing in the geographic North direction and
-/// positive **clockwise**.
-#[derive(Debug, Copy, Clone, PartialEq)]
+/// An azimuth direction in radians, positive **clockwise** from north.
+#[derive(Debug, Copy, Clone, PartialEq, Default)]
 pub struct Azimuth(f64);
 
 impl Azimuth {
-    pub fn new<A: Angle>(val: A) -> Self {
-        Self(val.to_radians().wrap(0.))
+    pub fn new(val: f64) -> Self {
+        Self(wrap(val, 0.))
     }
 
     /// Return this azimuth as a raw angle value [-pi..pi] radians.
+    #[inline]
     pub fn rad(self) -> f64 {
         self.0
     }
@@ -27,6 +28,12 @@ impl AbsDiffEq for Azimuth {
 
     fn abs_diff_eq(&self, other: &Self, epsilon: Self::Epsilon) -> bool {
         self.0.abs_diff_eq(&other.0, epsilon)
+    }
+}
+
+impl Display for Azimuth {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{} rad", self.0)
     }
 }
 

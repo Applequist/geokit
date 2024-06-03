@@ -1,5 +1,5 @@
 use approx::assert_abs_diff_eq;
-use geokit::units::angle::{Degrees, Radians};
+use geokit::quantity::angle::units::DEG;
 use geokit::{
     crs::{Crs::Geocentric, Crs::Geographic, GeocentricAxes, GeodeticAxes},
     geodesy::geodetic_datum,
@@ -41,9 +41,7 @@ fn llh_to_xyz() -> operation::Result<()> {
     let src = Geographic {
         id: "WGS84".into(),
         datum: geodetic_datum::consts::WGS84,
-        axes: GeodeticAxes::EastNorth {
-            angle_unit: Degrees::unit(),
-        },
+        axes: GeodeticAxes::EastNorth { angle_unit: DEG },
     };
     println!("Source CRS: {:#?}", src);
 
