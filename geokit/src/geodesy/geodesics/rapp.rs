@@ -1,3 +1,5 @@
+#![allow(non_snake_case)]
+
 use crate::cs::geodetic::{Lat, Lon};
 use crate::cs::Azimuth;
 use crate::geodesy::geodesics::{Geodesic, GeodesicSolver};

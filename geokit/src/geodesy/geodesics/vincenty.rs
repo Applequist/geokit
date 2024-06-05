@@ -1,3 +1,5 @@
+#![allow(non_snake_case)]
+
 use crate::cs::geodetic::{Lat, Lon};
 use crate::cs::Azimuth;
 use crate::geodesy::geodesics::{Geodesic, GeodesicSolver};
@@ -70,7 +72,7 @@ impl<'e> VincentyGeodesicSolver<'e> {
 
         // Eq (9)
         let lambda = (sin_sigma * sin_alpha1)
-            .atan2((cos_beta1 * cos_sigma - sin_beta1 * sin_sigma * cos_alpha1));
+            .atan2(cos_beta1 * cos_sigma - sin_beta1 * sin_sigma * cos_alpha1);
 
         // Eq (10)
         let C = (f / 16.) * cos_alpha_sq * (4. + f * (4. - 3. * cos_alpha_sq));
@@ -200,10 +202,9 @@ impl<'e> GeodesicSolver for VincentyGeodesicSolver<'e> {
 #[cfg(test)]
 mod tests {
     use approx::assert_abs_diff_eq;
-    use crate::geodesy::geodesics::tests::{vincenty_lines, DirectDeltas, InverseDeltas, LineData, vincenty_direct_deltas, vincenty_inverse_deltas, standard_lines, antipodal_lines};
+    use crate::geodesy::geodesics::tests::{vincenty_lines, vincenty_direct_deltas, vincenty_inverse_deltas, standard_lines, antipodal_lines};
     use crate::geodesy::geodesics::vincenty::VincentyGeodesicSolver;
     use crate::geodesy::geodesics::{GeodesicSolver};
-    use crate::geodesy::geodesics::rapp::RappIterativeGeodisicSolver;
     use crate::quantity::angle::DMS;
 
     #[test]
@@ -222,7 +223,7 @@ mod tests {
             println!("{}", input.geodesic);
             println!("Computed: ");
             println!("{}", computed);
-            println!("");
+            println!();
 
             let diff_lon_dms = DMS::from_rad(computed.p2.0.rad() - input.geodesic.p2.0.rad());
             println!("error on lon (res - exp) = {}", diff_lon_dms);
@@ -257,7 +258,7 @@ mod tests {
             println!("{}", input.geodesic);
             println!("Computed: ");
             println!("{}", computed);
-            println!("");
+            println!();
 
             let diff_lon_dms = DMS::from_rad(computed.p2.0.rad() - input.geodesic.p2.0.rad());
             println!("error on lon (res - exp) = {}", diff_lon_dms);
@@ -284,7 +285,7 @@ mod tests {
             println!("{}", input.geodesic);
             println!("Computed: ");
             println!("{}", computed);
-            println!("");
+            println!();
 
             let diff_lon_dms = DMS::from_rad(computed.p2.0.rad() - input.geodesic.p2.0.rad());
             println!("error on lon (res - exp) = {}", diff_lon_dms);
@@ -317,7 +318,7 @@ mod tests {
             println!("{}", input.geodesic);
             println!("Computed: ");
             println!("{}", computed);
-            println!("");
+            println!();
 
             let diff_az1_dms = DMS::from_rad(computed.alpha1.rad() - input.geodesic.alpha1.rad());
             println!("error on az1 (computed - input) = {}", diff_az1_dms);
@@ -351,7 +352,7 @@ mod tests {
             println!("{}", input.geodesic);
             println!("Computed: ");
             println!("{}", computed);
-            println!("");
+            println!();
 
             let diff_az1_dms = DMS::from_rad(computed.alpha1.rad() - input.geodesic.alpha1.rad());
             println!("error on az1 (computed - input) = {}", diff_az1_dms);
@@ -380,7 +381,7 @@ mod tests {
             println!("{}", input.geodesic);
             println!("Computed: ");
             println!("{}", computed);
-            println!("");
+            println!();
 
             let diff_az1_dms = DMS::from_rad(computed.alpha1.rad() - input.geodesic.alpha1.rad());
             println!("error on az1 (computed - input) = {}", diff_az1_dms);
