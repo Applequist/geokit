@@ -306,13 +306,13 @@ mod tests {
             println!();
 
             let diff_lon_dms = DMS::from_rad(computed.p2.0.rad() - input.geodesic.p2.0.rad());
-            println!("error on lon (res - exp) = {}", diff_lon_dms);
+            println!("error on lon (computed - input) = {}", diff_lon_dms);
 
             let diff_lat_dms = DMS::from_rad(computed.p2.1.rad() - input.geodesic.p2.1.rad());
-            println!("error on lat (res - exp) = {}", diff_lat_dms);
+            println!("error on lat (computed - input) = {}", diff_lat_dms);
 
             let diff_az_dms = DMS::from_rad(computed.alpha2.rad() - input.geodesic.alpha2.rad());
-            println!("error on az (res - exp) = {}", diff_az_dms);
+            println!("error on az (computed - input) = {}", diff_az_dms);
 
             assert_eq!(diff_lon_dms.deg(), 0.0);
             assert_eq!(diff_lon_dms.min(), 0.0);
@@ -342,17 +342,17 @@ mod tests {
             println!();
 
             let diff_lon_dms = DMS::from_rad(computed.p2.0.rad() - input.geodesic.p2.0.rad());
-            println!("error on lon (res - exp) = {}", diff_lon_dms);
+            println!("error on lon (computed - input) = {}", diff_lon_dms);
 
             let diff_lat_dms = DMS::from_rad(computed.p2.1.rad() - input.geodesic.p2.1.rad());
-            println!("error on lat (res - exp) = {}", diff_lat_dms);
+            println!("error on lat (computed - input) = {}", diff_lat_dms);
 
             let diff_az_dms = DMS::from_rad(computed.alpha2.rad() - input.geodesic.alpha2.rad());
-            println!("error on az (res - exp) = {}", diff_az_dms);
+            println!("error on az (computed - input) = {}", diff_az_dms);
 
-            assert_abs_diff_eq!(computed.p2.0, input.geodesic.p2.0, epsilon = 2e-9);
-            assert_abs_diff_eq!(computed.p2.1, input.geodesic.p2.1, epsilon = 2e-9);
-            assert_abs_diff_eq!(computed.alpha2, input.geodesic.alpha2, epsilon = 1e-7);
+            assert_abs_diff_eq!(computed.p2.0, input.geodesic.p2.0, epsilon = 1e-10);
+            assert_abs_diff_eq!(computed.p2.1, input.geodesic.p2.1, epsilon = 1e-10);
+            assert_abs_diff_eq!(computed.alpha2, input.geodesic.alpha2, epsilon = 1e-10);
         }
     }
 
@@ -369,17 +369,17 @@ mod tests {
             println!();
 
             let diff_lon_dms = DMS::from_rad(computed.p2.0.rad() - input.geodesic.p2.0.rad());
-            println!("error on lon (res - exp) = {}", diff_lon_dms);
+            println!("error on lon (computed - input) = {}", diff_lon_dms);
 
             let diff_lat_dms = DMS::from_rad(computed.p2.1.rad() - input.geodesic.p2.1.rad());
-            println!("error on lat (res - exp) = {}", diff_lat_dms);
+            println!("error on lat (computed - input) = {}", diff_lat_dms);
 
             let diff_az_dms = DMS::from_rad(computed.alpha2.rad() - input.geodesic.alpha2.rad());
-            println!("error on az (res - exp) = {}", diff_az_dms);
+            println!("error on az (computed - input) = {}", diff_az_dms);
 
-            assert_abs_diff_eq!(computed.p2.0, input.geodesic.p2.0, epsilon = 2e-9);
-            assert_abs_diff_eq!(computed.p2.1, input.geodesic.p2.1, epsilon = 2e-9);
-            assert_abs_diff_eq!(computed.alpha2, input.geodesic.alpha2, epsilon = 1e-7);
+            assert_abs_diff_eq!(computed.p2.0, input.geodesic.p2.0, epsilon = 1e-10);
+            assert_abs_diff_eq!(computed.p2.1, input.geodesic.p2.1, epsilon = 1e-10);
+            assert_abs_diff_eq!(computed.alpha2, input.geodesic.alpha2, epsilon = 1e-10);
         }
     }
 
@@ -444,9 +444,9 @@ mod tests {
             let diff_s_m = computed.s - input.geodesic.s;
             println!("error on s (computed - input) = {}", diff_s_m);
 
-            // assert_abs_diff_eq!(computed.alpha1, input.geodesic.alpha1, epsilon = 2e-10);
-            // assert_abs_diff_eq!(computed.alpha2, input.geodesic.alpha2, epsilon = 1e-10);
-            // assert_abs_diff_eq!(computed.s, input.geodesic.s, epsilon = 1e-3);
+            assert_abs_diff_eq!(computed.alpha1, input.geodesic.alpha1, epsilon = 1e-9);
+            assert_abs_diff_eq!(computed.alpha2, input.geodesic.alpha2, epsilon = 1e-10);
+            assert_abs_diff_eq!(computed.s, input.geodesic.s, epsilon = 1e-3);
         }
     }
 
@@ -472,9 +472,9 @@ mod tests {
             let diff_s_m = computed.s - input.geodesic.s;
             println!("error on s (computed - input) = {}", diff_s_m);
 
-            // assert_abs_diff_eq!(computed.alpha1, input.geodesic.alpha1, epsilon = 2e-10);
-            // assert_abs_diff_eq!(computed.alpha2, input.geodesic.alpha2, epsilon = 1e-10);
-            // assert_abs_diff_eq!(computed.s, input.geodesic.s, epsilon = 1e-3);
+            assert_abs_diff_eq!(computed.alpha1, input.geodesic.alpha1, epsilon = 1e-10);
+            assert_abs_diff_eq!(computed.alpha2, input.geodesic.alpha2, epsilon = 1e-10);
+            assert_abs_diff_eq!(computed.s, input.geodesic.s, epsilon = 1e-3);
         }
     }
 }

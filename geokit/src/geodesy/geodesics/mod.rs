@@ -51,7 +51,7 @@ pub trait GeodesicSolver {
     fn solve_inverse(&self, p1: (Lon, Lat), p2: (Lon, Lat)) -> Geodesic;
 }
 
-// pub mod karney;
+pub mod karney;
 pub mod rapp;
 pub mod vincenty;
 
