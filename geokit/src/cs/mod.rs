@@ -1,7 +1,7 @@
 use approx::AbsDiffEq;
 use std::fmt::{Display, Formatter};
 
-use crate::quantity::angle::wrap;
+use crate::quantity::angle::{wrap, DMS};
 
 /// An azimuth direction in radians, positive **clockwise** from north.
 #[derive(Debug, Copy, Clone, PartialEq, Default)]
@@ -33,7 +33,7 @@ impl AbsDiffEq for Azimuth {
 
 impl Display for Azimuth {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{} rad", self.0)
+        write!(f, "{}", DMS::from_rad(self.0))
     }
 }
 

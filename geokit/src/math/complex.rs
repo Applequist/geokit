@@ -145,8 +145,6 @@ impl<T: Float> Div<T> for Complex<T> {
 mod tests {
     use std::f64::consts::{FRAC_PI_4, PI};
 
-    use num::complex::ComplexFloat;
-
     use crate::math::complex::Complex;
 
     #[test]

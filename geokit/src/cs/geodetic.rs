@@ -2,10 +2,8 @@ use std::f64::consts::{FRAC_PI_2, PI};
 use std::fmt::{Display, Formatter};
 use std::ops::{Add, Neg, Sub};
 
-use crate::quantity::angle::wrap;
+use crate::quantity::angle::{wrap, DMS};
 use approx::AbsDiffEq;
-use num::traits::WrappingAdd;
-use num::Bounded;
 
 /// A longitude coordinate in [-pi..pi] radians.
 #[derive(Copy, Clone, Debug, PartialOrd, PartialEq, Default)]
@@ -100,7 +98,7 @@ impl Sub for Lon {
 
 impl Display for Lon {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{} deg ({} rad)", self.0.to_degrees(), self.0)
+        write!(f, "{}", DMS::from_rad(self.0))
     }
 }
 
@@ -229,6 +227,7 @@ impl Sub<Lat> for f64 {
         Lat::new(self - rhs.0)
     }
 }
+
 impl AbsDiffEq for Lat {
     type Epsilon = f64;
 
@@ -243,19 +242,18 @@ impl AbsDiffEq for Lat {
 
 impl Display for Lat {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{} deg ({} rad)", self.0.to_degrees(), self.0)
+        write!(f, "{}", DMS::from_rad(self.0))
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use std::f64::consts;
     use std::f64::consts::{FRAC_PI_2, FRAC_PI_4, PI};
 
     use approx::assert_abs_diff_eq;
 
     use crate::cs::geodetic::{Lat, Lon, LonInterval};
-    use crate::quantity::angle::units::{DEG, RAD};
+    use crate::quantity::angle::units::DEG;
 
     #[test]
     fn test_lon() {
@@ -271,10 +269,7 @@ mod tests {
         assert_eq!(Lon::new(90. * DEG) + 45.0 * DEG, Lon::new(135.0 * DEG));
         assert_eq!(Lon::new(90. * DEG) - 45.0 * DEG, Lon::new(45.0 * DEG));
         // display
-        assert_eq!(
-            format!("{}", Lon::new(90. * DEG)),
-            "90 deg (1.5707963267948966 rad)"
-        );
+        assert_eq!(format!("{}", Lon::new(90. * DEG)), "  90° 00′ 00.00000000″");
     }
 
     #[test]
@@ -291,10 +286,7 @@ mod tests {
         assert_eq!(Lat::new(45. * DEG) - 90. * DEG, Lat::new(-45. * DEG));
         assert_eq!(Lat::new(-45. * DEG) - 50. * DEG, Lat::MIN);
         // Display
-        assert_eq!(
-            format!("{}", Lat::new(45. * DEG)),
-            "45 deg (0.7853981633974483 rad)"
-        );
+        assert_eq!(format!("{}", Lat::new(45. * DEG)), "  45° 00′ 00.00000000″");
     }
 
     #[test]

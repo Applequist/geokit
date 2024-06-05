@@ -1,11 +1,11 @@
-use std::f64::consts::PI;
-use crate::cs::Azimuth;
 use crate::cs::geodetic::{Lat, Lon};
-use crate::geodesy::Ellipsoid;
+use crate::cs::Azimuth;
 use crate::geodesy::geodesics::{Geodesic, GeodesicSolver};
+use crate::geodesy::Ellipsoid;
 use crate::math::complex::Complex;
 use crate::math::polynomial::Polynomial;
 use crate::quantity::angle::units::DEG;
+use std::f64::consts::PI;
 
 /// Solve direct and inverse geodesic problems on an ellipsoid using algorithms
 /// for Karney - Algorithms for Geodesics.
@@ -97,10 +97,10 @@ impl<'e> KarneyGeodesicSolver<'e> {
 
         a1 * (sigma
             + c1xs
-            .into_iter()
-            .enumerate()
-            .map(|(ix, c1x)| c1x * (2. * sigma * (ix + 1) as f64).sin())
-            .sum::<f64>())
+                .into_iter()
+                .enumerate()
+                .map(|(ix, c1x)| c1x * (2. * sigma * (ix + 1) as f64).sin())
+                .sum::<f64>())
     }
 
     /// From Karney - Algorithms for geodesics eqn 20:
@@ -138,10 +138,10 @@ impl<'e> KarneyGeodesicSolver<'e> {
 
         a2 * (sigma
             + c2xs
-            .into_iter()
-            .enumerate()
-            .map(|(ix, c2x)| c2x * (2. * sigma * (ix + 1) as f64).sin())
-            .sum::<f64>())
+                .into_iter()
+                .enumerate()
+                .map(|(ix, c2x)| c2x * (2. * sigma * (ix + 1) as f64).sin())
+                .sum::<f64>())
     }
 
     /// From Karney - Algorithms for geodesics eqn 24:
@@ -155,15 +155,14 @@ impl<'e> KarneyGeodesicSolver<'e> {
         let c3xs = self.c3xs.map(|p| p.eval_at(epsilon));
         a3 * (sigma
             + c3xs
-            .into_iter()
-            .enumerate()
-            .map(|(ix, c3x)| c3x * (2. * sigma * (ix + 1) as f64).sin())
-            .sum::<f64>())
+                .into_iter()
+                .enumerate()
+                .map(|(ix, c3x)| c3x * (2. * sigma * (ix + 1) as f64).sin())
+                .sum::<f64>())
     }
 }
 
 impl<'e> GeodesicSolver for KarneyGeodesicSolver<'e> {
-
     fn solve_direct(&self, p1: (Lon, Lat), alpha1: Azimuth, s12: f64) -> Geodesic {
         // Step 1: solve NEP_1 to give alpha0, sigma1 and omega1
         let (lon1, lat1) = p1;
@@ -177,7 +176,7 @@ impl<'e> GeodesicSolver for KarneyGeodesicSolver<'e> {
             Complex::new(cos_alpha1, sin_alpha1 * sin_beta1).abs(),
             sin_alpha1 * cos_beta1,
         )
-            .theta();
+        .theta();
         let (sin_alpha0, cos_alpha0) = alpha0.sin_cos();
         // Karney - Algorithms for geodesics eqn 11
         let sigma1 = Complex::new(cos_alpha1 * cos_beta1, sin_beta1).theta();
@@ -212,7 +211,7 @@ impl<'e> GeodesicSolver for KarneyGeodesicSolver<'e> {
             Complex::new(cos_alpha0 * cos_sigma2, sin_alpha0).abs(),
             cos_alpha0 * sin_sigma2,
         )
-            .theta();
+        .theta();
         // Karney - Algorithms for geodesics eqn 12
         let omega2 = Complex::new(cos_sigma2, sin_alpha0 * sin_sigma2).theta();
 
@@ -248,11 +247,11 @@ impl<'e> GeodesicSolver for KarneyGeodesicSolver<'e> {
 
 #[cfg(test)]
 mod tests {
-    use approx::assert_abs_diff_eq;
     use crate::cs::geodetic::Lon;
     use crate::geodesy::ellipsoid::consts;
-    use crate::geodesy::geodesics::GeodesicSolver;
     use crate::geodesy::geodesics::karney::KarneyGeodesicSolver;
+    use crate::geodesy::geodesics::GeodesicSolver;
+    use approx::assert_abs_diff_eq;
 
     #[test]
     fn solve_direct() {
@@ -261,7 +260,10 @@ mod tests {
         let solver = KarneyGeodesicSolver::new(&intl);
 
         // Direct problem
-        for (ix, g) in crate::geodesy::geodesics::tests::standard_lines().iter().enumerate() {
+        for (ix, g) in crate::geodesy::geodesics::tests::standard_lines()
+            .iter()
+            .enumerate()
+        {
             println!("Standard Test Line {}", ix + 1);
             let res = solver.solve_direct(g.p1, g.alpha1, g.s);
             let (lon2, lat2) = res.p2;
@@ -271,7 +273,10 @@ mod tests {
             assert_abs_diff_eq!(res.alpha2, g.alpha2, epsilon = 1e-7);
         }
 
-        for (ix, g) in crate::geodesy::geodesics::tests::antipodal_lines().iter().enumerate() {
+        for (ix, g) in crate::geodesy::geodesics::tests::antipodal_lines()
+            .iter()
+            .enumerate()
+        {
             println!("Anti-podal Test Line {}", ix + 1);
             let res = solver.solve_direct(g.p1, g.alpha1, g.s);
             let (lon2, lat2) = res.p2;
@@ -288,7 +293,10 @@ mod tests {
         let intl = consts::INTL;
         let solver = KarneyGeodesicSolver::new(&intl);
 
-        for (ix, g) in crate::geodesy::geodesics::tests::standard_lines().iter().enumerate() {
+        for (ix, g) in crate::geodesy::geodesics::tests::standard_lines()
+            .iter()
+            .enumerate()
+        {
             println!("Standard Test Line {}", ix + 1);
             let res = solver.solve_inverse(g.p1, g.p2);
             assert_abs_diff_eq!(res.alpha1, g.alpha1, epsilon = 2e-10);
@@ -296,7 +304,10 @@ mod tests {
             assert_abs_diff_eq!(res.s, g.s, epsilon = 1e-3);
         }
 
-        for (ix, g) in crate::geodesy::geodesics::tests::antipodal_lines().iter().enumerate() {
+        for (ix, g) in crate::geodesy::geodesics::tests::antipodal_lines()
+            .iter()
+            .enumerate()
+        {
             println!("Anti-podal Test Line {}", ix + 1);
             let res = solver.solve_inverse(g.p1, g.p2);
             assert_abs_diff_eq!(res.alpha1, g.alpha1, epsilon = 2e-10);
@@ -304,5 +315,4 @@ mod tests {
             assert_abs_diff_eq!(res.s, g.s, epsilon = 1e-3);
         }
     }
-
 }

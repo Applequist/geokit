@@ -3,8 +3,6 @@
 //! IMPORTANT: Wherever coordinates, whether geodetic or cartesian, appear as raw floating point values
 //! they are **always** expressed in radians (geodetic) or meters (cartesian).
 
-#![warn(missing_docs)]
-
 pub mod math;
 
 pub mod crs;

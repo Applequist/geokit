@@ -14,6 +14,7 @@
 /// use geokit::cs::geodetic::Lon;
 /// let east = Lon::new(FRAC_PI_2);
 /// ```
+#[macro_use]
 pub mod angle;
 
 /// The length modue defines constants to convert various length units to meters:

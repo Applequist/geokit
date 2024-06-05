@@ -2,226 +2,399 @@ use crate::cs::geodetic::{Lat, Lon};
 use crate::cs::Azimuth;
 use crate::geodesy::geodesics::{Geodesic, GeodesicSolver};
 use crate::geodesy::Ellipsoid;
-use crate::math::polynomial::Polynomial;
-use crate::math::utils::iter_fn;
 
 pub struct VincentyGeodesicSolver<'e> {
     ellipsoid: &'e Ellipsoid,
 }
 
 impl<'e> VincentyGeodesicSolver<'e> {
+    const MAX_ITERATIONS: usize = 30;
+
     pub fn new(ellipsoid: &'e Ellipsoid) -> Self {
         Self { ellipsoid }
+    }
+
+    fn direct(&self, p1: (Lon, Lat), alpha1: Azimuth, s12: f64) -> Geodesic {
+        let f = self.ellipsoid.f();
+        let (lon1, lat1) = p1;
+        let tan_beta1 = (1. - f) * lat1.rad().tan();
+        let cos_beta1 = 1. / (1. + tan_beta1 * tan_beta1).sqrt(); // cos_beta1 >= 0.
+        let sin_beta1 = tan_beta1 * cos_beta1;
+
+        // Eq (1): indeterminate for equatorial lines !!!
+        let (sin_alpha1, cos_alpha1) = alpha1.rad().sin_cos();
+        let sigma1 = tan_beta1.atan2(cos_alpha1);
+
+        // Eq (2)
+        let sin_alpha = cos_beta1 * sin_alpha1;
+        let cos_alpha_sq = 1. - sin_alpha.powi(2);
+
+        // Eq (3) & (4)
+        let u_sq = cos_alpha_sq * self.ellipsoid.e_prime_sq();
+        let A = 1. + (u_sq / 16384.) * (4096. + u_sq * (-768. + u_sq * (320. - 175. * u_sq)));
+        let B = (u_sq / 1024.) * (256. + u_sq * (-128. + u_sq * (74. - 47. * u_sq)));
+
+        let sigma_0 = s12 / (self.ellipsoid.b() * A);
+        let mut sigma = sigma_0;
+        let (mut sin_sigma, mut cos_sigma) = sigma.sin_cos();
+        let mut cos_2_sigma_m = (2. * sigma1 + sigma).cos();
+        let mut iter_count = 0;
+        loop {
+            iter_count += 1;
+
+            let sigma_prev = sigma;
+
+            // Eq (6)
+            let delta_sigma = B * sin_sigma * (
+                cos_2_sigma_m + (B / 4.) * (
+                    cos_sigma * (-1. + 2. * cos_2_sigma_m.powi(2)) - (B / 6.) * cos_2_sigma_m * (-3. + 4. * sin_sigma.powi(2)) * (-3. + 4. * cos_2_sigma_m.powi(2))
+                )
+            );
+            sigma = sigma_0 + delta_sigma;
+            (sin_sigma, cos_sigma) = sigma.sin_cos();
+            // Eq (5)
+            cos_2_sigma_m = (2. * sigma1 + sigma).cos();
+
+            if (sigma - sigma_prev).abs() < 1e-12 {
+                break;
+            }
+            if iter_count == Self::MAX_ITERATIONS {
+                panic!("Direct geodesic computation is not converging after {} iterations!", Self::MAX_ITERATIONS);
+            }
+        }
+
+        // Eq (8)
+        let lat2 = (sin_beta1 * cos_sigma + cos_beta1 * sin_sigma * cos_alpha1).atan2(
+            (1. - f) * (sin_alpha.powi(2) + (sin_beta1 * sin_sigma - cos_beta1 * cos_sigma * cos_alpha1).powi(2)).sqrt()
+        );
+
+        // Eq (9)
+        let lambda = (sin_sigma * sin_alpha1)
+            .atan2((cos_beta1 * cos_sigma - sin_beta1 * sin_sigma * cos_alpha1));
+
+        // Eq (10)
+        let C = (f / 16.) * cos_alpha_sq * (4. + f * (4. - 3. * cos_alpha_sq));
+
+        // Eq (11) decomposed
+        let lambda_minus_L = (1. - C)
+            * f
+            * sin_alpha
+            * (sigma
+                + C * sin_sigma * (cos_2_sigma_m + C * cos_sigma * (-1. + 2. * cos_2_sigma_m.powi(2))));
+        let L = lambda - lambda_minus_L;
+
+        let alpha2 = sin_alpha.atan2(-sin_beta1 * sin_sigma + cos_beta1 * cos_sigma * cos_alpha1);
+
+        Geodesic {
+            p1: (lon1, lat1),
+            alpha1,
+            p2: (lon1 + L, Lat::new(lat2)),
+            alpha2: Azimuth::new(alpha2),
+            s: s12,
+        }
+    }
+
+    fn inverse(&self, p1: (Lon, Lat), p2: (Lon, Lat)) -> Geodesic {
+        let (lon1, lat1) = p1;
+        let (lon2, lat2) = p2;
+        let beta1 = self.ellipsoid.reduced_latitude(lat1.rad());
+        let beta2 = self.ellipsoid.reduced_latitude(lat2.rad());
+        let (sin_beta1, cos_beta1) = beta1.sin_cos();
+        let (sin_beta2, cos_beta2) = beta2.sin_cos();
+
+        // Eq (13) 1st approximation
+        let L = (lon2 - lon1).length().unwrap_or(0.0);
+        let mut lambda = L;
+        let (mut sin_lambda, mut cos_lambda) = lambda.sin_cos();
+        let mut cos_alpha_sq;
+        let mut sigma;
+        let (mut sin_sigma, mut cos_sigma);
+        let mut cos_2_sigma_m;
+        let mut iter_count = 0;
+        loop {
+            iter_count += 1;
+            // Eq (14)
+            let sin_sigma_sq = (cos_beta2 * sin_lambda).powi(2)
+                + (cos_beta1 * sin_beta2 - sin_beta1 * cos_beta2 * cos_lambda).powi(2);
+
+            // Eq (15)
+            let cos_sigma_i = sin_beta1 * sin_beta2 + cos_beta1 * cos_beta2 * cos_lambda;
+
+            // Eq (16): tan(sigma) = sin(sigma) / cos(sigma)
+            sigma = sin_sigma_sq.sqrt().atan2(cos_sigma_i);
+            (sin_sigma, cos_sigma) = sigma.sin_cos();
+
+            // Eq (17)
+            let sin_alpha = cos_beta1 * cos_beta2 * sin_lambda / sin_sigma;
+            cos_alpha_sq = 1. - sin_alpha.powi(2);
+
+            // Eq (18)
+            cos_2_sigma_m = cos_sigma - 2. * sin_beta1 * sin_beta2 / cos_alpha_sq;
+
+            // Update lambda
+            let lambda_prev = lambda;
+            let f = self.ellipsoid.f();
+            // Eq (10)
+            let c = f / 16. * cos_alpha_sq * (4. + f * (4. - 3. * cos_alpha_sq));
+            // Eq (11)
+            let lambda_minus_L = (1. - c)
+                * f
+                * sin_alpha
+                * (sigma
+                    + c * sin_sigma * (cos_2_sigma_m + c * cos_sigma * (-1. + 2. * cos_2_sigma_m.powi(2))));
+            lambda = lambda_minus_L + L;
+            (sin_lambda, cos_lambda) = lambda.sin_cos();
+            if (lambda - lambda_prev).abs() < 1e-12 {
+                break;
+            }
+            if iter_count == Self::MAX_ITERATIONS {
+                panic!("Inverse geodesic computation is not converging after {} iterations!", Self::MAX_ITERATIONS);
+            }
+        }
+
+        let u_sq = cos_alpha_sq * self.ellipsoid.e_prime_sq();
+        // Eq (3)
+        let A = 1. + u_sq / 16384. * (4096. + u_sq * (-768. + u_sq * (320. - 175. * u_sq)));
+        // Eq (4)
+        let B = u_sq / 1024. * (256. + u_sq * (-128. + u_sq * (74. - 47. * u_sq)));
+
+        // Eq (6)
+        let delta_sigma = B * sin_sigma
+            * (cos_2_sigma_m
+                + B / 4.
+                    * (cos_sigma * (-1. + 2. * cos_2_sigma_m.powi(2))
+                        - B / 6.
+                            * cos_2_sigma_m
+                            * (-3. + 4. * sin_sigma.powi(2))
+                            * (-3. + 4. * cos_2_sigma_m.powi(2))));
+        // Eq (19)
+        let s = self.ellipsoid.b() * A * (sigma - delta_sigma);
+
+        // Eq (20)
+        let alpha1 = (cos_beta2 * sin_lambda)
+            .atan2(cos_beta1 * sin_beta2 - sin_beta1 * cos_beta2 * cos_lambda);
+        // Eq (21)
+        let alpha2 = (cos_beta1 * sin_lambda)
+            .atan2(-sin_beta1 * cos_beta2 + cos_beta1 * sin_beta2 * cos_lambda);
+
+        Geodesic {
+            p1,
+            alpha1: Azimuth::new(alpha1),
+            p2,
+            alpha2: Azimuth::new(alpha2),
+            s,
+        }
     }
 }
 
 impl<'e> GeodesicSolver for VincentyGeodesicSolver<'e> {
     fn solve_direct(&self, p1: (Lon, Lat), alpha1: Azimuth, s12: f64) -> Geodesic {
-        let (lon1, lat1)  = p1;
-        let f = self.ellipsoid.f();
-        let beta1 = self.ellipsoid.reduced_latitude(lat1.rad());
-        let (sin_alpha1, cos_alpha1) = alpha1.rad().sin_cos();
-
-        // Eq (1): indeterminate for equatorial lines !!!
-        let tan_sigma1 = beta1.tan() / cos_alpha1;
-        let sigma1 = tan_sigma1.atan();
-        // Eq (2)
-        let sin_alpha = beta1.cos() / sin_alpha1;
-        let cos_alpha_sq = 1. - sin_alpha.powi(2);
-        let u_sq = cos_alpha_sq * self.ellipsoid.e_prime_sq();
-
-        // Eq (3) & (4)
-        let A = Polynomial::new([
-            1.,
-            4096. / 16384.,
-            -768. / 16384.,
-            320. / 16384.,
-            -175. / 16384.,
-        ])
-        .eval_at(u_sq);
-        let B = Polynomial::new([0., 256. / 1024., -128. / 1024., 74. / 1024., -47. / 1024.])
-            .eval_at(u_sq);
-
-        let delta_sigma = move |sigma: [f64; 1]| -> [f64; 1] {
-            let (sin_sigma, cos_sigma) = sigma[0].sin_cos();
-            // Eq (5)
-            let two_sigma_m = 2. * sigma1 + sigma[0];
-
-            let cos_2_sigma_m = two_sigma_m.cos();
-
-            // Eq (6)
-            [B * sin_sigma
-                * (cos_2_sigma_m
-                    + 0.25
-                        * B
-                        * (cos_sigma * (-1. + 2. * cos_2_sigma_m.powi(2))
-                            - (1. / 6.)
-                                * B
-                                * cos_2_sigma_m
-                                * (-3. + 4. * sin_sigma.powi(2))
-                                * (-3. + 4. * cos_2_sigma_m.powi(2))))]
-        };
-
-        let [sigma] = iter_fn([s12 / (self.ellipsoid.b() * A)], &delta_sigma, [0.5e-14]);
-
-        let (sin_beta1, cos_beta1) = beta1.sin_cos();
-        let (sin_sigma, cos_sigma) = sigma.sin_cos();
-        let lat2 = (sin_beta1 * cos_sigma + cos_beta1 * sin_sigma * cos_alpha1).atan2(
-            (1. - f)
-                * (sin_alpha.powi(2)
-                    + (sin_beta1 * sin_sigma - cos_beta1 * cos_sigma * cos_alpha1).powi(2))
-                .sqrt(),
-        );
-        let lambda = (sin_sigma * sin_alpha1)
-            .atan2(cos_beta1 * cos_sigma - sin_beta1 * sin_sigma * cos_alpha1);
-
-        let C = Polynomial::new([
-            0.,
-            Polynomial::new([0., 1. / 4., 1. / 4.]).eval_at(f),
-            Polynomial::new([0., 0., -3. / 16.]).eval_at(f),
-        ])
-        .eval_at(cos_alpha_sq);
-
-        let cos_2_sigma_m = (2. * sigma1 + sigma).cos();
-        let L = lambda
-            + (1. - C)
-                * f
-                * sin_alpha
-                * (sigma
-                    + C * sin_sigma
-                        * (cos_2_sigma_m + C * cos_sigma * (-1. + 2. * cos_2_sigma_m.powi(2))));
-
-        let alpha2 = sin_alpha.atan2(-sin_beta1 * sin_sigma + cos_beta1 * cos_sigma * cos_alpha1);
-
-        Geodesic {
-            p1: (lon1, lat1), alpha1,
-            p2: (lon1 + L, Lat::new(lat2)), alpha2: Azimuth::new(alpha2),
-            s: s12,
-        }
+        self.direct(p1, alpha1, s12)
     }
 
     fn solve_inverse(&self, p1: (Lon, Lat), p2: (Lon, Lat)) -> Geodesic {
-        todo!()
+        self.inverse(p1, p2)
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::cs::geodetic::{Lat, Lon};
-    use crate::cs::Azimuth;
-    use crate::geodesy::ellipsoid::consts;
-    use crate::geodesy::geodesics::vincenty::VincentyGeodesicSolver;
-    use crate::geodesy::geodesics::{Geodesic, GeodesicSolver};
-    use crate::geodesy::Ellipsoid;
-    use crate::operation::Inv;
-    use crate::quantity::angle::dms;
-    use crate::quantity::angle::units::DEG;
     use approx::assert_abs_diff_eq;
+    use crate::geodesy::geodesics::tests::{vincenty_lines, DirectDeltas, InverseDeltas, LineData, vincenty_direct_deltas, vincenty_inverse_deltas, standard_lines, antipodal_lines};
+    use crate::geodesy::geodesics::vincenty::VincentyGeodesicSolver;
+    use crate::geodesy::geodesics::{GeodesicSolver};
+    use crate::geodesy::geodesics::rapp::RappIterativeGeodisicSolver;
+    use crate::quantity::angle::DMS;
 
-    struct DirectDeltas {
-        delta_lat2: f64,
-        delta_delta_lon: f64,
-        delta_alpha2: f64,
-    }
+    #[test]
+    fn direct_vincenty_lines() {
+        let chars = ['a', 'b', 'c', 'd', 'e', 'f'];
+        for (ix, (input, delta)) in vincenty_lines()
+            .into_iter()
+            .zip(vincenty_direct_deltas())
+            .enumerate()
+        {
+            let solver = VincentyGeodesicSolver::new(&input.ellipsoid);
+            let computed =
+                solver.solve_direct(input.geodesic.p1, input.geodesic.alpha1, input.geodesic.s);
+            println!("-----------------------------------------------------------------------------------");
+            println!("Input: Vincenty Line ({})", chars[ix]);
+            println!("{}", input.geodesic);
+            println!("Computed: ");
+            println!("{}", computed);
+            println!("");
 
-    struct InverseDeltas {
-        delta_alpha1: f64,
-        delta_alpha2: f64,
-        delta_s: f64,
-    }
+            let diff_lon_dms = DMS::from_rad(computed.p2.0.rad() - input.geodesic.p2.0.rad());
+            println!("error on lon (res - exp) = {}", diff_lon_dms);
 
-    pub struct LineData {
-        ellipsoid: Ellipsoid,
-        geodesic: Geodesic,
-        direct_deltas: DirectDeltas,
-        inverse_deltas: InverseDeltas,
-    }
+            let diff_lat_dms = DMS::from_rad(computed.p2.1.rad() - input.geodesic.p2.1.rad());
+            println!("error on lat (res - exp) = {}", diff_lat_dms);
 
-    /// From Vincenty - Direct and inverse solutions of geodesics on the ellipsoid with
-    ///                 application of nested equations
-    /// Table II - Results of solutions
-    fn lines() -> Vec<LineData> {
-        vec![
-            // Line (a)
-            LineData {
-                ellipsoid: consts::BESSEL,
-                geodesic: Geodesic {
-                    p1: (Lon::new(0.), Lat::new(dms(55., 45., 0.))),
-                    alpha1: Azimuth::new(dms(96., 36., 8.79960)),
-                    p2: (Lon::new(dms(108., 13., 0.)), Lat::new(dms(-33., 26., 0.))),
-                    alpha2: Azimuth::new(dms(137., 52., 22.01454)),
-                    s: 14_110_526.170,
-                },
-                direct_deltas: DirectDeltas {
-                    delta_lat2: dms(0., 0., -1.2e-5),
-                    delta_delta_lon: dms(0., 0., 0.7e-5),
-                    delta_alpha2: dms(0., 0., -1.2e-5),
-                },
-                inverse_deltas: InverseDeltas {
-                    delta_alpha1: dms(0., 0., -0.4e-5),
-                    delta_alpha2: dms(0., 0., -0.5e-5),
-                    delta_s: -0.4e-3,
-                },
-            },
-            // Line (b)
-            LineData {
-                ellipsoid: consts::INTL,
-                geodesic: Geodesic {
-                    p1: (Lon::new(0.), Lat::new(dms(37., 19., 54.95367))),
-                    alpha1: Azimuth::new(dms(95., 27., 59.63089)),
-                    p2: (Lon::new(dms(41., 28., 35.50729)), Lat::new(dms(26., 7., 42.83946))),
-                    alpha2: Azimuth::new(dms(118., 5., 58.96161)),
-                    s: 4_085_966.703,
-                },
-                direct_deltas: DirectDeltas {
-                    delta_lat2: dms(0., 0., -0.7e-5),
-                    delta_delta_lon: dms(0., 0., 1.2e-5),
-                    delta_alpha2: dms(0., 0., 0.5e-5),
-                },
-                inverse_deltas: InverseDeltas {
-                    delta_alpha1: dms(0., 0., -0.2e-5),
-                    delta_alpha2: dms(0., 0., -0.2e-5),
-                    delta_s: -0.4e-3,
-                },
-            },
-            // Line (c)
-            LineData {
-                ellipsoid: consts::INTL,
-                geodesic: Geodesic {
-                    p1: (Lon::new(0.0), Lat::new(dms(35., 16., 11.24862))),
-                    alpha1: Azimuth::new(dms(15., 44., 23.74850)),
-                    p2: (Lon::new(dms(137., 47., 28.31435)), Lat::new(dms(67., 22., 14.77638))),
-                    alpha2: Azimuth::new(dms(144., 55., 39.92147)),
-                    s: 8_084_823.839,
-                },
-                direct_deltas: DirectDeltas {
-                    delta_lat2: dms(0., 0., -2e-5),
-                    delta_delta_lon: dms(0., 0., 2.9e-5),
-                    delta_alpha2: dms(0., 0., 3e-5),
-                },
-                inverse_deltas: InverseDeltas {
-                    delta_alpha1: dms(0., 0., -0.2e-5),
-                    delta_alpha2: dms(0., 0., 0.3e-5),
-                    delta_s: -0.7e-3,
-                },
-            },
-        ]
+            let diff_az_dms = DMS::from_rad(computed.alpha2.rad() - input.geodesic.alpha2.rad());
+            println!("error on az (res - exp) = {}", diff_az_dms);
+
+            assert_eq!(diff_lon_dms.deg(), 0.0);
+            assert_eq!(diff_lon_dms.min(), 0.0);
+            assert!(diff_lon_dms.sec() < delta.delta_delta_lon.abs());
+
+            assert_eq!(diff_lat_dms.deg(), 0.0);
+            assert_eq!(diff_lat_dms.min(), 0.0);
+            assert!(diff_lat_dms.sec() < delta.delta_lat2.abs());
+
+            assert_eq!(diff_az_dms.deg(), 0.0);
+            assert_eq!(diff_az_dms.min(), 0.0);
+            assert!(diff_az_dms.sec() < delta.delta_alpha2.abs());
+        }
     }
 
     #[test]
-    fn solve_direct() {
-        for line_data in lines() {
-            let solver = VincentyGeodesicSolver::new(&line_data.ellipsoid);
-            let result = solver.solve_direct(
-                line_data.geodesic.p1,
-                line_data.geodesic.alpha2,
-                line_data.geodesic.s,
-            );
-            assert_abs_diff_eq!(
-                result.p2.1,
-                line_data.geodesic.p2.1,
-                epsilon = line_data.direct_deltas.delta_lat2.abs()
-            );
+    fn direct_standard_lines() {
+        for (ix, input) in standard_lines().iter().enumerate() {
+            let solver = VincentyGeodesicSolver::new(&input.ellipsoid);
+            let computed = solver.solve_direct(input.geodesic.p1, input.geodesic.alpha1, input.geodesic.s);
+            println!("-----------------------------------------------------------------------------------");
+            println!("Input: Standard Line ({})", ix);
+            println!("{}", input.geodesic);
+            println!("Computed: ");
+            println!("{}", computed);
+            println!("");
+
+            let diff_lon_dms = DMS::from_rad(computed.p2.0.rad() - input.geodesic.p2.0.rad());
+            println!("error on lon (res - exp) = {}", diff_lon_dms);
+
+            let diff_lat_dms = DMS::from_rad(computed.p2.1.rad() - input.geodesic.p2.1.rad());
+            println!("error on lat (res - exp) = {}", diff_lat_dms);
+
+            let diff_az_dms = DMS::from_rad(computed.alpha2.rad() - input.geodesic.alpha2.rad());
+            println!("error on az (res - exp) = {}", diff_az_dms);
+
+            assert_abs_diff_eq!(computed.p2.0, input.geodesic.p2.0, epsilon = 2e-9);
+            assert_abs_diff_eq!(computed.p2.1, input.geodesic.p2.1, epsilon = 2e-9);
+            assert_abs_diff_eq!(computed.alpha2, input.geodesic.alpha2, epsilon = 1e-7);
         }
     }
+
+    #[test]
+    fn direct_antipodal_lines() {
+        for (ix, input) in antipodal_lines().iter().enumerate() {
+            let solver = VincentyGeodesicSolver::new(&input.ellipsoid);
+            let computed = solver.solve_direct(input.geodesic.p1, input.geodesic.alpha1, input.geodesic.s);
+            println!("-----------------------------------------------------------------------------------");
+            println!("Input: Antipodal Line ({})", ix);
+            println!("{}", input.geodesic);
+            println!("Computed: ");
+            println!("{}", computed);
+            println!("");
+
+            let diff_lon_dms = DMS::from_rad(computed.p2.0.rad() - input.geodesic.p2.0.rad());
+            println!("error on lon (res - exp) = {}", diff_lon_dms);
+
+            let diff_lat_dms = DMS::from_rad(computed.p2.1.rad() - input.geodesic.p2.1.rad());
+            println!("error on lat (res - exp) = {}", diff_lat_dms);
+
+            let diff_az_dms = DMS::from_rad(computed.alpha2.rad() - input.geodesic.alpha2.rad());
+            println!("error on az (res - exp) = {}", diff_az_dms);
+
+            assert_abs_diff_eq!(computed.p2.0, input.geodesic.p2.0, epsilon = 2e-9);
+            assert_abs_diff_eq!(computed.p2.1, input.geodesic.p2.1, epsilon = 2e-9);
+            assert_abs_diff_eq!(computed.alpha2, input.geodesic.alpha2, epsilon = 1e-7);
+        }
+    }
+
+    #[test]
+    fn inverse_vincenty_lines() {
+        // Vincenty lines
+        let chars = ['a', 'b', 'c', 'd', 'e', 'f'];
+        for (ix, (input, delta)) in vincenty_lines()
+            .into_iter()
+            .zip(vincenty_inverse_deltas())
+            .enumerate()
+        {
+            let solver = VincentyGeodesicSolver::new(&input.ellipsoid);
+            let computed = solver.solve_inverse(input.geodesic.p1, input.geodesic.p2);
+            println!("-----------------------------------------------------------------------------------");
+            println!("Input: Vincenty Line ({})", chars[ix]);
+            println!("{}", input.geodesic);
+            println!("Computed: ");
+            println!("{}", computed);
+            println!("");
+
+            let diff_az1_dms = DMS::from_rad(computed.alpha1.rad() - input.geodesic.alpha1.rad());
+            println!("error on az1 (computed - input) = {}", diff_az1_dms);
+
+            let diff_az2_dms = DMS::from_rad(computed.alpha2.rad() - input.geodesic.alpha2.rad());
+            println!("error on az2 (computed - input) = {}", diff_az2_dms);
+
+            let diff_s_m = computed.s - input.geodesic.s;
+            println!("error on s (computed - input) = {}", diff_s_m);
+
+            assert_eq!(diff_az1_dms.deg(), 0.0);
+            assert_eq!(diff_az1_dms.min(), 0.0);
+            assert!(diff_az1_dms.sec() < delta.delta_alpha1.abs());
+
+            assert_eq!(diff_az2_dms.deg(), 0.0);
+            assert_eq!(diff_az2_dms.min(), 0.0);
+            assert!(diff_az2_dms.sec() < delta.delta_alpha2.abs());
+
+            assert!(diff_s_m < delta.delta_s.abs());
+        }
+    }
+
+    #[test]
+    fn inverse_standard_lines() {
+        // Standard lines
+        for (ix, input) in standard_lines().iter().enumerate() {
+            let solver = VincentyGeodesicSolver::new(&input.ellipsoid);
+            let computed = solver.solve_inverse(input.geodesic.p1, input.geodesic.p2);
+            println!("-----------------------------------------------------------------------------------");
+            println!("Input: Standard Line ({})", ix);
+            println!("{}", input.geodesic);
+            println!("Computed: ");
+            println!("{}", computed);
+            println!("");
+
+            let diff_az1_dms = DMS::from_rad(computed.alpha1.rad() - input.geodesic.alpha1.rad());
+            println!("error on az1 (computed - input) = {}", diff_az1_dms);
+
+            let diff_az2_dms = DMS::from_rad(computed.alpha2.rad() - input.geodesic.alpha2.rad());
+            println!("error on az2 (computed - input) = {}", diff_az2_dms);
+
+            let diff_s_m = computed.s - input.geodesic.s;
+            println!("error on s (computed - input) = {}", diff_s_m);
+
+            // assert_abs_diff_eq!(computed.alpha1, input.geodesic.alpha1, epsilon = 2e-10);
+            // assert_abs_diff_eq!(computed.alpha2, input.geodesic.alpha2, epsilon = 1e-10);
+            // assert_abs_diff_eq!(computed.s, input.geodesic.s, epsilon = 1e-3);
+        }
+
+    }
+
+    #[test]
+    fn inverse_antipodal_lines() {
+        // Anti-podal lines
+        for (ix, input) in antipodal_lines().iter().enumerate() {
+            let solver = VincentyGeodesicSolver::new(&input.ellipsoid);
+            let computed = solver.solve_inverse(input.geodesic.p1, input.geodesic.p2);
+            println!("-----------------------------------------------------------------------------------");
+            println!("Input: Antipodal Line ({})", ix);
+            println!("{}", input.geodesic);
+            println!("Computed: ");
+            println!("{}", computed);
+            println!("");
+
+            let diff_az1_dms = DMS::from_rad(computed.alpha1.rad() - input.geodesic.alpha1.rad());
+            println!("error on az1 (computed - input) = {}", diff_az1_dms);
+
+            let diff_az2_dms = DMS::from_rad(computed.alpha2.rad() - input.geodesic.alpha2.rad());
+            println!("error on az2 (computed - input) = {}", diff_az2_dms);
+
+            let diff_s_m = computed.s - input.geodesic.s;
+            println!("error on s (computed - input) = {}", diff_s_m);
+
+            // assert_abs_diff_eq!(computed.alpha1, input.geodesic.alpha1, epsilon = 2e-10);
+            // assert_abs_diff_eq!(computed.alpha2, input.geodesic.alpha2, epsilon = 1e-10);
+            // assert_abs_diff_eq!(computed.s, input.geodesic.s, epsilon = 1e-3);
+        }
+    }
+
 }

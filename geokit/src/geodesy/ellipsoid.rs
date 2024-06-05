@@ -1,4 +1,4 @@
-use std::fmt::{Debug, Display};
+use std::fmt::Debug;
 
 use smol_str::SmolStr;
 
@@ -269,10 +269,8 @@ pub mod consts {
 #[cfg(test)]
 mod tests {
     use approx::assert_abs_diff_eq;
-
-    use crate::quantity::angle::units::DEG;
-
-    use super::*;
+    use crate::geodesy::Ellipsoid;
+    use crate::geodesy::ellipsoid::consts;
 
     #[test]
     #[should_panic(expected = "Expected semi_minor_axis (-0.5 m) > 0")]
