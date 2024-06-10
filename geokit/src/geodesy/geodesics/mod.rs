@@ -28,7 +28,7 @@ impl Display for Geodesic {
         write!(
             f,
             "L   : {}\n",
-            DMS::from_rad((self.p2.0 - self.p1.0).length().unwrap_or(0.))
+            DMS::from_rad((self.p2.0 - self.p1.0).length())
         )?;
         write!(f, "s   : {:0.3}\n", self.s)
     }
@@ -38,7 +38,8 @@ pub trait GeodesicSolver {
     /// Compute the coordinates and forward azimuth of the point at `s12` meters away
     /// from `p1` following the geodesic in the azimuth `alpha1` at `p1`.
     ///
-    /// The algorithm is taken from Karney - Algorithms for geodesics.
+    /// Some implementations may not converge for some inputs where the resulting geodesic starts
+    /// and finishes at *near* antipodal points.
     ///
     /// # Parameters
     ///
@@ -46,10 +47,14 @@ pub trait GeodesicSolver {
     /// - p1: the **normalized geodetic** coordinates of the starting point
     /// - alpha1: the azimuth **in radians** of the geodesic at `p1`,
     /// - s12: the distance **in meters** along the geodesic from `p1` of the returned point coordinates.
-    fn solve_direct(&self, p1: (Lon, Lat), alpha1: Azimuth, s12: f64) -> Geodesic;
+    fn solve_direct(&self, p1: (Lon, Lat), alpha1: Azimuth, s12: f64) -> Result<Geodesic, &'static str>;
 
-    fn solve_inverse(&self, p1: (Lon, Lat), p2: (Lon, Lat)) -> Geodesic;
+    /// Compute the azimuths and length in meters of the geodesic from `p1` to `p2`.
+    ///
+    /// Some implementations may not converge when inputs are *near* antipodal points.
+    fn solve_inverse(&self, p1: (Lon, Lat), p2: (Lon, Lat)) -> Result<Geodesic, &'static str>;
 }
+
 
 pub mod karney;
 pub mod rapp;

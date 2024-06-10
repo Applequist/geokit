@@ -154,16 +154,15 @@ impl LonInterval {
         self.lo > self.hi
     }
 
-    pub fn length(&self) -> Option<f64> {
+    /// Return the **positive** length of this interval.
+    /// The length is 0 if the interval is empty or a singleton.
+    pub fn length(&self) -> f64 {
         let mut length = self.hi - self.lo;
         if length < 0. {
             length += 2. * PI;
         }
-        if length > 0. {
-            Some(length)
-        } else {
-            None
-        }
+        debug_assert!(length >= 0.);
+        length
     }
 }
 
@@ -296,17 +295,22 @@ mod tests {
         assert!(LonInterval::full().is_full());
 
         // Length
-        assert_eq!(LonInterval::empty().length(), None);
-        assert_eq!(LonInterval::full().length(), Some(2. * PI));
+        assert_eq!(LonInterval::empty().length(), 0.);
+        assert_eq!(LonInterval::full().length(), 2. * PI);
         assert_eq!(
             LonInterval::new(Lon::new(0. * DEG), Lon::new(160. * DEG)).length(),
-            Some(160. * DEG)
+            160. * DEG
         );
         assert_abs_diff_eq!(
             LonInterval::new(Lon::new(170. * DEG), Lon::new(-170. * DEG))
-                .length()
-                .unwrap(),
+                .length(),
             20. * DEG,
+            epsilon = 1e-15
+        );
+        assert_abs_diff_eq!(
+            LonInterval::new(Lon::new(170. * DEG), Lon::new(130. * DEG))
+                .length(),
+            320. * DEG,
             epsilon = 1e-15
         );
     }

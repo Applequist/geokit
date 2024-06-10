@@ -16,7 +16,7 @@ impl<'e> VincentyGeodesicSolver<'e> {
         Self { ellipsoid }
     }
 
-    fn direct(&self, p1: (Lon, Lat), alpha1: Azimuth, s12: f64) -> Geodesic {
+    fn direct(&self, p1: (Lon, Lat), alpha1: Azimuth, s12: f64) -> Result<Geodesic, &'static str> {
         let f = self.ellipsoid.f();
         let (lon1, lat1) = p1;
         let tan_beta1 = (1. - f) * lat1.rad().tan();
@@ -61,7 +61,7 @@ impl<'e> VincentyGeodesicSolver<'e> {
                 break;
             }
             if iter_count == Self::MAX_ITERATIONS {
-                panic!("Direct geodesic computation is not converging after {} iterations!", Self::MAX_ITERATIONS);
+                return Err("Direct geodesic computation is not converging!")
             }
         }
 
@@ -87,16 +87,17 @@ impl<'e> VincentyGeodesicSolver<'e> {
 
         let alpha2 = sin_alpha.atan2(-sin_beta1 * sin_sigma + cos_beta1 * cos_sigma * cos_alpha1);
 
-        Geodesic {
+        Ok(Geodesic {
             p1: (lon1, lat1),
             alpha1,
             p2: (lon1 + L, Lat::new(lat2)),
             alpha2: Azimuth::new(alpha2),
             s: s12,
-        }
+        })
     }
 
-    fn inverse(&self, p1: (Lon, Lat), p2: (Lon, Lat)) -> Geodesic {
+    fn inverse(&self, p1: (Lon, Lat), p2: (Lon, Lat)) -> Result<Geodesic, &'static str> {
+        let f = self.ellipsoid.f();
         let (lon1, lat1) = p1;
         let (lon2, lat2) = p2;
         let beta1 = self.ellipsoid.reduced_latitude(lat1.rad());
@@ -105,13 +106,13 @@ impl<'e> VincentyGeodesicSolver<'e> {
         let (sin_beta2, cos_beta2) = beta2.sin_cos();
 
         // Eq (13) 1st approximation
-        let L = (lon2 - lon1).length().unwrap_or(0.0);
+        let L = (lon2 - lon1).length();
         let mut lambda = L;
         let (mut sin_lambda, mut cos_lambda) = lambda.sin_cos();
-        let mut cos_alpha_sq;
+        let mut cos_alpha_sq= 0.0;
         let mut sigma;
         let (mut sin_sigma, mut cos_sigma);
-        let mut cos_2_sigma_m;
+        let mut cos_2_sigma_m=  0.0;
         let mut iter_count = 0;
         loop {
             iter_count += 1;
@@ -130,47 +131,59 @@ impl<'e> VincentyGeodesicSolver<'e> {
             let sin_alpha = cos_beta1 * cos_beta2 * sin_lambda / sin_sigma;
             cos_alpha_sq = 1. - sin_alpha.powi(2);
 
-            // Eq (18)
-            cos_2_sigma_m = cos_sigma - 2. * sin_beta1 * sin_beta2 / cos_alpha_sq;
+            // If the geodesic (p1, p2) is an equatorial line Eq (18) becomes indeterminate but
+            // B and C become 0.0
+            let lambda_minus_L = if cos_alpha_sq == 0.0 {
+                    f * sin_alpha * sigma
+            } else {
+                // Eq (18)
+                cos_2_sigma_m = cos_sigma - 2. * sin_beta1 * sin_beta2 / cos_alpha_sq;
+
+                // Eq (10)
+                let upper_c = f / 16. * cos_alpha_sq * (4. + f * (4. - 3. * cos_alpha_sq));
+                // Eq (11)
+                (1. - upper_c)
+                    * f
+                    * sin_alpha
+                    * (sigma
+                    + upper_c * sin_sigma * (cos_2_sigma_m + upper_c * cos_sigma * (-1. + 2. * cos_2_sigma_m.powi(2))))
+            };
 
             // Update lambda
             let lambda_prev = lambda;
-            let f = self.ellipsoid.f();
-            // Eq (10)
-            let c = f / 16. * cos_alpha_sq * (4. + f * (4. - 3. * cos_alpha_sq));
-            // Eq (11)
-            let lambda_minus_L = (1. - c)
-                * f
-                * sin_alpha
-                * (sigma
-                    + c * sin_sigma * (cos_2_sigma_m + c * cos_sigma * (-1. + 2. * cos_2_sigma_m.powi(2))));
             lambda = lambda_minus_L + L;
             (sin_lambda, cos_lambda) = lambda.sin_cos();
             if (lambda - lambda_prev).abs() < 1e-12 {
                 break;
             }
             if iter_count == Self::MAX_ITERATIONS {
-                panic!("Inverse geodesic computation is not converging after {} iterations!", Self::MAX_ITERATIONS);
+                return Err("Inverse geodesic computation is not converging!")
             }
         }
 
-        let u_sq = cos_alpha_sq * self.ellipsoid.e_prime_sq();
-        // Eq (3)
-        let A = 1. + u_sq / 16384. * (4096. + u_sq * (-768. + u_sq * (320. - 175. * u_sq)));
-        // Eq (4)
-        let B = u_sq / 1024. * (256. + u_sq * (-128. + u_sq * (74. - 47. * u_sq)));
+        let s = if cos_alpha_sq == 0.0 {
+            // A = 1. B = 0. -> delta_sigma = 0 s = b * A(=1) * sigma
+            self.ellipsoid.b() * sigma
+        } else {
+            let u_sq = cos_alpha_sq * self.ellipsoid.e_prime_sq();
+            // Eq (3)
+            let A = 1. + u_sq / 16384. * (4096. + u_sq * (-768. + u_sq * (320. - 175. * u_sq)));
+            // Eq (4)
+            let B = u_sq / 1024. * (256. + u_sq * (-128. + u_sq * (74. - 47. * u_sq)));
 
-        // Eq (6)
-        let delta_sigma = B * sin_sigma
-            * (cos_2_sigma_m
+            // Eq (6)
+            let delta_sigma = B * sin_sigma
+                * (cos_2_sigma_m
                 + B / 4.
-                    * (cos_sigma * (-1. + 2. * cos_2_sigma_m.powi(2))
-                        - B / 6.
-                            * cos_2_sigma_m
-                            * (-3. + 4. * sin_sigma.powi(2))
-                            * (-3. + 4. * cos_2_sigma_m.powi(2))));
-        // Eq (19)
-        let s = self.ellipsoid.b() * A * (sigma - delta_sigma);
+                * (cos_sigma * (-1. + 2. * cos_2_sigma_m.powi(2))
+                - B / 6.
+                * cos_2_sigma_m
+                * (-3. + 4. * sin_sigma.powi(2))
+                * (-3. + 4. * cos_2_sigma_m.powi(2))));
+
+            // Eq (19)
+            self.ellipsoid.b() * A * (sigma - delta_sigma)
+        };
 
         // Eq (20)
         let alpha1 = (cos_beta2 * sin_lambda)
@@ -179,33 +192,39 @@ impl<'e> VincentyGeodesicSolver<'e> {
         let alpha2 = (cos_beta1 * sin_lambda)
             .atan2(-sin_beta1 * cos_beta2 + cos_beta1 * sin_beta2 * cos_lambda);
 
-        Geodesic {
+        Ok(Geodesic {
             p1,
             alpha1: Azimuth::new(alpha1),
             p2,
             alpha2: Azimuth::new(alpha2),
             s,
-        }
+        })
     }
 }
 
 impl<'e> GeodesicSolver for VincentyGeodesicSolver<'e> {
-    fn solve_direct(&self, p1: (Lon, Lat), alpha1: Azimuth, s12: f64) -> Geodesic {
+    fn solve_direct(&self, p1: (Lon, Lat), alpha1: Azimuth, s12: f64) -> Result<Geodesic, &'static str> {
         self.direct(p1, alpha1, s12)
     }
 
-    fn solve_inverse(&self, p1: (Lon, Lat), p2: (Lon, Lat)) -> Geodesic {
+    fn solve_inverse(&self, p1: (Lon, Lat), p2: (Lon, Lat)) -> Result<Geodesic, &'static str> {
         self.inverse(p1, p2)
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use std::f64::consts::{FRAC_PI_2, PI};
+    use std::fmt::Display;
     use approx::assert_abs_diff_eq;
+    use crate::cs::Azimuth;
+    use crate::cs::geodetic::{Lat, Lon};
     use crate::geodesy::geodesics::tests::{vincenty_lines, vincenty_direct_deltas, vincenty_inverse_deltas, standard_lines, antipodal_lines};
     use crate::geodesy::geodesics::vincenty::VincentyGeodesicSolver;
     use crate::geodesy::geodesics::{GeodesicSolver};
+    use crate::geodesy::ellipsoid::consts;
     use crate::quantity::angle::DMS;
+    use crate::quantity::angle::units::DEG;
 
     #[test]
     fn direct_vincenty_lines() {
@@ -217,7 +236,7 @@ mod tests {
         {
             let solver = VincentyGeodesicSolver::new(&input.ellipsoid);
             let computed =
-                solver.solve_direct(input.geodesic.p1, input.geodesic.alpha1, input.geodesic.s);
+                solver.solve_direct(input.geodesic.p1, input.geodesic.alpha1, input.geodesic.s).unwrap();
             println!("-----------------------------------------------------------------------------------");
             println!("Input: Vincenty Line ({})", chars[ix]);
             println!("{}", input.geodesic);
@@ -252,7 +271,7 @@ mod tests {
     fn direct_standard_lines() {
         for (ix, input) in standard_lines().iter().enumerate() {
             let solver = VincentyGeodesicSolver::new(&input.ellipsoid);
-            let computed = solver.solve_direct(input.geodesic.p1, input.geodesic.alpha1, input.geodesic.s);
+            let computed = solver.solve_direct(input.geodesic.p1, input.geodesic.alpha1, input.geodesic.s).unwrap();
             println!("-----------------------------------------------------------------------------------");
             println!("Input: Standard Line ({})", ix);
             println!("{}", input.geodesic);
@@ -279,7 +298,7 @@ mod tests {
     fn direct_antipodal_lines() {
         for (ix, input) in antipodal_lines().iter().enumerate() {
             let solver = VincentyGeodesicSolver::new(&input.ellipsoid);
-            let computed = solver.solve_direct(input.geodesic.p1, input.geodesic.alpha1, input.geodesic.s);
+            let computed = solver.solve_direct(input.geodesic.p1, input.geodesic.alpha1, input.geodesic.s).unwrap();
             println!("-----------------------------------------------------------------------------------");
             println!("Input: Antipodal Line ({})", ix);
             println!("{}", input.geodesic);
@@ -303,6 +322,37 @@ mod tests {
     }
 
     #[test]
+    fn direct_equator_lines() {
+        let wgs84 = consts::WGS84;
+        let solver = VincentyGeodesicSolver::new(&wgs84);
+        let computed = solver.solve_direct((Lon::new(0.0), Lat::new(0.0)), Azimuth::new(90.0 * DEG), 20_000.0).unwrap();
+        assert_abs_diff_eq!(computed.p2.0.rad(), 0.17966306 * DEG, epsilon = 1e-8);
+        assert_abs_diff_eq!(computed.p2.1.rad(), 0.0, epsilon = 1e-8);
+        assert_abs_diff_eq!(computed.alpha2.rad(), FRAC_PI_2, epsilon = 1e-8);
+
+        let computed = solver.solve_direct((Lon::new(170.0 * DEG), Lat::new(0.0)), Azimuth::new(90.0 * DEG), 2_000_000.0).unwrap();
+        assert_abs_diff_eq!(computed.p2.0, Lon::new(-172.03369432 * DEG), epsilon = 1e-10);
+        assert_abs_diff_eq!(computed.p2.1, Lat::new(0.0), epsilon = 1e-10);
+        assert_abs_diff_eq!(computed.alpha2.rad(), FRAC_PI_2, epsilon = 1e-8);
+    }
+
+    #[test]
+    fn direct_meridian_lines() {
+        let wgs84 = consts::WGS84;
+        let solver = VincentyGeodesicSolver::new(&wgs84);
+
+        let computed = solver.solve_direct((Lon::new(0.), Lat::new(-10. * DEG)), Azimuth::new(0.), 2_000_000.0).unwrap();
+        assert_abs_diff_eq!(computed.p2.0.rad(), 0.0, epsilon = 1e-10);
+        assert_abs_diff_eq!(computed.p2.1.rad(), 8.08583903 * DEG, epsilon = 1e-10);
+        assert_abs_diff_eq!(computed.alpha2.rad(), 0.0, epsilon = 1e-8);
+
+        let computed = solver.solve_direct((Lon::new(0.), Lat::new(80. * DEG)), Azimuth::new(0.), 2_000_000.0).unwrap();
+        assert_abs_diff_eq!(computed.p2.0.rad(), PI, epsilon = 1e-10);
+        assert_abs_diff_eq!(computed.p2.1.rad(), 82.09240627 * DEG, epsilon = 1e-10);
+        assert_abs_diff_eq!(computed.alpha2.rad(), PI, epsilon = 1e-8);
+    }
+
+    #[test]
     fn inverse_vincenty_lines() {
         // Vincenty lines
         let chars = ['a', 'b', 'c', 'd', 'e', 'f'];
@@ -312,7 +362,7 @@ mod tests {
             .enumerate()
         {
             let solver = VincentyGeodesicSolver::new(&input.ellipsoid);
-            let computed = solver.solve_inverse(input.geodesic.p1, input.geodesic.p2);
+            let computed = solver.solve_inverse(input.geodesic.p1, input.geodesic.p2).unwrap();
             println!("-----------------------------------------------------------------------------------");
             println!("Input: Vincenty Line ({})", chars[ix]);
             println!("{}", input.geodesic);
@@ -346,7 +396,7 @@ mod tests {
         // Standard lines
         for (ix, input) in standard_lines().iter().enumerate() {
             let solver = VincentyGeodesicSolver::new(&input.ellipsoid);
-            let computed = solver.solve_inverse(input.geodesic.p1, input.geodesic.p2);
+            let computed = solver.solve_inverse(input.geodesic.p1, input.geodesic.p2).unwrap();
             println!("-----------------------------------------------------------------------------------");
             println!("Input: Standard Line ({})", ix);
             println!("{}", input.geodesic);
@@ -375,7 +425,7 @@ mod tests {
         // Anti-podal lines
         for (ix, input) in antipodal_lines().iter().enumerate() {
             let solver = VincentyGeodesicSolver::new(&input.ellipsoid);
-            let computed = solver.solve_inverse(input.geodesic.p1, input.geodesic.p2);
+            let computed = solver.solve_inverse(input.geodesic.p1, input.geodesic.p2).unwrap();
             println!("-----------------------------------------------------------------------------------");
             println!("Input: Antipodal Line ({})", ix);
             println!("{}", input.geodesic);
@@ -398,4 +448,44 @@ mod tests {
         }
     }
 
+    #[test]
+    fn inverse_equator_lines() {
+        let wgs84 = consts::WGS84;
+        let solver = VincentyGeodesicSolver::new(&wgs84);
+        let computed = solver.solve_inverse((Lon::new(-10. * DEG), Lat::new(0.)), (Lon::new(10. * DEG), Lat::new(0.))).unwrap();
+        assert_abs_diff_eq!(computed.alpha1, Azimuth::EAST, epsilon = 1e-10);
+        assert_abs_diff_eq!(computed.alpha2, Azimuth::EAST, epsilon = 1e-10);
+        assert_abs_diff_eq!(computed.s, 2_226_389.816, epsilon = 1e-3);
+
+        let computed = solver.solve_inverse((Lon::new(10. * DEG), Lat::new(0.)), (Lon::new(-10. * DEG), Lat::new(0.))).unwrap();
+        assert_abs_diff_eq!(computed.alpha1, Azimuth::WEST, epsilon = 1e-10);
+        assert_abs_diff_eq!(computed.alpha2, Azimuth::WEST, epsilon = 1e-10);
+        assert_abs_diff_eq!(computed.s, 2_226_389.816, epsilon = 1e-3);
+
+        let computed = solver.solve_inverse((Lon::new(170. * DEG), Lat::new(0.)), (Lon::new(-170. * DEG), Lat::new(0.))).unwrap();
+        assert_abs_diff_eq!(computed.alpha1, Azimuth::EAST, epsilon = 1e-10);
+        assert_abs_diff_eq!(computed.alpha2, Azimuth::EAST, epsilon = 1e-10);
+        assert_abs_diff_eq!(computed.s, 2_226_389.816, epsilon = 1e-3);
+    }
+
+    #[test]
+    fn inverse_meridian_lines() {
+        let wgs84 = consts::WGS84;
+        let solver = VincentyGeodesicSolver::new(&wgs84);
+        let computed = solver.solve_inverse((Lon::new(0. * DEG), Lat::new(-10. * DEG)), (Lon::new(0.), Lat::new(10. * DEG))).unwrap();
+        assert_abs_diff_eq!(computed.alpha1, Azimuth::NORTH, epsilon = 1e-10);
+        assert_abs_diff_eq!(computed.alpha2, Azimuth::NORTH, epsilon = 1e-10);
+        assert_abs_diff_eq!(computed.s, 2_211_709.666, epsilon = 1e-3);
+
+
+        let computed = solver.solve_inverse((Lon::new(0. * DEG), Lat::new(10. * DEG)), (Lon::new(0. * DEG), Lat::new(-10. * DEG))).unwrap();
+        assert_abs_diff_eq!(computed.alpha1, Azimuth::SOUTH, epsilon = 1e-10);
+        assert_abs_diff_eq!(computed.alpha2, Azimuth::SOUTH, epsilon = 1e-10);
+        assert_abs_diff_eq!(computed.s, 2_211_709.666, epsilon = 1e-3);
+
+        let computed = solver.solve_inverse((Lon::new(0.), Lat::new(80. * DEG)), (Lon::new(180. * DEG), Lat::new(80. * DEG))).unwrap();
+        assert_abs_diff_eq!(computed.alpha1, Azimuth::NORTH, epsilon = 1e-10);
+        assert_abs_diff_eq!(computed.alpha2, Azimuth::SOUTH, epsilon = 1e-10);
+        assert_abs_diff_eq!(computed.s, 2_233_651.715, epsilon = 1e-3);
+    }
 }
