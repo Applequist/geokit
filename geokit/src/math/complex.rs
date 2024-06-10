@@ -3,9 +3,9 @@ use std::ops::{Add, Div, Mul, Sub};
 use num::{Float, One, Zero};
 
 #[derive(Debug, Copy, Clone, PartialEq)]
-pub struct Complex<T: Float = f64> {
-    re: T,
-    im: T,
+pub struct Complex<T = f64> {
+    pub re: T,
+    pub im: T,
 }
 
 impl<T: Float> Complex<T> {
@@ -13,26 +13,24 @@ impl<T: Float> Complex<T> {
         Self { re, im }
     }
 
-    #[inline]
-    pub fn re(&self) -> T {
-        self.re
+    /// Return the squared absolute value of this complex.
+    pub fn abs_sq(&self) -> T {
+        self.re.clone() * self.re.clone() + self.im.clone() * self.im.clone()
     }
 
-    #[inline]
-    pub fn im(&self) -> T {
-        self.im
-    }
-
+    /// Return the absolute value of this complex.
     pub fn abs(&self) -> T {
         self.re.hypot(self.im)
     }
 
-    pub fn theta(&self) -> T {
+    /// Return the argument **in radians** of this complex.
+    pub fn arg(&self) -> T {
         self.im.atan2(self.re)
     }
 
+    /// Return the multiplicative inverse of this complex.
     pub fn inv(&self) -> Self {
-        let m = self.abs();
+        let m = self.abs_sq();
         if m == T::zero() {
             panic!("Zero is an invalid denominator!");
         }
@@ -154,10 +152,10 @@ mod tests {
     }
 
     #[test]
-    fn test_theta() {
-        assert_eq!(Complex::new(1., 1.).theta(), FRAC_PI_4);
-        assert_eq!(Complex::new(0.5, 3f64.sqrt() / 2.).theta(), PI / 3.);
-        assert_eq!(Complex::new(-1., 0.).theta(), PI);
+    fn test_arg() {
+        assert_eq!(Complex::new(1., 1.).arg(), FRAC_PI_4);
+        assert_eq!(Complex::new(0.5, 3f64.sqrt() / 2.).arg(), PI / 3.);
+        assert_eq!(Complex::new(-1., 0.).arg(), PI);
     }
 
     #[test]
@@ -166,6 +164,14 @@ mod tests {
         assert_eq!(Complex::new(0.5, 3f64.sqrt() / 2.).abs(), 1.);
         assert_eq!(Complex::new(-1., 0.).abs(), 1.);
     }
+
+    #[test]
+    fn test_inv() {
+        let z = Complex::new(1., 2.);
+        let inv_z = z.inv();
+        assert_eq!(z * inv_z, Complex::new(1., 0.));
+    }
+
 
     #[test]
     fn test_ops() {
