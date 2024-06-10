@@ -168,7 +168,10 @@ impl<'e> RappIterativeGeodisicSolver<'e> {
         let mut sin_4_sigma;
         let mut sin_alpha;
         let mut cos_alpha_sq;
-        let mut cos_2i_sigma_m = [0.; 4]; // cos(2 * (i + 1) * sigma_m)
+        let mut cos_2_sigma_m = 0.0;
+        let mut cos_4_sigma_m = 0.0;
+        let mut cos_6_sigma_m = 0.0;
+        let mut cos_8_sigma_m = 0.0;
         let mut iter_count = 0;
         loop {
             iter_count += 1;
@@ -194,18 +197,18 @@ impl<'e> RappIterativeGeodisicSolver<'e> {
                 f * sin_alpha * sigma
             } else {
                 // Eq (1.66)
-                cos_2i_sigma_m[0] = cos_sigma - 2. * sin_beta1 * sin_beta2 / cos_alpha_sq;
-                cos_2i_sigma_m[1] = 2. * cos_2i_sigma_m[0].powi(2) - 1.;
-                cos_2i_sigma_m[2] = cos_2i_sigma_m[0].powi(3) - 3. * cos_2i_sigma_m[0] * (1. - cos_2i_sigma_m[0].powi(2));
-                cos_2i_sigma_m[3] = cos_2i_sigma_m[0].powi(4) - 6. * cos_2i_sigma_m[0].powi(2) * sin_2_sigma.powi(2) + sin_2_sigma.powi(4);
+                cos_2_sigma_m = cos_sigma - 2. * sin_beta1 * sin_beta2 / cos_alpha_sq;
+                cos_4_sigma_m = 2. * cos_2_sigma_m.powi(2) - 1.;
+                cos_6_sigma_m = cos_2_sigma_m.powi(3) - 3. * cos_2_sigma_m * (1. - cos_2_sigma_m.powi(2));
+                cos_8_sigma_m = cos_2_sigma_m.powi(4) - 6. * cos_2_sigma_m.powi(2) * sin_2_sigma.powi(2) + sin_2_sigma.powi(4);
 
                 // Eq (1.56)
                 let big_as = self.axs.map(|p| p.eval_at(cos_alpha_sq));
                 f * sin_alpha * (
                     big_as[0] * sigma +
-                        big_as[1] * sin_sigma * cos_2i_sigma_m[0] +
-                        big_as[2] * sin_2_sigma * cos_2i_sigma_m[1] +
-                        big_as[3] * sin_3_sigma * cos_2i_sigma_m[2]
+                        big_as[1] * sin_sigma * cos_2_sigma_m +
+                        big_as[2] * sin_2_sigma * cos_4_sigma_m +
+                        big_as[3] * sin_3_sigma * cos_6_sigma_m
                 )
             };
             let lambda_prev = lambda;
@@ -232,10 +235,10 @@ impl<'e> RappIterativeGeodisicSolver<'e> {
 
             self.ellipsoid.b() * (
                 b0 * sigma +
-                    b2 * sin_sigma * cos_2i_sigma_m[0] +
-                    b4 * sin_2_sigma * cos_2i_sigma_m[1] +
-                    b6 * sin_3_sigma * cos_2i_sigma_m[2] +
-                    b8 * sin_4_sigma * cos_2i_sigma_m[3]
+                    b2 * sin_sigma * cos_2_sigma_m +
+                    b4 * sin_2_sigma * cos_4_sigma_m +
+                    b6 * sin_3_sigma * cos_6_sigma_m +
+                    b8 * sin_4_sigma * cos_8_sigma_m
             )
         };
         let sin_alpha1 = sin_alpha / cos_beta1;
