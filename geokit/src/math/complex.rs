@@ -197,7 +197,7 @@ mod tests {
         // Division
         assert_eq!(
             Complex::new(1., 1.) / Complex::new(1., -1.),
-            Complex::new(0., 2. / 2f64.sqrt())
+            Complex::new(0., 1.)
         );
         assert_eq!(Complex::new(1., 1.) / 2., Complex::new(1. / 2., 1. / 2.));
     }
