@@ -212,7 +212,7 @@ pub mod consts {
 
     macro_rules! ellipsoids {
         ( $( $name:ident => $def:tt),+ ) => {
-                $(pub const $name: Ellipsoid = def!($def);)+
+            $(pub const $name: Ellipsoid = def!($def);)+
         }
     }
 
