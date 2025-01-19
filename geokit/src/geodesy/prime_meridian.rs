@@ -14,10 +14,10 @@ pub struct PrimeMeridian {
 impl PrimeMeridian {
     /// Create a new [`PrimeMeridian`] with the given Greenwich longitude **positive
     /// East of Greenwich**.
-    pub fn new(name: &str, gw_lon: f64) -> Self {
+    pub fn new(name: &str, gw_lon: Lon) -> Self {
         Self {
             name: SmolStr::new(name),
-            lon: Lon::new(gw_lon).normalize().rad(),
+            lon: gw_lon.normalize().rad(),
         }
     }
 
@@ -88,19 +88,22 @@ pub mod consts {
 mod tests {
     use std::f64::consts::PI;
 
-    use crate::quantity::angle::units::DEG;
+    use crate::{
+        cs::geodetic::Lon,
+        quantity::angle::units::{Deg, Rad},
+    };
 
     use super::PrimeMeridian;
 
     #[test]
     fn longitude_eq_mpi() {
-        let _p = PrimeMeridian::new("EQ lower bound", -PI);
+        let _p = PrimeMeridian::new("EQ lower bound", Lon::new(-PI * Rad));
         assert_eq!(_p.lon(), PI);
     }
 
     #[test]
     fn clone() {
-        let pm = PrimeMeridian::new("Paris", 2.23 * DEG);
+        let pm = PrimeMeridian::new("Paris", Lon::new(2.23 * Deg));
         let cpy = pm.clone();
         assert_eq!(pm, cpy);
         let _s = cpy.lon;
@@ -108,13 +111,13 @@ mod tests {
 
     #[test]
     fn parital_eq() {
-        let pm = PrimeMeridian::new("Paris", 2.23 * DEG);
-        let cpy = PrimeMeridian::new("PM", 2.23 * DEG);
+        let pm = PrimeMeridian::new("Paris", Lon::new(2.23 * Deg));
+        let cpy = PrimeMeridian::new("PM", Lon::new(2.23 * Deg));
 
         assert!(pm.eq(&cpy));
         assert!(!pm.ne(&cpy));
 
-        let pm2 = PrimeMeridian::new("Greenwich", 0.0 * DEG);
+        let pm2 = PrimeMeridian::new("Greenwich", Lon::new(0.0 * Deg));
         assert_ne!(pm, pm2);
     }
 }

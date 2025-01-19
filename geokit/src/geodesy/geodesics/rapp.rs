@@ -1,11 +1,12 @@
 #![allow(non_snake_case)]
 
-use std::f64::consts::PI;
 use crate::cs::geodetic::{Lat, Lon};
 use crate::cs::Azimuth;
 use crate::geodesy::geodesics::{Geodesic, GeodesicSolver};
 use crate::geodesy::Ellipsoid;
 use crate::math::polynomial::Polynomial;
+use crate::quantity::angle::units::Rad;
+use std::f64::consts::PI;
 
 pub struct RappIterativeGeodisicSolver<'e> {
     ellipsoid: &'e Ellipsoid,
@@ -21,17 +22,17 @@ impl<'e> RappIterativeGeodisicSolver<'e> {
         let axs = [
             // A0
             Polynomial::new([
-                1.,                                     // cos^0 alpha
-                -(f / 4. * (1. + f * (1. + f))),        // cos^2 alpha
-                3. * f * f / 16. * (1. + 9. * f / 4.),  // cos^4 alpha
-                -25. * f * f * f / 128.,                // cos^6 alpha
+                1.,                                    // cos^0 alpha
+                -(f / 4. * (1. + f * (1. + f))),       // cos^2 alpha
+                3. * f * f / 16. * (1. + 9. * f / 4.), // cos^4 alpha
+                -25. * f * f * f / 128.,               // cos^6 alpha
             ]),
             // A2
             Polynomial::new([
-                0.,                              // cos^0 alpha
-                f / 4. * (1. + f * (1. + f)),    // cos^2 alpha
-                -f * f / 4. * (1. + 9. * f / 4.),// cos^4 alpha
-                75. * f * f * f / 256.,          // cos^6 alpha
+                0.,                               // cos^0 alpha
+                f / 4. * (1. + f * (1. + f)),     // cos^2 alpha
+                -f * f / 4. * (1. + 9. * f / 4.), // cos^4 alpha
+                75. * f * f * f / 256.,           // cos^6 alpha
             ]),
             // A4
             Polynomial::new([
@@ -41,17 +42,17 @@ impl<'e> RappIterativeGeodisicSolver<'e> {
                 -15. * f * f * f / 256.,
             ]),
             // A6
-            Polynomial::new([
-                0.,
-                0.,
-                0.,
-                5. * f * f * f / 768.,
-            ]),
+            Polynomial::new([0., 0., 0., 5. * f * f * f / 768.]),
         ];
         Self { ellipsoid, axs }
     }
 
-    pub fn direct(&self, p1: (Lon, Lat), alpha1: Azimuth, s12: f64) -> Result<Geodesic, &'static str> {
+    pub fn direct(
+        &self,
+        p1: (Lon, Lat),
+        alpha1: Azimuth,
+        s12: f64,
+    ) -> Result<Geodesic, &'static str> {
         let (lon1, lat1) = p1;
         let beta1 = self.ellipsoid.reduced_latitude(lat1.rad());
         let (sin_beta1, cos_beta1) = beta1.sin_cos();
@@ -60,7 +61,8 @@ impl<'e> RappIterativeGeodisicSolver<'e> {
         let cos_alpha_sq = 1. - sin_alpha.powi(2);
 
         let u_sq = self.ellipsoid.e_prime_sq() * cos_alpha_sq;
-        let b0 = 1. + u_sq * (1. / 4. + u_sq * (-3. / 64. + u_sq * (5. / 256. + u_sq * -175. / 16384.)));
+        let b0 =
+            1. + u_sq * (1. / 4. + u_sq * (-3. / 64. + u_sq * (5. / 256. + u_sq * -175. / 16384.)));
         let b2 = u_sq * (-1. / 4. + u_sq * (1. / 16. + u_sq * (-15. / 512. + u_sq * 35. / 2048.)));
         let b4 = u_sq * u_sq * (-1. / 128. + u_sq * (3. / 512. + u_sq * -35. / 8192.));
         let b6 = u_sq * u_sq * u_sq * (-1. / 1536. + u_sq * 5. / 6144.);
@@ -88,16 +90,20 @@ impl<'e> RappIterativeGeodisicSolver<'e> {
             let two_sigma_m = 2. * sigma_1 + sigma;
             cos_2_sigma_m = two_sigma_m.cos();
             cos_4_sigma_m = 2. * cos_2_sigma_m.powi(2) - 1.;
-            cos_6_sigma_m = cos_2_sigma_m.powi(3) - 3. * cos_2_sigma_m * (1. - cos_2_sigma_m.powi(2));
+            cos_6_sigma_m =
+                cos_2_sigma_m.powi(3) - 3. * cos_2_sigma_m * (1. - cos_2_sigma_m.powi(2));
 
-            let next_sigma = sigma_0 - b2 / b0 * sin_sigma * cos_2_sigma_m - b4/ b0 * sin_2_sigma * cos_4_sigma_m - b6 / b0 * sin_3_sigma * cos_6_sigma_m;
+            let next_sigma = sigma_0
+                - b2 / b0 * sin_sigma * cos_2_sigma_m
+                - b4 / b0 * sin_2_sigma * cos_4_sigma_m
+                - b6 / b0 * sin_3_sigma * cos_6_sigma_m;
             let sigma_old = sigma;
             sigma = next_sigma;
             if (sigma - sigma_old).abs() < 0.5e-14 {
                 break;
             }
             if iter_count == Self::MAX_ITERATIONS {
-                return Err("Direct geodesic computation is not converging!")
+                return Err("Direct geodesic computation is not converging!");
             }
         }
 
@@ -117,36 +123,34 @@ impl<'e> RappIterativeGeodisicSolver<'e> {
         // Eq (1.56)
         let f = self.ellipsoid.f();
         let big_as = self.axs.map(|p| p.fast_eval_at(cos_alpha_sq));
-        let lambda_minus_L = f * sin_alpha * (
-            big_as[0] * sigma +
-                big_as[1] * sin_sigma * cos_2_sigma_m +
-                big_as[2] * sin_2_sigma * cos_4_sigma_m +
-                big_as[3] * sin_3_sigma * cos_6_sigma_m
-        );
+        let lambda_minus_L = f
+            * sin_alpha
+            * (big_as[0] * sigma
+                + big_as[1] * sin_sigma * cos_2_sigma_m
+                + big_as[2] * sin_2_sigma * cos_4_sigma_m
+                + big_as[3] * sin_3_sigma * cos_6_sigma_m);
 
         let L = lambda - lambda_minus_L;
 
         let alpha21 = if s12 < 1000.0 {
             let sin_lambda_2_sq = (1. - cos_lambda) / 2.;
             // Eq (1.73)
-            (sin_lambda * cos_beta1).atan2(
-                 (beta2 - beta1).sin()
-                - 2. * cos_beta1 * sin_beta2 * sin_lambda_2_sq)
+            (sin_lambda * cos_beta1)
+                .atan2((beta2 - beta1).sin() - 2. * cos_beta1 * sin_beta2 * sin_lambda_2_sq)
         } else {
             // Eq (1.71)
-            (sin_lambda * cos_beta1).atan2(
-                sin_beta2 * cos_beta1 * cos_lambda - sin_beta1 * cos_beta2)
+            (sin_lambda * cos_beta1)
+                .atan2(sin_beta2 * cos_beta1 * cos_lambda - sin_beta1 * cos_beta2)
         };
 
         Ok(Geodesic {
             p1,
             alpha1,
-            p2: (lon1 + L, Lat::new(lat2)),
-            alpha2: Azimuth::new(alpha21),
+            p2: (lon1 + L * Rad, Lat::new(lat2 * Rad)),
+            alpha2: Azimuth::new(alpha21 * Rad),
             s: s12,
         })
     }
-
 
     pub fn inverse(&self, p1: (Lon, Lat), p2: (Lon, Lat)) -> Result<Geodesic, &'static str> {
         // Init
@@ -158,7 +162,7 @@ impl<'e> RappIterativeGeodisicSolver<'e> {
         let (sin_beta1, cos_beta1) = beta1.sin_cos();
         let (sin_beta2, cos_beta2) = beta2.sin_cos();
 
-        let L = (lon2 - lon1).length();
+        let L = (lon2 - lon1).length().rad();
         let mut lambda = L;
         let (mut sin_lambda, mut cos_lambda);
         let mut sigma;
@@ -181,7 +185,7 @@ impl<'e> RappIterativeGeodisicSolver<'e> {
             // Eq (1.58)
             sin_sigma = ((sin_lambda * cos_beta2).powi(2)
                 + (sin_beta2 * cos_beta1 - sin_beta1 * cos_beta2 * cos_lambda).powi(2))
-                .sqrt();
+            .sqrt();
             sigma = sin_sigma.atan2(cos_sigma);
             sin_2_sigma = 2. * sin_sigma * cos_sigma;
             sin_3_sigma = 3. * sin_sigma * cos_sigma.powi(2) - sin_sigma.powi(3);
@@ -199,17 +203,19 @@ impl<'e> RappIterativeGeodisicSolver<'e> {
                 // Eq (1.66)
                 cos_2_sigma_m = cos_sigma - 2. * sin_beta1 * sin_beta2 / cos_alpha_sq;
                 cos_4_sigma_m = 2. * cos_2_sigma_m.powi(2) - 1.;
-                cos_6_sigma_m = cos_2_sigma_m.powi(3) - 3. * cos_2_sigma_m * (1. - cos_2_sigma_m.powi(2));
-                cos_8_sigma_m = cos_2_sigma_m.powi(4) - 6. * cos_2_sigma_m.powi(2) * sin_2_sigma.powi(2) + sin_2_sigma.powi(4);
+                cos_6_sigma_m =
+                    cos_2_sigma_m.powi(3) - 3. * cos_2_sigma_m * (1. - cos_2_sigma_m.powi(2));
+                cos_8_sigma_m = cos_2_sigma_m.powi(4)
+                    - 6. * cos_2_sigma_m.powi(2) * sin_2_sigma.powi(2)
+                    + sin_2_sigma.powi(4);
 
                 // Eq (1.56)
                 let big_as = self.axs.map(|p| p.eval_at(cos_alpha_sq));
-                f * sin_alpha * (
-                    big_as[0] * sigma +
-                        big_as[1] * sin_sigma * cos_2_sigma_m +
-                        big_as[2] * sin_2_sigma * cos_4_sigma_m +
-                        big_as[3] * sin_3_sigma * cos_6_sigma_m
-                )
+                f * sin_alpha
+                    * (big_as[0] * sigma
+                        + big_as[1] * sin_sigma * cos_2_sigma_m
+                        + big_as[2] * sin_2_sigma * cos_4_sigma_m
+                        + big_as[3] * sin_3_sigma * cos_6_sigma_m)
             };
             let lambda_prev = lambda;
             lambda = L + lambda_minus_L;
@@ -217,7 +223,7 @@ impl<'e> RappIterativeGeodisicSolver<'e> {
                 break;
             }
             if iter_count == Self::MAX_ITERATIONS {
-                return Err("Inverse geodesic computation is not converging!")
+                return Err("Inverse geodesic computation is not converging!");
             }
         }
 
@@ -227,19 +233,21 @@ impl<'e> RappIterativeGeodisicSolver<'e> {
             self.ellipsoid.b() * sigma
         } else {
             let u_sq = self.ellipsoid.e_prime_sq() * cos_alpha_sq;
-            let b0 = 1. + u_sq * (1. / 4. + u_sq * (-3. / 64. + u_sq * (5. / 256. + u_sq * -175. / 16384.)));
-            let b2 = u_sq * (-1. / 4. + u_sq * (1. / 16. + u_sq * (-15. / 512. + u_sq * 35. / 2048.)));
+            let b0 = 1.
+                + u_sq
+                    * (1. / 4. + u_sq * (-3. / 64. + u_sq * (5. / 256. + u_sq * -175. / 16384.)));
+            let b2 =
+                u_sq * (-1. / 4. + u_sq * (1. / 16. + u_sq * (-15. / 512. + u_sq * 35. / 2048.)));
             let b4 = u_sq * u_sq * (-1. / 128. + u_sq * (3. / 512. + u_sq * -35. / 8192.));
             let b6 = u_sq * u_sq * u_sq * (-1. / 1536. + u_sq * 5. / 6144.);
             let b8 = u_sq * u_sq * u_sq * u_sq * (-5. / 65536.);
 
-            self.ellipsoid.b() * (
-                b0 * sigma +
-                    b2 * sin_sigma * cos_2_sigma_m +
-                    b4 * sin_2_sigma * cos_4_sigma_m +
-                    b6 * sin_3_sigma * cos_6_sigma_m +
-                    b8 * sin_4_sigma * cos_8_sigma_m
-            )
+            self.ellipsoid.b()
+                * (b0 * sigma
+                    + b2 * sin_sigma * cos_2_sigma_m
+                    + b4 * sin_2_sigma * cos_4_sigma_m
+                    + b6 * sin_3_sigma * cos_6_sigma_m
+                    + b8 * sin_4_sigma * cos_8_sigma_m)
         };
         let sin_alpha1 = sin_alpha / cos_beta1;
         let sin_alpha2 = sin_alpha / cos_beta2;
@@ -266,40 +274,45 @@ impl<'e> RappIterativeGeodisicSolver<'e> {
             let (tan_alpha12, tan_alpha21) = if s < 10_000.0 {
                 (
                     // Eq (1.72)
-                    lambda.sin() * cos_beta2 / ((beta2 - beta1).sin() + 2. * sin_beta1 * cos_beta2 * sin_lambda_2_sq),
+                    lambda.sin() * cos_beta2
+                        / ((beta2 - beta1).sin() + 2. * sin_beta1 * cos_beta2 * sin_lambda_2_sq),
                     // Eq (1.73)
                     lambda.sin() * cos_beta1
-                        / ((beta2 - beta1).sin()
-                        - 2. * cos_beta1 * sin_beta2 * sin_lambda_2_sq)
+                        / ((beta2 - beta1).sin() - 2. * cos_beta1 * sin_beta2 * sin_lambda_2_sq),
                 )
             } else {
                 (
                     // Eq (1.70)
-                    lambda.sin() * cos_beta2 / (sin_beta2 * cos_beta1 - lambda.cos() * sin_beta1 * cos_beta2),
+                    lambda.sin() * cos_beta2
+                        / (sin_beta2 * cos_beta1 - lambda.cos() * sin_beta1 * cos_beta2),
                     // Eq (1.71)
                     lambda.sin() * cos_beta1
-                        / (sin_beta2 * cos_beta1 * lambda.cos() - sin_beta1 * cos_beta2)
+                        / (sin_beta2 * cos_beta1 * lambda.cos() - sin_beta1 * cos_beta2),
                 )
             };
             (
                 sin_alpha1.atan2(sin_alpha1 / tan_alpha12),
-                sin_alpha2.atan2(sin_alpha2 / tan_alpha21)
+                sin_alpha2.atan2(sin_alpha2 / tan_alpha21),
             )
         };
 
         Ok(Geodesic {
             p1: (lon1, lat1),
-            alpha1: Azimuth::new(alpha1),
+            alpha1: Azimuth::new(alpha1 * Rad),
             p2: (lon2, lat2),
-            alpha2: Azimuth::new(alpha2),
+            alpha2: Azimuth::new(alpha2 * Rad),
             s,
         })
     }
-
 }
 
 impl<'e> GeodesicSolver for RappIterativeGeodisicSolver<'e> {
-    fn solve_direct(&self, p1: (Lon, Lat), alpha1: Azimuth, s12: f64) -> Result<Geodesic, &'static str> {
+    fn solve_direct(
+        &self,
+        p1: (Lon, Lat),
+        alpha1: Azimuth,
+        s12: f64,
+    ) -> Result<Geodesic, &'static str> {
         self.direct(p1, alpha1, s12)
     }
 
@@ -310,16 +323,19 @@ impl<'e> GeodesicSolver for RappIterativeGeodisicSolver<'e> {
 
 #[cfg(test)]
 mod tests {
-    use std::f64::consts::{FRAC_PI_2, PI};
-    use crate::geodesy::geodesics::rapp::RappIterativeGeodisicSolver;
-    use crate::geodesy::geodesics::tests::{antipodal_lines, standard_lines, vincenty_direct_deltas, vincenty_inverse_deltas, vincenty_lines};
-    use crate::geodesy::geodesics::GeodesicSolver;
-    use approx::assert_abs_diff_eq;
-    use crate::cs::Azimuth;
     use crate::cs::geodetic::{Lat, Lon};
+    use crate::cs::Azimuth;
     use crate::geodesy::ellipsoid::consts;
-    use crate::quantity::angle::DMS;
-    use crate::quantity::angle::units::DEG;
+    use crate::geodesy::geodesics::rapp::RappIterativeGeodisicSolver;
+    use crate::geodesy::geodesics::tests::{
+        antipodal_lines, standard_lines, vincenty_direct_deltas, vincenty_inverse_deltas,
+        vincenty_lines,
+    };
+    use crate::geodesy::geodesics::GeodesicSolver;
+    use crate::quantity::angle::formatters::DMS;
+    use crate::quantity::angle::units::{Deg, Rad};
+    use approx::assert_abs_diff_eq;
+    use std::f64::consts::{FRAC_PI_2, PI};
 
     #[test]
     fn direct_vincenty_lines() {
@@ -330,8 +346,9 @@ mod tests {
             .enumerate()
         {
             let solver = RappIterativeGeodisicSolver::new(&input.ellipsoid);
-            let computed =
-                solver.solve_direct(input.geodesic.p1, input.geodesic.alpha1, input.geodesic.s).unwrap();
+            let computed = solver
+                .solve_direct(input.geodesic.p1, input.geodesic.alpha1, input.geodesic.s)
+                .unwrap();
             println!("-----------------------------------------------------------------------------------");
             println!("Input: Vincenty Line ({})", chars[ix]);
             println!("{}", input.geodesic);
@@ -367,7 +384,9 @@ mod tests {
         // Direct problem
         for (ix, input) in standard_lines().iter().enumerate() {
             let solver = RappIterativeGeodisicSolver::new(&input.ellipsoid);
-            let computed = solver.solve_direct(input.geodesic.p1, input.geodesic.alpha1, input.geodesic.s).unwrap();
+            let computed = solver
+                .solve_direct(input.geodesic.p1, input.geodesic.alpha1, input.geodesic.s)
+                .unwrap();
             println!("-----------------------------------------------------------------------------------");
             println!("Input: Standard Line ({})", ix);
             println!("{}", input.geodesic);
@@ -394,7 +413,9 @@ mod tests {
     fn direct_antipodal_lines() {
         for (ix, input) in antipodal_lines().iter().enumerate() {
             let solver = RappIterativeGeodisicSolver::new(&input.ellipsoid);
-            let computed = solver.solve_direct(input.geodesic.p1, input.geodesic.alpha1, input.geodesic.s).unwrap();
+            let computed = solver
+                .solve_direct(input.geodesic.p1, input.geodesic.alpha1, input.geodesic.s)
+                .unwrap();
             println!("-----------------------------------------------------------------------------------");
             println!("Input: Antipodal Line ({})", ix);
             println!("{}", input.geodesic);
@@ -421,15 +442,39 @@ mod tests {
     fn direct_equator_lines() {
         let wgs84 = consts::WGS84;
         let solver = RappIterativeGeodisicSolver::new(&wgs84);
-        let computed = solver.solve_direct((Lon::new(0.0), Lat::new(0.0)), Azimuth::new(90.0 * DEG), 20_000.0).unwrap();
-        assert_abs_diff_eq!(computed.p2.0.rad(), 0.17966306 * DEG, epsilon = 1e-8);
-        assert_abs_diff_eq!(computed.p2.1.rad(), 0.0, epsilon = 1e-8);
-        assert_abs_diff_eq!(computed.alpha2.rad(), FRAC_PI_2, epsilon = 1e-8);
+        let computed = solver
+            .solve_direct(
+                (Lon::new(0.0 * Deg), Lat::new(0.0 * Deg)),
+                Azimuth::new(90.0 * Deg),
+                20_000.0,
+            )
+            .unwrap();
+        assert_abs_diff_eq!(computed.p2.0, Lon::new(0.17966306 * Deg), epsilon = 1e-8);
+        assert_abs_diff_eq!(computed.p2.1, Lat::new(0.0 * Deg), epsilon = 1e-8);
+        assert_abs_diff_eq!(
+            computed.alpha2,
+            Azimuth::new(FRAC_PI_2 * Rad),
+            epsilon = 1e-8
+        );
 
-        let computed = solver.solve_direct((Lon::new(170.0 * DEG), Lat::new(0.0)), Azimuth::new(90.0 * DEG), 2_000_000.0).unwrap();
-        assert_abs_diff_eq!(computed.p2.0.rad(), -172.03369432 * DEG, epsilon = 1e-10);
-        assert_abs_diff_eq!(computed.p2.1.rad(), 0.0, epsilon = 1e-10);
-        assert_abs_diff_eq!(computed.alpha2.rad(), FRAC_PI_2, epsilon = 1e-8);
+        let computed = solver
+            .solve_direct(
+                (Lon::new(170.0 * Deg), Lat::new(0.0 * Deg)),
+                Azimuth::new(90.0 * Deg),
+                2_000_000.0,
+            )
+            .unwrap();
+        assert_abs_diff_eq!(
+            computed.p2.0,
+            Lon::new(-172.03369432 * Deg),
+            epsilon = 1e-10
+        );
+        assert_abs_diff_eq!(computed.p2.1, Lat::new(0.0 * Deg), epsilon = 1e-10);
+        assert_abs_diff_eq!(
+            computed.alpha2,
+            Azimuth::new(FRAC_PI_2 * Rad),
+            epsilon = 1e-8
+        );
     }
 
     #[test]
@@ -437,15 +482,27 @@ mod tests {
         let wgs84 = consts::WGS84;
         let solver = RappIterativeGeodisicSolver::new(&wgs84);
 
-        let computed = solver.solve_direct((Lon::new(0.), Lat::new(-10. * DEG)), Azimuth::new(0.), 2_000_000.0).unwrap();
-        assert_abs_diff_eq!(computed.p2.0.rad(), 0.0, epsilon = 1e-10);
-        assert_abs_diff_eq!(computed.p2.1.rad(), 8.08583903 * DEG, epsilon = 1e-10);
-        assert_abs_diff_eq!(computed.alpha2.rad(), 0.0, epsilon = 1e-8);
+        let computed = solver
+            .solve_direct(
+                (Lon::new(0. * Deg), Lat::new(-10. * Deg)),
+                Azimuth::new(0. * Deg),
+                2_000_000.0,
+            )
+            .unwrap();
+        assert_abs_diff_eq!(computed.p2.0, Lon::new(0.0 * Rad), epsilon = 1e-10);
+        assert_abs_diff_eq!(computed.p2.1, Lat::new(8.08583903 * Deg), epsilon = 1e-10);
+        assert_abs_diff_eq!(computed.alpha2, Azimuth::new(0.0 * Rad), epsilon = 1e-8);
 
-        let computed = solver.solve_direct((Lon::new(0.), Lat::new(80. * DEG)), Azimuth::new(0.), 2_000_000.0).unwrap();
-        assert_abs_diff_eq!(computed.p2.0.rad(), PI, epsilon = 1e-10);
-        assert_abs_diff_eq!(computed.p2.1.rad(), 82.09240627 * DEG, epsilon = 1e-10);
-        assert_abs_diff_eq!(computed.alpha2.rad(), PI, epsilon = 1e-8);
+        let computed = solver
+            .solve_direct(
+                (Lon::new(0. * Deg), Lat::new(80. * Deg)),
+                Azimuth::new(0. * Deg),
+                2_000_000.0,
+            )
+            .unwrap();
+        assert_abs_diff_eq!(computed.p2.0, Lon::new(PI * Rad), epsilon = 1e-10);
+        assert_abs_diff_eq!(computed.p2.1, Lat::new(82.09240627 * Deg), epsilon = 1e-10);
+        assert_abs_diff_eq!(computed.alpha2, Azimuth::new(PI * Rad), epsilon = 1e-8);
     }
 
     #[test]
@@ -458,7 +515,9 @@ mod tests {
             .enumerate()
         {
             let solver = RappIterativeGeodisicSolver::new(&input.ellipsoid);
-            let computed = solver.solve_inverse(input.geodesic.p1, input.geodesic.p2).unwrap();
+            let computed = solver
+                .solve_inverse(input.geodesic.p1, input.geodesic.p2)
+                .unwrap();
             println!("-----------------------------------------------------------------------------------");
             println!("Input: Vincenty Line ({})", chars[ix]);
             println!("{}", input.geodesic);
@@ -492,7 +551,9 @@ mod tests {
         // Standard lines
         for (ix, input) in standard_lines().iter().enumerate() {
             let solver = RappIterativeGeodisicSolver::new(&input.ellipsoid);
-            let computed = solver.solve_inverse(input.geodesic.p1, input.geodesic.p2).unwrap();
+            let computed = solver
+                .solve_inverse(input.geodesic.p1, input.geodesic.p2)
+                .unwrap();
             println!("-----------------------------------------------------------------------------------");
             println!("Input: Standard Line ({})", ix);
             println!("{}", input.geodesic);
@@ -520,7 +581,9 @@ mod tests {
         // Anti-podal lines
         for (ix, input) in antipodal_lines().iter().enumerate() {
             let solver = RappIterativeGeodisicSolver::new(&input.ellipsoid);
-            let computed = solver.solve_inverse(input.geodesic.p1, input.geodesic.p2).unwrap();
+            let computed = solver
+                .solve_inverse(input.geodesic.p1, input.geodesic.p2)
+                .unwrap();
             println!("-----------------------------------------------------------------------------------");
             println!("Input: Antipodal Line ({})", ix);
             println!("{}", input.geodesic);
@@ -547,17 +610,32 @@ mod tests {
     fn inverse_equator_lines() {
         let wgs84 = consts::WGS84;
         let solver = RappIterativeGeodisicSolver::new(&wgs84);
-        let computed = solver.solve_inverse((Lon::new(-10. * DEG), Lat::new(0.)), (Lon::new(10. * DEG), Lat::new(0.))).unwrap();
+        let computed = solver
+            .solve_inverse(
+                (Lon::new(-10. * Deg), Lat::new(0. * Deg)),
+                (Lon::new(10. * Deg), Lat::new(0. * Deg)),
+            )
+            .unwrap();
         assert_abs_diff_eq!(computed.alpha1, Azimuth::EAST, epsilon = 1e-10);
         assert_abs_diff_eq!(computed.alpha2, Azimuth::EAST, epsilon = 1e-10);
         assert_abs_diff_eq!(computed.s, 2_226_389.816, epsilon = 1e-3);
 
-        let computed = solver.solve_inverse((Lon::new(10. * DEG), Lat::new(0.)), (Lon::new(-10. * DEG), Lat::new(0.))).unwrap();
+        let computed = solver
+            .solve_inverse(
+                (Lon::new(10. * Deg), Lat::new(0. * Deg)),
+                (Lon::new(-10. * Deg), Lat::new(0. * Deg)),
+            )
+            .unwrap();
         assert_abs_diff_eq!(computed.alpha1, Azimuth::WEST, epsilon = 1e-10);
         assert_abs_diff_eq!(computed.alpha2, Azimuth::WEST, epsilon = 1e-10);
         assert_abs_diff_eq!(computed.s, 2_226_389.816, epsilon = 1e-3);
 
-        let computed = solver.solve_inverse((Lon::new(170. * DEG), Lat::new(0.)), (Lon::new(-170. * DEG), Lat::new(0.))).unwrap();
+        let computed = solver
+            .solve_inverse(
+                (Lon::new(170. * Deg), Lat::new(0. * Deg)),
+                (Lon::new(-170. * Deg), Lat::new(0. * Deg)),
+            )
+            .unwrap();
         assert_abs_diff_eq!(computed.alpha1, Azimuth::EAST, epsilon = 1e-10);
         assert_abs_diff_eq!(computed.alpha2, Azimuth::EAST, epsilon = 1e-10);
         assert_abs_diff_eq!(computed.s, 2_226_389.816, epsilon = 1e-3);
@@ -567,18 +645,32 @@ mod tests {
     fn inverse_meridian_lines() {
         let wgs84 = consts::WGS84;
         let solver = RappIterativeGeodisicSolver::new(&wgs84);
-        let computed = solver.solve_inverse((Lon::new(0. * DEG), Lat::new(-10. * DEG)), (Lon::new(0. * DEG), Lat::new(10. * DEG))).unwrap();
+        let computed = solver
+            .solve_inverse(
+                (Lon::new(0. * Deg), Lat::new(-10. * Deg)),
+                (Lon::new(0. * Deg), Lat::new(10. * Deg)),
+            )
+            .unwrap();
         assert_abs_diff_eq!(computed.alpha1, Azimuth::NORTH, epsilon = 1e-10);
         assert_abs_diff_eq!(computed.alpha2, Azimuth::NORTH, epsilon = 1e-10);
         assert_abs_diff_eq!(computed.s, 2_211_709.666, epsilon = 1e-3);
 
-
-        let computed = solver.solve_inverse((Lon::new(0. * DEG), Lat::new(10. * DEG)), (Lon::new(0. * DEG), Lat::new(-10. * DEG))).unwrap();
+        let computed = solver
+            .solve_inverse(
+                (Lon::new(0. * Deg), Lat::new(10. * Deg)),
+                (Lon::new(0. * Deg), Lat::new(-10. * Deg)),
+            )
+            .unwrap();
         assert_abs_diff_eq!(computed.alpha1, Azimuth::SOUTH, epsilon = 1e-10);
         assert_abs_diff_eq!(computed.alpha2, Azimuth::SOUTH, epsilon = 1e-10);
         assert_abs_diff_eq!(computed.s, 2_211_709.666, epsilon = 1e-3);
 
-        let computed = solver.solve_inverse((Lon::new(0.), Lat::new(80. * DEG)), (Lon::new(180. * DEG), Lat::new(80. * DEG))).unwrap();
+        let computed = solver
+            .solve_inverse(
+                (Lon::new(0. * Deg), Lat::new(80. * Deg)),
+                (Lon::new(180. * Deg), Lat::new(80. * Deg)),
+            )
+            .unwrap();
         assert_abs_diff_eq!(computed.alpha1, Azimuth::NORTH, epsilon = 1e-10);
         assert_abs_diff_eq!(computed.alpha2, Azimuth::SOUTH, epsilon = 1e-10);
         assert_abs_diff_eq!(computed.s, 2_233_651.715, epsilon = 1e-3);

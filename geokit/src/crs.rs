@@ -5,7 +5,7 @@
 use smol_str::SmolStr;
 
 use crate::cs::geodetic::{Lat, Lon};
-use crate::quantity::angle::units::RAD;
+use crate::quantity::angle::units::{AngleUnit, Rad};
 use crate::quantity::length::units::M;
 use crate::{
     geodesy::{Ellipsoid, GeodeticDatum},
@@ -108,7 +108,7 @@ impl Crs {
                     height_unit,
                 } = axes
                 {
-                    *angle_unit == RAD && *height_unit == M
+                    *angle_unit == Rad::UNIT && *height_unit == M
                 } else {
                     false
                 }
@@ -181,7 +181,7 @@ pub enum GeodeticAxes {
     EastNorthUp {
         /// The angle unit used for longitude and latitude, eg
         /// `DEG` or `GRAD`
-        angle_unit: f64,
+        angle_unit: AngleUnit,
         /// The length unit used for ellipsoidal height, eg
         /// 'M' or 'US_FOOT'
         height_unit: f64,
@@ -193,7 +193,7 @@ pub enum GeodeticAxes {
     NorthEastUp {
         /// The angle unit used for longitude and latitude, eg
         /// `DEG` or `GRAD`
-        angle_unit: f64,
+        angle_unit: AngleUnit,
         /// The length unit used for ellipsoidal height, eg
         /// 'M' or 'US_FOOT'
         height_unit: f64,
@@ -204,7 +204,7 @@ pub enum GeodeticAxes {
     EastNorth {
         /// The angle unit used for longitude and latitude, eg
         /// `DEG` or `GRAD`
-        angle_unit: f64,
+        angle_unit: AngleUnit,
     },
     /// Coordinates are, in the given order:
     /// - latitude positive north of equatorial plane,
@@ -212,12 +212,12 @@ pub enum GeodeticAxes {
     NorthEast {
         /// The angle unit used for longitude and latitude, eg
         /// `DEG` or `GRAD`
-        angle_unit: f64,
+        angle_unit: AngleUnit,
     },
     NorthWest {
         /// The angle unit used for longitude and latitude, eg
         /// `DEG` or `GRAD`
-        angle_unit: f64,
+        angle_unit: AngleUnit,
     },
 }
 
@@ -244,7 +244,7 @@ impl Default for GeodeticAxes {
     /// Return the [`GeodeticAxes`] used in **normalized geodetic coordinates**.
     fn default() -> Self {
         Self::EastNorthUp {
-            angle_unit: RAD,
+            angle_unit: Rad::UNIT,
             height_unit: M,
         }
     }
@@ -415,7 +415,7 @@ mod tests {
                 None,
             ),
             axes: GeodeticAxes::EastNorthUp {
-                angle_unit: RAD,
+                angle_unit: Rad::UNIT,
                 height_unit: M,
             },
         };
@@ -475,7 +475,7 @@ mod tests {
                 None,
             ),
             axes: GeodeticAxes::EastNorthUp {
-                angle_unit: RAD,
+                angle_unit: Rad::UNIT,
                 height_unit: M,
             },
         };
@@ -489,7 +489,7 @@ mod tests {
                 None,
             ),
             axes: GeodeticAxes::EastNorthUp {
-                angle_unit: RAD,
+                angle_unit: Rad::UNIT,
                 height_unit: M,
             },
         };
@@ -507,7 +507,7 @@ mod tests {
                 None,
             ),
             axes: GeodeticAxes::EastNorthUp {
-                angle_unit: RAD,
+                angle_unit: Rad::UNIT,
                 height_unit: M,
             },
         };
@@ -525,7 +525,7 @@ mod tests {
                 None,
             ),
             axes: GeodeticAxes::NorthEastUp {
-                angle_unit: RAD,
+                angle_unit: Rad::UNIT,
                 height_unit: M,
             },
         };
@@ -543,7 +543,7 @@ mod tests {
                 None,
             ),
             axes: GeodeticAxes::NorthEastUp {
-                angle_unit: RAD,
+                angle_unit: Rad::UNIT,
                 height_unit: M,
             },
         };
@@ -561,7 +561,7 @@ mod tests {
                 None,
             ),
             axes: GeodeticAxes::NorthEastUp {
-                angle_unit: RAD,
+                angle_unit: Rad::UNIT,
                 height_unit: 0.29 * M, // a length unit which 29 cm per unit.
             },
         };

@@ -1,12 +1,16 @@
 use std::f64::consts::{FRAC_PI_2, PI};
 use std::fmt::{Display, Formatter};
-use std::ops::{Add, Neg, Sub};
+use std::ops::{Add, AddAssign, Sub, SubAssign};
 
-use crate::quantity::angle::{wrap, DMS};
+use crate::quantity::angle::formatters::DMS;
+use crate::quantity::angle::units::Rad;
+use crate::quantity::angle::Angle;
 use approx::AbsDiffEq;
+use derive_more::derive::Neg;
+use num::Zero;
 
 /// A longitude coordinate in [-pi..pi] radians.
-#[derive(Copy, Clone, Debug, PartialOrd, PartialEq, Default)]
+#[derive(Copy, Clone, Debug, PartialOrd, PartialEq, Default, Neg)]
 pub struct Lon(f64);
 
 impl Lon {
@@ -15,8 +19,16 @@ impl Lon {
 
     /// Create a new longitude value with a given raw angle value in radians.
     /// The angle is wrapped into [-pi..pi].
-    pub fn new(val: f64) -> Self {
-        Self(wrap(val, -PI))
+    pub fn new(val: Angle) -> Self {
+        Self(val.wrap().rad())
+    }
+
+    pub fn zero() -> Self {
+        Lon(0.0)
+    }
+
+    pub fn is_zero(&self) -> bool {
+        self.0.is_zero()
     }
 
     /// Normalize the longitude into (-pi..pi].
@@ -35,15 +47,15 @@ impl Lon {
     }
 }
 
-impl Add<f64> for Lon {
+impl Add<Angle> for Lon {
     type Output = Self;
 
-    fn add(self, rhs: f64) -> Self::Output {
-        Self::new(self.0 + rhs)
+    fn add(self, rhs: Angle) -> Self::Output {
+        Self::new(self.0 * Rad + rhs)
     }
 }
 
-impl Add<Lon> for f64 {
+impl Add<Lon> for Angle {
     type Output = Lon;
 
     fn add(self, rhs: Lon) -> Self::Output {
@@ -51,28 +63,18 @@ impl Add<Lon> for f64 {
     }
 }
 
-impl Neg for Lon {
-    type Output = Lon;
-
-    fn neg(self) -> Self::Output {
-        Self(-self.0)
+impl AddAssign<Angle> for Lon {
+    fn add_assign(&mut self, rhs: Angle) {
+        self.0 = (self.0 * Rad + rhs).wrap().rad();
     }
 }
 
-impl Sub<f64> for Lon {
+impl Sub<Angle> for Lon {
     type Output = Self;
 
-    fn sub(self, rhs: f64) -> Self::Output {
+    fn sub(self, rhs: Angle) -> Self::Output {
         // Watch out for infinite recursion with self - rhs
-        Self::new(self.0 - rhs)
-    }
-}
-
-impl Sub<Lon> for f64 {
-    type Output = Lon;
-
-    fn sub(self, rhs: Lon) -> Self::Output {
-        Lon::new(self - rhs.0)
+        Self::new(self.0 * Rad - rhs)
     }
 }
 
@@ -156,18 +158,18 @@ impl LonInterval {
 
     /// Return the **positive** length of this interval.
     /// The length is 0 if the interval is empty or a singleton.
-    pub fn length(&self) -> f64 {
+    pub fn length(&self) -> Angle {
         let mut length = self.hi - self.lo;
         if length < 0. {
             length += 2. * PI;
         }
         debug_assert!(length >= 0.);
-        length
+        length * Rad
     }
 }
 
 /// A latitude coordinate in [-pi/2..pi/2]  radians.
-#[derive(Copy, Clone, Debug, PartialOrd, PartialEq, Default)]
+#[derive(Copy, Clone, Debug, PartialOrd, PartialEq, Default, Neg)]
 pub struct Lat(f64);
 
 impl Lat {
@@ -176,8 +178,16 @@ impl Lat {
 
     /// Create a new latitude value with the given raw angle value in radians.
     /// The angle value is clamped into [-pi/2..pi/2].
-    pub fn new(val: f64) -> Self {
-        Lat(val.clamp(-FRAC_PI_2, FRAC_PI_2))
+    pub fn new(val: Angle) -> Self {
+        Lat(val.rad().clamp(-FRAC_PI_2, FRAC_PI_2))
+    }
+
+    pub fn zero() -> Self {
+        Lat(0.0)
+    }
+
+    pub fn is_zero(&self) -> bool {
+        self.0.is_zero()
     }
 
     /// Return this latitude as a raw angle value in radians.
@@ -187,43 +197,38 @@ impl Lat {
     }
 }
 
-impl Add<f64> for Lat {
+impl Add<Angle> for Lat {
     type Output = Self;
 
-    fn add(self, rhs: f64) -> Self::Output {
-        Self::new(self.0 + rhs)
+    fn add(self, rhs: Angle) -> Self::Output {
+        Self::new(self.0 * Rad + rhs)
     }
 }
 
-impl Add<Lat> for f64 {
+impl Add<Lat> for Angle {
     type Output = Lat;
 
     fn add(self, rhs: Lat) -> Self::Output {
-        Lat::new(self + rhs.0)
+        rhs + self
     }
 }
 
-impl Neg for Lat {
-    type Output = Lat;
-
-    fn neg(self) -> Self::Output {
-        Lat::new(-self.0)
+impl AddAssign<Angle> for Lat {
+    fn add_assign(&mut self, rhs: Angle) {
+        self.0 = (self.0 * Rad + rhs).rad().clamp(-PI, PI)
     }
 }
-
-impl Sub<f64> for Lat {
+impl Sub<Angle> for Lat {
     type Output = Self;
 
-    fn sub(self, rhs: f64) -> Self::Output {
-        Self::new(self.0 - rhs)
+    fn sub(self, rhs: Angle) -> Self::Output {
+        Self::new(self.0 * Rad - rhs)
     }
 }
 
-impl Sub<Lat> for f64 {
-    type Output = Lat;
-
-    fn sub(self, rhs: Lat) -> Self::Output {
-        Lat::new(self - rhs.0)
+impl SubAssign<Angle> for Lat {
+    fn sub_assign(&mut self, rhs: Angle) {
+        self.0 = (self.0 * Rad - rhs).rad().clamp(-PI, PI);
     }
 }
 
@@ -252,40 +257,40 @@ mod tests {
     use approx::assert_abs_diff_eq;
 
     use crate::cs::geodetic::{Lat, Lon, LonInterval};
-    use crate::quantity::angle::units::DEG;
+    use crate::quantity::angle::units::{Deg, Rad};
 
     #[test]
     fn test_lon() {
         // wrapping
-        assert_eq!(Lon::new(2.0 * PI), Lon::new(0.0));
-        assert_eq!(Lon::new(185.0 * DEG), Lon::new(-175.0 * DEG));
+        assert_eq!(Lon::new(2.0 * PI * Rad), Lon::new(0.0 * Rad));
+        assert_eq!(Lon::new(185.0 * Deg), Lon::new(-175.0 * Deg));
         // normalization
-        assert_eq!(Lon::new(-PI).normalize(), Lon::new(PI));
+        assert_eq!(Lon::new(-PI * Rad).normalize(), Lon::new(PI * Rad));
         // equality
-        assert_eq!(Lon::new(FRAC_PI_2), Lon::new(90.0 * DEG));
-        assert_ne!(Lon::new(90. * DEG), Lon::new(91.0 * DEG));
+        assert_eq!(Lon::new(FRAC_PI_2 * Rad), Lon::new(90.0 * Deg));
+        assert_ne!(Lon::new(90. * Deg), Lon::new(91.0 * Deg));
         // ops
-        assert_eq!(Lon::new(90. * DEG) + 45.0 * DEG, Lon::new(135.0 * DEG));
-        assert_eq!(Lon::new(90. * DEG) - 45.0 * DEG, Lon::new(45.0 * DEG));
+        assert_eq!(Lon::new(90. * Deg) + 45.0 * Deg, Lon::new(135.0 * Deg));
+        assert_eq!(Lon::new(90. * Deg) - 45.0 * Deg, Lon::new(45.0 * Deg));
         // display
-        assert_eq!(format!("{}", Lon::new(90. * DEG)), "  90° 00′ 00.00000000″");
+        assert_eq!(format!("{}", Lon::new(90. * Deg)), "  90° 00′ 00.00000000″");
     }
 
     #[test]
     fn test_lat() {
         // clamping
-        assert_eq!(Lat::new(91. * DEG), Lat::MAX);
-        assert_eq!(Lat::new(-90.01 * DEG), Lat::MIN);
+        assert_eq!(Lat::new(91. * Deg), Lat::MAX);
+        assert_eq!(Lat::new(-90.01 * Deg), Lat::MIN);
         // equality
-        assert_eq!(Lat::new(45. * DEG), Lat::new(FRAC_PI_4));
-        assert_ne!(Lat::new(0. * DEG), Lat::new(0.001 * DEG));
+        assert_eq!(Lat::new(45. * Deg), Lat::new(FRAC_PI_4 * Rad));
+        assert_ne!(Lat::new(0. * Deg), Lat::new(0.001 * Deg));
         // ops
-        assert_eq!(Lat::new(45. * DEG + 10. * DEG), Lat::new(55. * DEG));
-        assert_eq!(Lat::new(45. * DEG) + 50. * DEG, Lat::MAX);
-        assert_eq!(Lat::new(45. * DEG) - 90. * DEG, Lat::new(-45. * DEG));
-        assert_eq!(Lat::new(-45. * DEG) - 50. * DEG, Lat::MIN);
+        assert_eq!(Lat::new(45. * Deg + 10. * Deg), Lat::new(55. * Deg));
+        assert_eq!(Lat::new(45. * Deg) + 50. * Deg, Lat::MAX);
+        assert_eq!(Lat::new(45. * Deg) - 90. * Deg, Lat::new(-45. * Deg));
+        assert_eq!(Lat::new(-45. * Deg) - 50. * Deg, Lat::MIN);
         // Display
-        assert_eq!(format!("{}", Lat::new(45. * DEG)), "  45° 00′ 00.00000000″");
+        assert_eq!(format!("{}", Lat::new(45. * Deg)), "  45° 00′ 00.00000000″");
     }
 
     #[test]
@@ -295,22 +300,20 @@ mod tests {
         assert!(LonInterval::full().is_full());
 
         // Length
-        assert_eq!(LonInterval::empty().length(), 0.);
-        assert_eq!(LonInterval::full().length(), 2. * PI);
+        assert_eq!(LonInterval::empty().length(), 0. * Rad);
+        assert_eq!(LonInterval::full().length(), 2. * PI * Rad);
         assert_eq!(
-            LonInterval::new(Lon::new(0. * DEG), Lon::new(160. * DEG)).length(),
-            160. * DEG
+            LonInterval::new(Lon::new(0. * Deg), Lon::new(160. * Deg)).length(),
+            160. * Deg
         );
         assert_abs_diff_eq!(
-            LonInterval::new(Lon::new(170. * DEG), Lon::new(-170. * DEG))
-                .length(),
-            20. * DEG,
+            LonInterval::new(Lon::new(170. * Deg), Lon::new(-170. * Deg)).length(),
+            20. * Deg,
             epsilon = 1e-15
         );
         assert_abs_diff_eq!(
-            LonInterval::new(Lon::new(170. * DEG), Lon::new(130. * DEG))
-                .length(),
-            320. * DEG,
+            LonInterval::new(Lon::new(170. * Deg), Lon::new(130. * Deg)).length(),
+            320. * Deg,
             epsilon = 1e-15
         );
     }

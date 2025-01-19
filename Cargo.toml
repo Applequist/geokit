@@ -17,3 +17,4 @@ smol_str = "0.2.1"
 thiserror = "1.0.50"
 dyn-clone = "1.0.16"
 lazy_static = "1.4.0"
+derive_more = { version = "1.0.0", features = ['add', 'add_assign', 'not'] }

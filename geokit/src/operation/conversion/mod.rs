@@ -36,19 +36,36 @@ impl From<GeodeticAxes> for Normalization {
             GeodeticAxes::EastNorthUp {
                 angle_unit,
                 height_unit,
-            } => vec![(0, angle_unit), (1, angle_unit), (2, height_unit)],
+            } => vec![
+                (0, angle_unit.rad_per_unit()),
+                (1, angle_unit.rad_per_unit()),
+                (2, height_unit),
+            ],
             GeodeticAxes::EastNorth { angle_unit } => {
-                vec![(0, angle_unit), (1, angle_unit)]
+                vec![
+                    (0, angle_unit.rad_per_unit()),
+                    (1, angle_unit.rad_per_unit()),
+                ]
             }
             GeodeticAxes::NorthEastUp {
                 angle_unit,
                 height_unit,
-            } => vec![(1, angle_unit), (0, angle_unit), (2, height_unit)],
+            } => vec![
+                (1, angle_unit.rad_per_unit()),
+                (0, angle_unit.rad_per_unit()),
+                (2, height_unit),
+            ],
             GeodeticAxes::NorthEast { angle_unit } => {
-                vec![(1, angle_unit), (0, angle_unit)]
+                vec![
+                    (1, angle_unit.rad_per_unit()),
+                    (0, angle_unit.rad_per_unit()),
+                ]
             }
             GeodeticAxes::NorthWest { angle_unit } => {
-                vec![(1, -angle_unit), (0, angle_unit)]
+                vec![
+                    (1, -angle_unit.rad_per_unit()),
+                    (0, angle_unit.rad_per_unit()),
+                ]
             }
         };
         Normalization(to_ord)
@@ -221,11 +238,13 @@ mod tests {
     use crate::crs::GeodeticAxes;
     use crate::operation::conversion::Normalization;
     use crate::operation::Operation;
-    use crate::quantity::angle::units::DEG;
+    use crate::quantity::angle::units::Deg;
 
     #[test]
     fn normalization() {
-        let latlondeg = GeodeticAxes::NorthWest { angle_unit: DEG };
+        let latlondeg = GeodeticAxes::NorthWest {
+            angle_unit: Deg::UNIT,
+        };
         let t = Normalization::from(latlondeg);
         assert_eq!(t.in_dim(), 2);
         assert_eq!(t.out_dim(), 3);

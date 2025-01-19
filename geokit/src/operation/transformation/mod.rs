@@ -135,7 +135,7 @@ mod tests {
     use approx::assert_relative_eq;
 
     use crate::operation::Operation;
-    use crate::quantity::angle::units::RAD;
+    use crate::quantity::angle::units::Rad;
     use crate::quantity::length::units::M;
     use crate::quantity::scale::PPM;
 
@@ -170,7 +170,7 @@ mod tests {
     fn helmert_fwd() {
         let t = Helmert7Params::new(
             RotationConvention::PositionVector,
-            [0.0 * RAD, 0.0 * RAD, 2.685868e-6 * RAD],
+            [0.0, 0.0, 2.685868e-6],
             [0.0 * M, 0.0 * M, 4.5 * M],
             PPM(0.219),
         );

@@ -1,9 +1,10 @@
-use std::f64::consts::PI;
 use approx::AbsDiffEq;
+use num::Zero;
+use std::f64::consts::PI;
 use std::fmt::{Display, Formatter};
 
-use crate::quantity::angle::{wrap, DMS};
-use crate::quantity::angle::units::DEG;
+use crate::quantity::angle::units::Deg;
+use crate::quantity::angle::{formatters::DMS, Angle};
 
 /// An azimuth direction **in (-pi..pi] radians**, positive **clockwise** from North.
 #[derive(Debug, Copy, Clone, PartialEq, Default)]
@@ -11,16 +12,24 @@ pub struct Azimuth(f64);
 
 impl Azimuth {
     pub const NORTH: Azimuth = Azimuth(0.0);
-    pub const EAST: Azimuth = Azimuth(90.0 * DEG);
-    pub const SOUTH: Azimuth = Azimuth(180. * DEG);
-    pub const WEST: Azimuth = Azimuth(-90.0 * DEG);
+    pub const EAST: Azimuth = Azimuth(90.0 * Deg::UNIT.rad_per_unit());
+    pub const SOUTH: Azimuth = Azimuth(180. * Deg::UNIT.rad_per_unit());
+    pub const WEST: Azimuth = Azimuth(-90.0 * Deg::UNIT.rad_per_unit());
 
-    pub fn new(val: f64) -> Self {
-        let mut az = wrap(val, -PI);
+    pub fn new(val: Angle) -> Self {
+        let mut az = val.wrap().rad();
         if az <= -PI {
             az = PI;
         }
         Self(az)
+    }
+
+    pub fn zero() -> Self {
+        Azimuth(0.0)
+    }
+
+    pub fn is_zero(&self) -> bool {
+        self.0.is_zero()
     }
 
     /// Return this azimuth as a raw angle value [-pi..pi] radians.
