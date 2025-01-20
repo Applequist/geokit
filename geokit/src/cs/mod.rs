@@ -1,10 +1,6 @@
+use crate::quantity::angle::Angle;
 use approx::AbsDiffEq;
 use derive_more::derive::Display;
-use num::Zero;
-use std::f64::consts::PI;
-
-use crate::quantity::angle::units::{DEG, RAD};
-use crate::quantity::angle::Angle;
 
 /// An azimuth direction **in (-pi..pi] radians**, positive **clockwise** from North.
 #[derive(Debug, Copy, Clone, PartialEq, Default, Display)]

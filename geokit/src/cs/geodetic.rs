@@ -1,11 +1,9 @@
-use std::f64::consts::{FRAC_PI_2, PI};
-use std::ops::{Add, AddAssign, Sub, SubAssign};
-
 use crate::quantity::angle::units::RAD;
 use crate::quantity::angle::Angle;
 use approx::AbsDiffEq;
 use derive_more::derive::{Display, Neg};
-use num::Zero;
+use std::f64::consts::{FRAC_PI_2, PI};
+use std::ops::{Add, AddAssign, Sub, SubAssign};
 
 /// A longitude coordinate in [-pi..pi] radians.
 /// You can add, subtract an [Angle] from [Lon],
