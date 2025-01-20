@@ -4,7 +4,7 @@ use units::{AngleUnit, DEG};
 
 use crate::math::utils::wrap;
 use std::{
-    f64::consts::PI,
+    f64::consts::{FRAC_PI_2, PI},
     ops::{Div, DivAssign, Mul, MulAssign},
 };
 
@@ -14,13 +14,17 @@ use std::{
 /// let a: Angle = 1.0 * Deg;
 /// ```
 /// Or from degrees, minutes and seconds.
-#[derive(Debug, Copy, Clone, PartialEq, Default, Add, AddAssign, Sub, SubAssign, Neg, Display)]
+#[derive(
+    Debug, Copy, Clone, PartialEq, PartialOrd, Default, Add, AddAssign, Sub, SubAssign, Neg, Display,
+)]
 #[display("{} rad", _0)]
 pub struct Angle(f64);
 
 impl Angle {
     pub const PI: Angle = Angle(PI);
+    pub const PI_2: Angle = Angle(FRAC_PI_2);
     pub const M_PI: Angle = Angle(-PI);
+    pub const M_PI_2: Angle = Angle(-FRAC_PI_2);
 
     #[inline]
     pub(crate) const fn new(qty: f64, unit: AngleUnit) -> Self {
@@ -43,7 +47,13 @@ impl Angle {
         f * deg * DEG
     }
 
+    #[inline]
+    pub const fn zero() -> Self {
+        Self(0.0)
+    }
+
     /// Return the angle value in radians.
+    #[inline]
     pub fn rad(&self) -> f64 {
         self.0
     }
@@ -51,6 +61,10 @@ impl Angle {
     /// Wrap this angle into [-PI, PI] radians.
     pub fn wrap(self) -> Angle {
         Angle(wrap(self.0, PI))
+    }
+
+    pub fn clamp(self, min: Angle, max: Angle) -> Angle {
+        Angle(self.0.clamp(min.0, max.0))
     }
 
     /// Convert this angle into a dms for formatting.

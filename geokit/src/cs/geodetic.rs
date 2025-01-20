@@ -3,25 +3,24 @@ use std::ops::{Add, AddAssign, Sub, SubAssign};
 
 use crate::quantity::angle::units::RAD;
 use crate::quantity::angle::Angle;
-use crate::quantity::angle::Dms;
 use approx::AbsDiffEq;
 use derive_more::derive::{Display, Neg};
 use num::Zero;
 
 /// A longitude coordinate in [-pi..pi] radians.
 /// You can add, subtract an [Angle] from [Lon],
-#[derive(Copy, Clone, Debug, PartialOrd, PartialEq, Default, Neg, Display)]
-#[display("{}", self.angle().to_dms())]
-pub struct Lon(f64);
+#[derive(Debug, Copy, Clone, PartialEq, PartialOrd, Default, Neg, Display)]
+#[display("{}", self.0.to_dms())]
+pub struct Lon(Angle);
 
 impl Lon {
-    pub const MIN: Lon = Lon(-PI);
-    pub const MAX: Lon = Lon(PI);
+    pub const MIN: Lon = Lon(Angle::new(-PI, RAD));
+    pub const MAX: Lon = Lon(Angle::new(PI, RAD));
 
     /// Create a new longitude value from a given angle.
     /// The angle is wrapped into [-pi..pi].
     pub fn new(val: Angle) -> Self {
-        Self(val.wrap().rad())
+        Self(val.wrap())
     }
 
     /// Create a new longitude value from a *dms* angle value.
@@ -44,8 +43,9 @@ impl Lon {
     }
 
     /// Return the longitude 0.
+    #[inline]
     pub fn zero() -> Self {
-        Lon(0.0)
+        Lon(Angle::zero())
     }
 
     /// Normalize the longitude into (-pi..pi] such that any point on a parallel
@@ -58,14 +58,15 @@ impl Lon {
         }
     }
 
+    #[inline]
     pub fn angle(self) -> Angle {
-        self.0 * RAD
+        self.0
     }
 
     /// Return the longitude as a raw angle value **in radians**.
     #[inline]
     pub fn rad(self) -> f64 {
-        self.0
+        self.0.rad()
     }
 }
 
@@ -73,7 +74,7 @@ impl Add<Angle> for Lon {
     type Output = Self;
 
     fn add(self, rhs: Angle) -> Self::Output {
-        Self::new(self.0 * RAD + rhs)
+        Self::new(self.0 + rhs)
     }
 }
 
@@ -87,7 +88,7 @@ impl Add<Lon> for Angle {
 
 impl AddAssign<Angle> for Lon {
     fn add_assign(&mut self, rhs: Angle) {
-        self.0 = (self.0 * RAD + rhs).wrap().rad();
+        self.0 = (self.0 + rhs).wrap();
     }
 }
 
@@ -96,13 +97,13 @@ impl Sub<Angle> for Lon {
 
     fn sub(self, rhs: Angle) -> Self::Output {
         // Watch out for infinite recursion with self - rhs
-        Self::new(self.0 * RAD - rhs)
+        Self::new(self.0 - rhs)
     }
 }
 
 impl SubAssign<Angle> for Lon {
     fn sub_assign(&mut self, rhs: Angle) {
-        self.0 = (self.0 * RAD - rhs).wrap().rad();
+        self.0 = (self.0 - rhs).wrap();
     }
 }
 
@@ -139,19 +140,25 @@ impl Sub for Lon {
 ///     - `[lo..hi]` otherwise
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub struct LonInterval {
-    lo: f64,
-    hi: f64,
+    lo: Lon,
+    hi: Lon,
 }
 
 impl LonInterval {
     /// Return an empty interval.
     pub fn empty() -> Self {
-        Self { lo: PI, hi: -PI }
+        Self {
+            lo: Lon::MAX,
+            hi: Lon::MIN,
+        }
     }
 
     /// Return a full interval.
     pub fn full() -> Self {
-        Self { lo: -PI, hi: PI }
+        Self {
+            lo: Lon::MIN,
+            hi: Lon::MAX,
+        }
     }
 
     /// Create a new interval.
@@ -160,18 +167,15 @@ impl LonInterval {
         if lo == Lon::MIN && hi != Lon::MAX {
             low = Lon::MAX;
         }
-        Self {
-            lo: low.rad(),
-            hi: hi.rad(),
-        }
+        Self { lo: low, hi: hi }
     }
 
     pub fn is_empty(&self) -> bool {
-        self.lo == PI && self.hi == -PI
+        self.lo == Lon::MAX && self.hi == Lon::MIN
     }
 
     pub fn is_full(&self) -> bool {
-        self.lo == -PI && self.hi == PI
+        self.lo == Lon::MIN && self.hi == Lon::MAX
     }
 
     fn is_inverted(&self) -> bool {
@@ -181,28 +185,28 @@ impl LonInterval {
     /// Return the **positive** length of this interval.
     /// The length is 0 if the interval is empty or a singleton.
     pub fn length(&self) -> Angle {
-        let mut length = self.hi - self.lo;
-        if length < 0. {
-            length += 2. * PI;
+        let mut length = self.hi.angle() - self.lo.angle();
+        if length < Angle::zero() {
+            length += (2. * PI) * RAD;
         }
-        debug_assert!(length >= 0.);
-        length * RAD
+        debug_assert!(length >= Angle::zero());
+        length
     }
 }
 
 /// A latitude coordinate in [-pi/2..pi/2]  radians.
 #[derive(Copy, Clone, Debug, PartialOrd, PartialEq, Default, Neg, Display)]
-#[display("{}", self.angle().to_dms())]
-pub struct Lat(f64);
+#[display("{}", self.0.to_dms())]
+pub struct Lat(Angle);
 
 impl Lat {
-    pub const MIN: Lat = Lat(-FRAC_PI_2);
-    pub const MAX: Lat = Lat(FRAC_PI_2);
+    pub const MIN: Lat = Lat(Angle::new(-FRAC_PI_2, RAD));
+    pub const MAX: Lat = Lat(Angle::new(FRAC_PI_2, RAD));
 
     /// Create a new latitude value with the given raw angle value in radians.
     /// The angle value is clamped into [-pi/2..pi/2].
     pub fn new(val: Angle) -> Self {
-        Lat(val.rad().clamp(-FRAC_PI_2, FRAC_PI_2))
+        Lat(val.clamp(Angle::M_PI_2, Angle::PI_2))
     }
 
     /// Create a new latitude value from a *dms* angle value.
@@ -224,22 +228,20 @@ impl Lat {
         Self::new(Angle::dms(d, m, s))
     }
 
+    #[inline]
     pub fn zero() -> Self {
-        Lat(0.0)
+        Lat(Angle::zero())
     }
 
-    pub fn is_zero(&self) -> bool {
-        self.0.is_zero()
-    }
-
+    #[inline]
     pub fn angle(self) -> Angle {
-        self.0 * RAD
+        self.0
     }
 
     /// Return this latitude as a raw angle value in radians.
     #[inline]
     pub fn rad(self) -> f64 {
-        self.0
+        self.0.rad()
     }
 }
 
@@ -247,7 +249,7 @@ impl Add<Angle> for Lat {
     type Output = Self;
 
     fn add(self, rhs: Angle) -> Self::Output {
-        Self::new(self.0 * RAD + rhs)
+        Self::new(self.0 + rhs)
     }
 }
 
@@ -261,20 +263,20 @@ impl Add<Lat> for Angle {
 
 impl AddAssign<Angle> for Lat {
     fn add_assign(&mut self, rhs: Angle) {
-        self.0 = (self.0 * RAD + rhs).rad().clamp(-PI, PI)
+        self.0 = (self.0 + rhs).clamp(Angle::M_PI_2, Angle::PI_2)
     }
 }
 impl Sub<Angle> for Lat {
     type Output = Self;
 
     fn sub(self, rhs: Angle) -> Self::Output {
-        Self::new(self.0 * RAD - rhs)
+        Self::new(self.0 - rhs)
     }
 }
 
 impl SubAssign<Angle> for Lat {
     fn sub_assign(&mut self, rhs: Angle) {
-        self.0 = (self.0 * RAD - rhs).rad().clamp(-PI, PI);
+        self.0 = (self.0 - rhs).clamp(Angle::M_PI_2, Angle::PI_2);
     }
 }
 

@@ -8,19 +8,19 @@ use crate::quantity::angle::Angle;
 
 /// An azimuth direction **in (-pi..pi] radians**, positive **clockwise** from North.
 #[derive(Debug, Copy, Clone, PartialEq, Default, Display)]
-#[display("{}", self.angle().to_dms())]
-pub struct Azimuth(f64);
+#[display("{}", self.0.to_dms())]
+pub struct Azimuth(Angle);
 
 impl Azimuth {
-    pub const NORTH: Azimuth = Azimuth(0.0);
-    pub const EAST: Azimuth = Azimuth(90.0 * DEG.rad_per_unit());
-    pub const SOUTH: Azimuth = Azimuth(180. * DEG.rad_per_unit());
-    pub const WEST: Azimuth = Azimuth(-90.0 * DEG.rad_per_unit());
+    pub const NORTH: Azimuth = Azimuth(Angle::zero());
+    pub const EAST: Azimuth = Azimuth(Angle::PI_2);
+    pub const SOUTH: Azimuth = Azimuth(Angle::PI);
+    pub const WEST: Azimuth = Azimuth(Angle::M_PI_2);
 
     pub fn new(val: Angle) -> Self {
-        let mut az = val.wrap().rad();
-        if az <= -PI {
-            az = PI;
+        let mut az = val.wrap();
+        if az <= Angle::M_PI {
+            az = Angle::PI;
         }
         Self(az)
     }
@@ -44,22 +44,20 @@ impl Azimuth {
         Self::new(Angle::dms(d, m, s))
     }
 
-    pub fn zero() -> Self {
-        Azimuth(0.0)
+    #[inline]
+    pub const fn zero() -> Self {
+        Azimuth(Angle::zero())
     }
 
-    pub fn is_zero(&self) -> bool {
-        self.0.is_zero()
-    }
-
+    #[inline]
     pub fn angle(self) -> Angle {
-        self.0 * RAD
+        self.0
     }
 
     /// Return this azimuth as a raw angle value [-pi..pi] radians.
     #[inline]
     pub fn rad(self) -> f64 {
-        self.0
+        self.0.rad()
     }
 }
 
