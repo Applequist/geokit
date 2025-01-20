@@ -5,7 +5,7 @@
 use smol_str::SmolStr;
 
 use crate::cs::geodetic::{Lat, Lon};
-use crate::quantity::angle::units::{AngleUnit, Rad};
+use crate::quantity::angle::units::{AngleUnit, RAD};
 use crate::quantity::length::units::{LengthUnit, M};
 use crate::quantity::length::Length;
 use crate::{
@@ -109,7 +109,7 @@ impl Crs {
                     height_unit,
                 } = axes
                 {
-                    *angle_unit == Rad::UNIT && *height_unit == M
+                    *angle_unit == RAD && *height_unit == M
                 } else {
                     false
                 }
@@ -245,7 +245,7 @@ impl Default for GeodeticAxes {
     /// Return the [`GeodeticAxes`] used in **normalized geodetic coordinates**.
     fn default() -> Self {
         Self::EastNorthUp {
-            angle_unit: Rad::UNIT,
+            angle_unit: RAD,
             height_unit: M,
         }
     }
@@ -388,6 +388,7 @@ impl ProjectionSpec {
 #[cfg(test)]
 mod tests {
     use crate::geodesy::*;
+    use crate::quantity::angle::units::RAD;
     use crate::quantity::length::units::M;
 
     use super::*;
@@ -416,7 +417,7 @@ mod tests {
                 None,
             ),
             axes: GeodeticAxes::EastNorthUp {
-                angle_unit: Rad::UNIT,
+                angle_unit: RAD,
                 height_unit: M,
             },
         };
@@ -476,7 +477,7 @@ mod tests {
                 None,
             ),
             axes: GeodeticAxes::EastNorthUp {
-                angle_unit: Rad::UNIT,
+                angle_unit: RAD,
                 height_unit: M,
             },
         };
@@ -490,7 +491,7 @@ mod tests {
                 None,
             ),
             axes: GeodeticAxes::EastNorthUp {
-                angle_unit: Rad::UNIT,
+                angle_unit: RAD,
                 height_unit: M,
             },
         };
@@ -508,7 +509,7 @@ mod tests {
                 None,
             ),
             axes: GeodeticAxes::EastNorthUp {
-                angle_unit: Rad::UNIT,
+                angle_unit: RAD,
                 height_unit: M,
             },
         };
@@ -526,7 +527,7 @@ mod tests {
                 None,
             ),
             axes: GeodeticAxes::NorthEastUp {
-                angle_unit: Rad::UNIT,
+                angle_unit: RAD,
                 height_unit: M,
             },
         };
@@ -544,7 +545,7 @@ mod tests {
                 None,
             ),
             axes: GeodeticAxes::NorthEastUp {
-                angle_unit: Rad::UNIT,
+                angle_unit: RAD,
                 height_unit: M,
             },
         };
@@ -562,7 +563,7 @@ mod tests {
                 None,
             ),
             axes: GeodeticAxes::NorthEastUp {
-                angle_unit: Rad::UNIT,
+                angle_unit: RAD,
                 height_unit: LengthUnit(29.0, 100.0), // a length unit which 29 cm per unit.
             },
         };

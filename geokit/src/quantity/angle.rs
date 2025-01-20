@@ -99,10 +99,14 @@ pub fn dms(d: f64, m: f64, s: f64) -> Angle {
     debug_assert!(m >= 0. && s >= 0., "minutes and seconds must be >= 0.0");
     let f = d.signum();
     let deg = d.abs() + m / 60. + s / 3600.;
-    f * deg * units::Deg
+    f * deg * units::DEG
 }
 
 pub mod units {
+    use std::{f64::consts::PI, ops::Mul};
+
+    use super::Angle;
+
     /// A to-radians angle converter.
     #[derive(Debug, Copy, Clone, PartialEq)]
     pub struct AngleUnit(f64, f64);
@@ -114,48 +118,26 @@ pub mod units {
         }
     }
 
-    macro_rules! units {
-        ( $( $name:ident($to_rad_num:expr, $to_rad_denom:expr)),+ ) => {
-            use super::Angle;
-            use std::ops::Mul;
-            use std::f64::consts::PI;
+    impl Mul<AngleUnit> for f64 {
+        type Output = Angle;
 
-            $(
-                pub struct $name;
-
-                impl $name {
-                    pub const UNIT: AngleUnit = AngleUnit($to_rad_num, $to_rad_denom);
-
-                    fn to_rad(&self,angle: f64) -> f64 {
-                        angle * Self::UNIT.rad_per_unit()
-                    }
-                }
-
-                impl Mul<$name> for f64 {
-                    type Output = Angle;
-
-                    fn mul(self, rhs: $name) -> Self::Output {
-                        Angle(rhs.to_rad(self))
-                    }
-                }
-
-                impl Mul<$name> for i32 {
-                    type Output = Angle;
-
-                    fn mul(self, rhs: $name) -> Self::Output {
-                        Angle(rhs.to_rad(self as f64))
-                    }
-                }
-            )+
-        };
+        fn mul(self, rhs: AngleUnit) -> Self::Output {
+            Angle(self * rhs.0 / rhs.1)
+        }
     }
 
-    units! {
-        Rad(1.0, 1.0),
-        Deg(PI, 180.0),
-        Grad(PI, 200.0),
-        Sec(PI, 648_000.0)
+    impl Mul<AngleUnit> for i32 {
+        type Output = Angle;
+
+        fn mul(self, rhs: AngleUnit) -> Self::Output {
+            Angle((self as f64) * rhs.0 / rhs.1)
+        }
     }
+
+    pub const RAD: AngleUnit = AngleUnit(1.0, 1.0);
+    pub const DEG: AngleUnit = AngleUnit(PI, 180.0);
+    pub const GRAD: AngleUnit = AngleUnit(PI, 200.0);
+    pub const SEC: AngleUnit = AngleUnit(PI, 648_000.0);
 }
 
 pub mod formatters {
@@ -219,16 +201,19 @@ pub mod formatters {
 
 #[cfg(test)]
 mod tests {
-    use crate::quantity::angle::{dms, formatters::DMS};
+    use crate::quantity::angle::{
+        dms,
+        formatters::DMS,
+        units::{DEG, GRAD, RAD, SEC},
+    };
 
-    use super::units::{Deg, Grad, Rad, Sec};
     use std::f64::consts::PI;
 
     #[test]
     fn units() {
-        assert_eq!(1. * Deg, (PI / 180.0) * Rad);
-        assert_eq!(1. * Grad, (PI / 200.0) * Rad);
-        assert_eq!(1. * Sec, (PI / 648_000.0) * Rad);
+        assert_eq!(1. * DEG, (PI / 180.0) * RAD);
+        assert_eq!(1. * GRAD, (PI / 200.0) * RAD);
+        assert_eq!(1. * SEC, (PI / 648_000.0) * RAD);
     }
 
     #[test]

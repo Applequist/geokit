@@ -3,7 +3,7 @@ use num::Zero;
 use std::f64::consts::PI;
 use std::fmt::{Display, Formatter};
 
-use crate::quantity::angle::units::Deg;
+use crate::quantity::angle::units::DEG;
 use crate::quantity::angle::{formatters::DMS, Angle};
 
 /// An azimuth direction **in (-pi..pi] radians**, positive **clockwise** from North.
@@ -12,9 +12,9 @@ pub struct Azimuth(f64);
 
 impl Azimuth {
     pub const NORTH: Azimuth = Azimuth(0.0);
-    pub const EAST: Azimuth = Azimuth(90.0 * Deg::UNIT.rad_per_unit());
-    pub const SOUTH: Azimuth = Azimuth(180. * Deg::UNIT.rad_per_unit());
-    pub const WEST: Azimuth = Azimuth(-90.0 * Deg::UNIT.rad_per_unit());
+    pub const EAST: Azimuth = Azimuth(90.0 * DEG.rad_per_unit());
+    pub const SOUTH: Azimuth = Azimuth(180. * DEG.rad_per_unit());
+    pub const WEST: Azimuth = Azimuth(-90.0 * DEG.rad_per_unit());
 
     pub fn new(val: Angle) -> Self {
         let mut az = val.wrap().rad();

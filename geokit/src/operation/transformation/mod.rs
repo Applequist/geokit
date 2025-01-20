@@ -135,8 +135,6 @@ mod tests {
     use approx::assert_relative_eq;
 
     use crate::operation::Operation;
-    use crate::quantity::angle::units::Rad;
-    use crate::quantity::length::units::M;
     use crate::quantity::scale::PPM;
 
     use super::GeocentricTranslation;

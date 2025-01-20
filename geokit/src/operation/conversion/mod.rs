@@ -242,13 +242,11 @@ mod tests {
     use crate::crs::GeodeticAxes;
     use crate::operation::conversion::Normalization;
     use crate::operation::Operation;
-    use crate::quantity::angle::units::Deg;
+    use crate::quantity::angle::units::DEG;
 
     #[test]
     fn normalization() {
-        let latlondeg = GeodeticAxes::NorthWest {
-            angle_unit: Deg::UNIT,
-        };
+        let latlondeg = GeodeticAxes::NorthWest { angle_unit: DEG };
         let t = Normalization::from(latlondeg);
         assert_eq!(t.in_dim(), 2);
         assert_eq!(t.out_dim(), 3);

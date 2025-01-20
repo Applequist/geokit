@@ -200,7 +200,7 @@ pub mod consts {
 mod tests {
     use crate::cs::geodetic::Lon;
     use crate::geodesy::{ellipsoid, geodetic_datum, prime_meridian, Ellipsoid, PrimeMeridian};
-    use crate::quantity::angle::units::Deg;
+    use crate::quantity::angle::units::DEG;
     use crate::quantity::length::units::M;
 
     use super::GeodeticDatum;
@@ -210,7 +210,7 @@ mod tests {
         let d = GeodeticDatum::new(
             "WGS 84",
             Ellipsoid::from_ainvf("WGS84", 6_378_137.0 * M, 298.257_223_563),
-            PrimeMeridian::new("Greenwich", Lon::new(0.0 * Deg)),
+            PrimeMeridian::new("Greenwich", Lon::new(0.0 * DEG)),
             None,
         );
         let cpy = d.clone();

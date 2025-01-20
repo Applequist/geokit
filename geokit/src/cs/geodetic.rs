@@ -3,7 +3,7 @@ use std::fmt::{Display, Formatter};
 use std::ops::{Add, AddAssign, Sub, SubAssign};
 
 use crate::quantity::angle::formatters::DMS;
-use crate::quantity::angle::units::Rad;
+use crate::quantity::angle::units::RAD;
 use crate::quantity::angle::Angle;
 use approx::AbsDiffEq;
 use derive_more::derive::Neg;
@@ -51,7 +51,7 @@ impl Add<Angle> for Lon {
     type Output = Self;
 
     fn add(self, rhs: Angle) -> Self::Output {
-        Self::new(self.0 * Rad + rhs)
+        Self::new(self.0 * RAD + rhs)
     }
 }
 
@@ -65,7 +65,7 @@ impl Add<Lon> for Angle {
 
 impl AddAssign<Angle> for Lon {
     fn add_assign(&mut self, rhs: Angle) {
-        self.0 = (self.0 * Rad + rhs).wrap().rad();
+        self.0 = (self.0 * RAD + rhs).wrap().rad();
     }
 }
 
@@ -74,7 +74,7 @@ impl Sub<Angle> for Lon {
 
     fn sub(self, rhs: Angle) -> Self::Output {
         // Watch out for infinite recursion with self - rhs
-        Self::new(self.0 * Rad - rhs)
+        Self::new(self.0 * RAD - rhs)
     }
 }
 
@@ -164,7 +164,7 @@ impl LonInterval {
             length += 2. * PI;
         }
         debug_assert!(length >= 0.);
-        length * Rad
+        length * RAD
     }
 }
 
@@ -201,7 +201,7 @@ impl Add<Angle> for Lat {
     type Output = Self;
 
     fn add(self, rhs: Angle) -> Self::Output {
-        Self::new(self.0 * Rad + rhs)
+        Self::new(self.0 * RAD + rhs)
     }
 }
 
@@ -215,20 +215,20 @@ impl Add<Lat> for Angle {
 
 impl AddAssign<Angle> for Lat {
     fn add_assign(&mut self, rhs: Angle) {
-        self.0 = (self.0 * Rad + rhs).rad().clamp(-PI, PI)
+        self.0 = (self.0 * RAD + rhs).rad().clamp(-PI, PI)
     }
 }
 impl Sub<Angle> for Lat {
     type Output = Self;
 
     fn sub(self, rhs: Angle) -> Self::Output {
-        Self::new(self.0 * Rad - rhs)
+        Self::new(self.0 * RAD - rhs)
     }
 }
 
 impl SubAssign<Angle> for Lat {
     fn sub_assign(&mut self, rhs: Angle) {
-        self.0 = (self.0 * Rad - rhs).rad().clamp(-PI, PI);
+        self.0 = (self.0 * RAD - rhs).rad().clamp(-PI, PI);
     }
 }
 
@@ -257,40 +257,44 @@ mod tests {
     use approx::assert_abs_diff_eq;
 
     use crate::cs::geodetic::{Lat, Lon, LonInterval};
-    use crate::quantity::angle::units::{Deg, Rad};
+    use crate::quantity::angle::units::{DEG, RAD};
 
     #[test]
     fn test_lon() {
         // wrapping
-        assert_eq!(Lon::new(2.0 * PI * Rad), Lon::new(0.0 * Rad));
-        assert_eq!(Lon::new(185.0 * Deg), Lon::new(-175.0 * Deg));
+        assert_eq!(Lon::new(2.0 * PI * RAD), Lon::new(0.0 * RAD));
+        assert_abs_diff_eq!(
+            Lon::new(185.0 * DEG),
+            Lon::new(-175.0 * DEG),
+            epsilon = 1e-15
+        );
         // normalization
-        assert_eq!(Lon::new(-PI * Rad).normalize(), Lon::new(PI * Rad));
+        assert_eq!(Lon::new(-PI * RAD).normalize(), Lon::new(PI * RAD));
         // equality
-        assert_eq!(Lon::new(FRAC_PI_2 * Rad), Lon::new(90.0 * Deg));
-        assert_ne!(Lon::new(90. * Deg), Lon::new(91.0 * Deg));
+        assert_eq!(Lon::new(FRAC_PI_2 * RAD), Lon::new(90.0 * DEG));
+        assert_ne!(Lon::new(90. * DEG), Lon::new(91.0 * DEG));
         // ops
-        assert_eq!(Lon::new(90. * Deg) + 45.0 * Deg, Lon::new(135.0 * Deg));
-        assert_eq!(Lon::new(90. * Deg) - 45.0 * Deg, Lon::new(45.0 * Deg));
+        assert_eq!(Lon::new(90. * DEG) + 45.0 * DEG, Lon::new(135.0 * DEG));
+        assert_eq!(Lon::new(90. * DEG) - 45.0 * DEG, Lon::new(45.0 * DEG));
         // display
-        assert_eq!(format!("{}", Lon::new(90. * Deg)), "  90° 00′ 00.00000000″");
+        assert_eq!(format!("{}", Lon::new(90. * DEG)), "  90° 00′ 00.00000000″");
     }
 
     #[test]
     fn test_lat() {
         // clamping
-        assert_eq!(Lat::new(91. * Deg), Lat::MAX);
-        assert_eq!(Lat::new(-90.01 * Deg), Lat::MIN);
+        assert_eq!(Lat::new(91. * DEG), Lat::MAX);
+        assert_eq!(Lat::new(-90.01 * DEG), Lat::MIN);
         // equality
-        assert_eq!(Lat::new(45. * Deg), Lat::new(FRAC_PI_4 * Rad));
-        assert_ne!(Lat::new(0. * Deg), Lat::new(0.001 * Deg));
+        assert_eq!(Lat::new(45. * DEG), Lat::new(FRAC_PI_4 * RAD));
+        assert_ne!(Lat::new(0. * DEG), Lat::new(0.001 * DEG));
         // ops
-        assert_eq!(Lat::new(45. * Deg + 10. * Deg), Lat::new(55. * Deg));
-        assert_eq!(Lat::new(45. * Deg) + 50. * Deg, Lat::MAX);
-        assert_eq!(Lat::new(45. * Deg) - 90. * Deg, Lat::new(-45. * Deg));
-        assert_eq!(Lat::new(-45. * Deg) - 50. * Deg, Lat::MIN);
+        assert_eq!(Lat::new(45. * DEG + 10. * DEG), Lat::new(55. * DEG));
+        assert_eq!(Lat::new(45. * DEG) + 50. * DEG, Lat::MAX);
+        assert_eq!(Lat::new(45. * DEG) - 90. * DEG, Lat::new(-45. * DEG));
+        assert_eq!(Lat::new(-45. * DEG) - 50. * DEG, Lat::MIN);
         // Display
-        assert_eq!(format!("{}", Lat::new(45. * Deg)), "  45° 00′ 00.00000000″");
+        assert_eq!(format!("{}", Lat::new(45. * DEG)), "  45° 00′ 00.00000000″");
     }
 
     #[test]
@@ -300,20 +304,20 @@ mod tests {
         assert!(LonInterval::full().is_full());
 
         // Length
-        assert_eq!(LonInterval::empty().length(), 0. * Rad);
-        assert_eq!(LonInterval::full().length(), 2. * PI * Rad);
+        assert_eq!(LonInterval::empty().length(), 0. * RAD);
+        assert_eq!(LonInterval::full().length(), 2. * PI * RAD);
         assert_eq!(
-            LonInterval::new(Lon::new(0. * Deg), Lon::new(160. * Deg)).length(),
-            160. * Deg
+            LonInterval::new(Lon::new(0. * DEG), Lon::new(160. * DEG)).length(),
+            160. * DEG
         );
         assert_abs_diff_eq!(
-            LonInterval::new(Lon::new(170. * Deg), Lon::new(-170. * Deg)).length(),
-            20. * Deg,
+            LonInterval::new(Lon::new(170. * DEG), Lon::new(-170. * DEG)).length(),
+            20. * DEG,
             epsilon = 1e-15
         );
         assert_abs_diff_eq!(
-            LonInterval::new(Lon::new(170. * Deg), Lon::new(130. * Deg)).length(),
-            320. * Deg,
+            LonInterval::new(Lon::new(170. * DEG), Lon::new(130. * DEG)).length(),
+            320. * DEG,
             epsilon = 1e-15
         );
     }

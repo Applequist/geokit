@@ -1,5 +1,5 @@
 use geokit::cs::geodetic::{Lat, Lon};
-use geokit::quantity::angle::units::Deg;
+use geokit::quantity::angle::units::DEG;
 use geokit::quantity::length::units::M;
 use geokit::{
     crs::{Crs::Geographic, Crs::Projected, GeodeticAxes, ProjectedAxes, ProjectionSpec},
@@ -18,7 +18,7 @@ fn main() {
             None,
         ),
         axes: GeodeticAxes::EastNorthUp {
-            angle_unit: Deg::UNIT,
+            angle_unit: DEG,
             height_unit: M,
         },
     };
@@ -34,8 +34,8 @@ fn main() {
         ),
         axes: ProjectedAxes::EastNorth { horiz_unit: M },
         projection: ProjectionSpec::TransverseMercator {
-            lon0: Lon::new(0.0 * Deg),
-            lat0: Lat::new(0.0 * Deg),
+            lon0: Lon::new(0.0 * DEG),
+            lat0: Lat::new(0.0 * DEG),
             k0: 0.9996,
             false_easting: 500_000.0 * M,
             false_northing: 0.0 * M,

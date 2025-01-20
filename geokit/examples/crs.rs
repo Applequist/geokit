@@ -2,7 +2,7 @@ use geokit::crs::{Crs, GeocentricAxes, GeodeticAxes, ProjectedAxes, ProjectionSp
 use geokit::cs::geodetic::{Lat, Lon};
 use geokit::geodesy::geodetic_datum::DatumTransformation;
 use geokit::geodesy::{ellipsoid, prime_meridian, Ellipsoid, GeodeticDatum, PrimeMeridian};
-use geokit::quantity::angle::units::Deg;
+use geokit::quantity::angle::units::DEG;
 use geokit::quantity::length::units::M;
 
 fn main() {
@@ -11,7 +11,7 @@ fn main() {
         datum: GeodeticDatum::new(
             "WGS84",
             Ellipsoid::from_ainvf("WGS84", 6_378_137.0 * M, 298.257223563),
-            PrimeMeridian::new("Greenwich", Lon::new(0.0 * Deg)),
+            PrimeMeridian::new("Greenwich", Lon::new(0.0 * DEG)),
             None,
         ),
         axes: GeocentricAxes::XYZ,
@@ -35,7 +35,7 @@ fn main() {
             )),
         ),
         axes: GeodeticAxes::EastNorthUp {
-            angle_unit: Deg::UNIT,
+            angle_unit: DEG,
             height_unit: M,
         },
     };
