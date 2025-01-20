@@ -13,7 +13,7 @@ type ToOrd = (usize, f64);
 /// - zeroing input coordinates in excess or output coordinates in excess.
 ///
 /// Normalized geocentric coordinates are (x, y, z) measured in metres.
-/// Normalized geographic coordinates are using the `GeodeticAxes::EastNorthUp(1.0, 1.0)` axes..
+/// Normalized geographic coordinates are using the `GeodeticAxes::EastNorthUp(RAD, M)` axes..
 #[derive(Debug, Clone)]
 pub struct Normalization(Vec<ToOrd>);
 

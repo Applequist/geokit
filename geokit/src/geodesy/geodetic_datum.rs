@@ -2,12 +2,16 @@ use std::fmt::Debug;
 
 use smol_str::SmolStr;
 
-use crate::operation::{
-    identity,
-    transformation::{GeocentricTranslation, Helmert7Params, RotationConvention},
-    Operation,
-};
+use crate::quantity::angle::Angle;
 use crate::quantity::scale::PPM;
+use crate::{
+    operation::{
+        identity,
+        transformation::{GeocentricTranslation, Helmert7Params, RotationConvention},
+        Operation,
+    },
+    quantity::length::Length,
+};
 
 use super::{Ellipsoid, PrimeMeridian};
 
@@ -18,14 +22,13 @@ use super::{Ellipsoid, PrimeMeridian};
 pub enum DatumTransformation {
     /// A simple translation of source normalized geocentric coordinates by adding an offset **in
     /// meters**.
-    GeocentricTranslation { tx: f64, ty: f64, tz: f64 },
+    GeocentricTranslation { tx: Length, ty: Length, tz: Length },
     /// The Helmert 7-parameters transformation transforms normalized geocentric coordinates using
     /// small rotations around x, y and z axes, a translation and a small scaling in ppm.
-    /// Rotations angle are in radians, translation along axes are in meters and scale is in ppm.
     Helmert7Params {
         conv: RotationConvention,
-        rotation: [f64; 3],
-        translation: [f64; 3],
+        rotation: [Angle; 3],
+        translation: [Length; 3],
         scale: PPM,
     },
 }
@@ -144,6 +147,10 @@ impl PartialEq for GeodeticDatum {
 
 /// Well known datum definition.
 pub mod consts {
+    use crate::quantity::angle::units::RAD;
+    use crate::quantity::angle::Angle;
+    use crate::quantity::length::units::M;
+    use crate::quantity::length::Length;
     use crate::quantity::scale::PPM;
     use crate::{
         geodesy::{ellipsoid, prime_meridian},
@@ -166,9 +173,9 @@ pub mod consts {
         Some((
             "WGS84",
             DatumTransformation::GeocentricTranslation {
-                tx: -199.87,
-                ty: 74.79,
-                tz: 246.64,
+                tx: Length::new(-199.87, M),
+                ty: Length::new(74.79, M),
+                tz: Length::new(246.64, M),
             },
         )),
     );
@@ -188,8 +195,16 @@ pub mod consts {
             "WGS84",
             DatumTransformation::Helmert7Params {
                 conv: RotationConvention::CoordinateFrame,
-                rotation: [-1.63172286E-6, 2.21538036E-6, -8.9311407E-6],
-                translation: [106.869, -52.2978, 103.724],
+                rotation: [
+                    Angle::new(-1.63172286E-6, RAD),
+                    Angle::new(2.21538036E-6, RAD),
+                    Angle::new(-8.9311407E-6, RAD),
+                ],
+                translation: [
+                    Length::new(106.869, M),
+                    Length::new(-52.2978, M),
+                    Length::new(103.724, M),
+                ],
                 scale: PPM(0.),
             },
         )),

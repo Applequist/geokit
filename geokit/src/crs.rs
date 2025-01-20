@@ -120,7 +120,7 @@ impl Crs {
                     height_unit,
                 } = axes
                 {
-                    horiz_unit == &M && height_unit == &M
+                    *horiz_unit == M && *height_unit == M
                 } else {
                     false
                 }

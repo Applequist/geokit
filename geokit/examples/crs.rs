@@ -28,9 +28,9 @@ fn main() {
             Some((
                 "WGS84",
                 DatumTransformation::GeocentricTranslation {
-                    tx: (-199.87 * M).m(),
-                    ty: (74.79 * M).m(),
-                    tz: (246.64 * M).m(),
+                    tx: -199.87 * M,
+                    ty: 74.79 * M,
+                    tz: 246.64 * M,
                 },
             )),
         ),

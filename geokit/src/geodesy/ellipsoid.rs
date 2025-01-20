@@ -25,19 +25,25 @@ impl Ellipsoid {
     /// # Panics
     ///
     /// If `a` is negative or zero or if `a` is less than `b`.
-    pub fn from_ab(name: &str, a: f64, b: f64) -> Self {
-        assert!(b > 0., "Expected semi_minor_axis ({} m) > 0 m", b);
+    pub fn from_ab(name: &str, a: Length, b: Length) -> Self {
+        assert!(b.m() > 0., "Expected semi_minor_axis ({}) > 0 m", b);
         assert!(
             a >= b,
-            "Expected semi_major_axis ({} m) >= semi_minor_axis ({} m).",
+            "Expected semi_major_axis ({}) >= semi_minor_axis ({}).",
             a,
             b
         );
+        let a_m = a.m();
+        let b_m = b.m();
         Self {
             name: SmolStr::new(name),
-            a,
-            b,
-            invf: if a > b { a / (a - b) } else { f64::INFINITY },
+            a: a_m,
+            b: b_m,
+            invf: if a_m > b_m {
+                a_m / (a_m - b_m)
+            } else {
+                f64::INFINITY
+            },
         }
     }
 
@@ -279,19 +285,19 @@ mod tests {
     #[test]
     #[should_panic(expected = "Expected semi_minor_axis (-0.5 m) > 0")]
     fn negative_b() {
-        let _ellipsoid = Ellipsoid::from_ab("Negative b", 1.0, -0.5);
+        let _ellipsoid = Ellipsoid::from_ab("Negative b", 1.0 * M, -0.5 * M);
     }
 
     #[test]
     #[should_panic(expected = "Expected semi_minor_axis (0 m) > 0")]
     fn zero_b() {
-        let _e = Ellipsoid::from_ab("Zero b", 1.0, 0.0);
+        let _e = Ellipsoid::from_ab("Zero b", 1.0 * M, 0.0 * M);
     }
 
     #[test]
     #[should_panic(expected = "Expected semi_major_axis (1 m) >= semi_minor_axis (2 m)")]
     fn a_less_then_b() {
-        let _ellipsoid = Ellipsoid::from_ab("a < b", 1.0, 2.0);
+        let _ellipsoid = Ellipsoid::from_ab("a < b", 1.0 * M, 2.0 * M);
     }
 
     #[test]
@@ -340,7 +346,7 @@ mod tests {
 
     #[test]
     fn clone() {
-        let e = Ellipsoid::from_ab("Cloned", 1., 0.9);
+        let e = Ellipsoid::from_ab("Cloned", 1. * M, 0.9 * M);
         let cpy = e.clone();
         assert_eq!(e, cpy);
         let _a = e.a;
@@ -348,12 +354,12 @@ mod tests {
 
     #[test]
     fn partial_eq() {
-        let e = Ellipsoid::from_ab("E", 1., 0.9);
-        let eq = Ellipsoid::from_ab("E'", 1., 0.9);
+        let e = Ellipsoid::from_ab("E", 1. * M, 0.9 * M);
+        let eq = Ellipsoid::from_ab("E'", 1. * M, 0.9 * M);
         assert!(e.eq(&eq));
         assert!(!e.ne(&eq));
 
-        let e2 = Ellipsoid::from_ab("E2", 1.01, 0.9);
+        let e2 = Ellipsoid::from_ab("E2", 1.01 * M, 0.9 * M);
         assert!(!e.eq(&e2));
         assert!(e.ne(&e2));
 

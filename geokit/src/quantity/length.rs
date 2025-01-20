@@ -3,6 +3,7 @@
 use std::ops::{Div, DivAssign, Mul, MulAssign};
 
 use derive_more::derive::{Add, AddAssign, Display, Sub, SubAssign};
+use units::LengthUnit;
 
 /// A 'Length' value.
 /// Can be added, subtracted, multiplied by a f64 (left and right) and divided by a f64.
@@ -11,6 +12,11 @@ use derive_more::derive::{Add, AddAssign, Display, Sub, SubAssign};
 pub struct Length(f64);
 
 impl Length {
+    #[inline]
+    pub(crate) const fn new(qty: f64, unit: LengthUnit) -> Self {
+        Self(qty * unit.0 / unit.1)
+    }
+
     pub fn m(&self) -> f64 {
         self.0
     }
@@ -72,7 +78,7 @@ pub mod units {
         type Output = Length;
 
         fn mul(self, rhs: LengthUnit) -> Self::Output {
-            Length(self * rhs.0 / rhs.1)
+            Length::new(self, rhs)
         }
     }
 

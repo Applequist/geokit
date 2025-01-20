@@ -1,6 +1,6 @@
 use approx::AbsDiffEq;
 use derive_more::derive::{Add, AddAssign, Display, Neg, Sub, SubAssign};
-use units::DEG;
+use units::{AngleUnit, DEG};
 
 use crate::math::utils::wrap;
 use std::{
@@ -21,6 +21,11 @@ pub struct Angle(f64);
 impl Angle {
     pub const PI: Angle = Angle(PI);
     pub const M_PI: Angle = Angle(-PI);
+
+    #[inline]
+    pub(crate) const fn new(qty: f64, unit: AngleUnit) -> Self {
+        Angle(qty * unit.0 / unit.1)
+    }
 
     /// Create an 'Angle' value from a degree/minute/second value.
     ///
@@ -122,8 +127,14 @@ pub mod units {
     use super::Angle;
 
     /// A to-radians angle converter.
+    /// A angle expressed in this unit is converted to radians as follow:
+    /// ```
+    /// let deg = AngleUnit(PI, 180.0);
+    /// let angle_deg = 1.0;
+    /// leet angle_rad = angle_deg * deg.0 / deg.1;
+    /// ```
     #[derive(Debug, Copy, Clone, PartialEq)]
-    pub struct AngleUnit(f64, f64);
+    pub struct AngleUnit(pub f64, pub f64);
 
     impl AngleUnit {
         #[inline]
@@ -136,7 +147,15 @@ pub mod units {
         type Output = Angle;
 
         fn mul(self, rhs: AngleUnit) -> Self::Output {
-            Angle(self * rhs.0 / rhs.1)
+            Angle::new(self, rhs)
+        }
+    }
+
+    impl Mul<f64> for AngleUnit {
+        type Output = Angle;
+
+        fn mul(self, rhs: f64) -> Self::Output {
+            rhs * self
         }
     }
 
@@ -144,7 +163,15 @@ pub mod units {
         type Output = Angle;
 
         fn mul(self, rhs: AngleUnit) -> Self::Output {
-            Angle((self as f64) * rhs.0 / rhs.1)
+            Angle::new(self as f64, rhs)
+        }
+    }
+
+    impl Mul<i32> for AngleUnit {
+        type Output = Angle;
+
+        fn mul(self, rhs: i32) -> Self::Output {
+            (rhs as f64) * self
         }
     }
 

@@ -1,11 +1,13 @@
+use derive_more::derive::Display;
 use smol_str::SmolStr;
 
-use crate::cs::geodetic::Lon;
+use crate::{cs::geodetic::Lon, quantity::angle::units::RAD};
 
 /// A `PrimeMeridian` defines the origin of longitudes.
 /// It is defined by its longitude with respect to the Greenwich meridian,
 /// expressed **in radians** and positive eastward.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Display)]
+#[display("{}: {}", self.name, Lon::new(self.lon * RAD))]
 pub struct PrimeMeridian {
     name: SmolStr,
     lon: f64,
@@ -90,6 +92,7 @@ mod tests {
 
     use crate::{
         cs::geodetic::Lon,
+        geodesy::prime_meridian::consts::PARIS,
         quantity::angle::units::{DEG, RAD},
     };
 
@@ -119,5 +122,10 @@ mod tests {
 
         let pm2 = PrimeMeridian::new("Greenwich", Lon::new(0.0 * DEG));
         assert_ne!(pm, pm2);
+    }
+
+    #[test]
+    fn pm_display() {
+        assert_eq!(format!("{}", PARIS), "Paris:    2° 20′ 14.02500000″");
     }
 }
