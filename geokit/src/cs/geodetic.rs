@@ -1,43 +1,65 @@
 use std::f64::consts::{FRAC_PI_2, PI};
-use std::fmt::{Display, Formatter};
 use std::ops::{Add, AddAssign, Sub, SubAssign};
 
-use crate::quantity::angle::formatters::DMS;
 use crate::quantity::angle::units::RAD;
 use crate::quantity::angle::Angle;
+use crate::quantity::angle::Dms;
 use approx::AbsDiffEq;
-use derive_more::derive::Neg;
+use derive_more::derive::{Display, Neg};
 use num::Zero;
 
 /// A longitude coordinate in [-pi..pi] radians.
-#[derive(Copy, Clone, Debug, PartialOrd, PartialEq, Default, Neg)]
+/// You can add, subtract an [Angle] from [Lon],
+#[derive(Copy, Clone, Debug, PartialOrd, PartialEq, Default, Neg, Display)]
+#[display("{}", self.angle().to_dms())]
 pub struct Lon(f64);
 
 impl Lon {
     pub const MIN: Lon = Lon(-PI);
     pub const MAX: Lon = Lon(PI);
 
-    /// Create a new longitude value with a given raw angle value in radians.
+    /// Create a new longitude value from a given angle.
     /// The angle is wrapped into [-pi..pi].
     pub fn new(val: Angle) -> Self {
         Self(val.wrap().rad())
     }
 
+    /// Create a new longitude value from a *dms* angle value.
+    /// The angle value is converted to radians and wrapped into [-pi, pi].
+    ///
+    /// # Parameters
+    ///
+    /// - `d`: the number of degrees. Determine the sign of the returned angle.
+    /// - `m`: the number of minutes. Must be >= 0.
+    /// - `s`: the number of seconds with fractional part. Must be >= 0.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let a: Lon = Lon::dms(2., 20., 14.02500);
+    /// assert!(Lon::dms(-12., 45., 59.1234).rad() < 0.0);
+    /// ```
+    pub fn dms(d: f64, m: f64, s: f64) -> Self {
+        Self::new(Angle::dms(d, m, s))
+    }
+
+    /// Return the longitude 0.
     pub fn zero() -> Self {
         Lon(0.0)
     }
 
-    pub fn is_zero(&self) -> bool {
-        self.0.is_zero()
-    }
-
-    /// Normalize the longitude into (-pi..pi].
+    /// Normalize the longitude into (-pi..pi] such that any point on a parallel
+    /// has a unique *normalized* longitude.
     pub fn normalize(self) -> Self {
         if self <= Self::MIN {
             Self::MAX
         } else {
             self
         }
+    }
+
+    pub fn angle(self) -> Angle {
+        self.0 * RAD
     }
 
     /// Return the longitude as a raw angle value **in radians**.
@@ -78,6 +100,12 @@ impl Sub<Angle> for Lon {
     }
 }
 
+impl SubAssign<Angle> for Lon {
+    fn sub_assign(&mut self, rhs: Angle) {
+        self.0 = (self.0 * RAD - rhs).wrap().rad();
+    }
+}
+
 impl AbsDiffEq for Lon {
     type Epsilon = f64;
 
@@ -95,12 +123,6 @@ impl Sub for Lon {
 
     fn sub(self, rhs: Self) -> Self::Output {
         LonInterval::new(rhs, self)
-    }
-}
-
-impl Display for Lon {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", DMS::from_rad(self.0))
     }
 }
 
@@ -169,7 +191,8 @@ impl LonInterval {
 }
 
 /// A latitude coordinate in [-pi/2..pi/2]  radians.
-#[derive(Copy, Clone, Debug, PartialOrd, PartialEq, Default, Neg)]
+#[derive(Copy, Clone, Debug, PartialOrd, PartialEq, Default, Neg, Display)]
+#[display("{}", self.angle().to_dms())]
 pub struct Lat(f64);
 
 impl Lat {
@@ -182,12 +205,35 @@ impl Lat {
         Lat(val.rad().clamp(-FRAC_PI_2, FRAC_PI_2))
     }
 
+    /// Create a new latitude value from a *dms* angle value.
+    /// The angle value is converted to radians and clamped into [-pi/2, pi/2].
+    ///
+    /// # Parameters
+    ///
+    /// - `d`: the number of degrees. Determine the sign of the returned angle.
+    /// - `m`: the number of minutes. Must be >= 0.
+    /// - `s`: the number of seconds with fractional part. Must be >= 0.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let a: Lat = Lat::dms(2., 20., 14.02500);
+    /// assert!(Lat::dms(-12., 45., 59.1234).rad() < 0.0);
+    /// ```
+    pub fn dms(d: f64, m: f64, s: f64) -> Self {
+        Self::new(Angle::dms(d, m, s))
+    }
+
     pub fn zero() -> Self {
         Lat(0.0)
     }
 
     pub fn is_zero(&self) -> bool {
         self.0.is_zero()
+    }
+
+    pub fn angle(self) -> Angle {
+        self.0 * RAD
     }
 
     /// Return this latitude as a raw angle value in radians.
@@ -241,12 +287,6 @@ impl AbsDiffEq for Lat {
 
     fn abs_diff_eq(&self, other: &Self, epsilon: Self::Epsilon) -> bool {
         self.0.abs_diff_eq(&other.0, epsilon)
-    }
-}
-
-impl Display for Lat {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", DMS::from_rad(self.0))
     }
 }
 

@@ -1,15 +1,54 @@
 //! This module defines some types used to express length in various quantity.
 
-use derive_more::derive::Display;
+use std::ops::{Div, DivAssign, Mul, MulAssign};
+
+use derive_more::derive::{Add, AddAssign, Display, Sub, SubAssign};
 
 /// A 'Length' value.
-#[derive(Debug, Copy, Clone, PartialEq, PartialOrd, Display)]
+/// Can be added, subtracted, multiplied by a f64 (left and right) and divided by a f64.
+#[derive(Debug, Copy, Clone, PartialEq, PartialOrd, Display, Add, AddAssign, Sub, SubAssign)]
 #[display("{} m", _0)]
 pub struct Length(f64);
 
 impl Length {
     pub fn m(&self) -> f64 {
         self.0
+    }
+}
+
+impl Mul<Length> for f64 {
+    type Output = Length;
+
+    fn mul(self, rhs: Length) -> Self::Output {
+        Length(self * rhs.0)
+    }
+}
+
+impl Mul<f64> for Length {
+    type Output = Length;
+
+    fn mul(self, rhs: f64) -> Self::Output {
+        rhs * self
+    }
+}
+
+impl MulAssign<f64> for Length {
+    fn mul_assign(&mut self, rhs: f64) {
+        self.0 *= rhs;
+    }
+}
+
+impl Div<f64> for Length {
+    type Output = Length;
+
+    fn div(self, rhs: f64) -> Self::Output {
+        Length(self.0 / rhs)
+    }
+}
+
+impl DivAssign<f64> for Length {
+    fn div_assign(&mut self, rhs: f64) {
+        self.0 /= rhs;
     }
 }
 
@@ -56,4 +95,14 @@ pub mod units {
     /// except for historic and legacy applications.
     /// It has been superseded by the international foot, see [FT]
     pub const US_FT: LengthUnit = LengthUnit(1_200.0, 3_937.);
+}
+
+#[cfg(test)]
+mod test {
+    use crate::quantity::length::units::M;
+
+    #[test]
+    fn length_display() {
+        assert_eq!(format!("{}", 1.2 * M), "1.2 m");
+    }
 }

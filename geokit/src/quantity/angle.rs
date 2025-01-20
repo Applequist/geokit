@@ -1,5 +1,6 @@
 use approx::AbsDiffEq;
-use derive_more::derive::{Add, AddAssign, Neg, Sub, SubAssign};
+use derive_more::derive::{Add, AddAssign, Display, Neg, Sub, SubAssign};
+use units::DEG;
 
 use crate::math::utils::wrap;
 use std::{
@@ -12,13 +13,30 @@ use std::{
 /// ```
 /// let a: Angle = 1.0 * Deg;
 /// ```
-/// Or using the [dms] function.
-#[derive(Debug, Copy, Clone, PartialEq, Default, Add, AddAssign, Sub, SubAssign, Neg)]
+/// Or from degrees, minutes and seconds.
+#[derive(Debug, Copy, Clone, PartialEq, Default, Add, AddAssign, Sub, SubAssign, Neg, Display)]
+#[display("{} rad", _0)]
 pub struct Angle(f64);
 
 impl Angle {
     pub const PI: Angle = Angle(PI);
     pub const M_PI: Angle = Angle(-PI);
+
+    /// Create an 'Angle' value from a degree/minute/second value.
+    ///
+    /// # Parameters
+    ///
+    /// - `d`: the number of degrees. Determine the sign of the returned angle.
+    /// - `m`: the number of minutes. Must be >= 0. and <= 59.
+    /// - `s`: the number of seconds with fractional part. Must be >= 0 and < 60.
+    ///
+    pub fn dms(d: f64, m: f64, s: f64) -> Angle {
+        debug_assert!(m >= 0. && m <= 59.0, "minutes must be in [0..59]");
+        debug_assert!(s >= 0. && s < 60., "seconds must be in [0..60)");
+        let f = d.signum();
+        let deg = d.abs() + m / 60. + s / 3600.;
+        f * deg * DEG
+    }
 
     /// Return the angle value in radians.
     pub fn rad(&self) -> f64 {
@@ -28,6 +46,25 @@ impl Angle {
     /// Wrap this angle into [-PI, PI] radians.
     pub fn wrap(self) -> Angle {
         Angle(wrap(self.0, PI))
+    }
+
+    /// Convert this angle into a dms for formatting.
+    pub fn to_dms(self) -> Dms {
+        let rad = self.0;
+        let sgn = rad.signum();
+        let mut deg = rad.abs().to_degrees();
+        let d = deg.floor();
+        deg = 60. * deg.fract();
+        let m;
+        let s;
+        if (deg - deg.round()).abs() < 1e-8 {
+            m = deg.round();
+            s = 0.0;
+        } else {
+            m = deg.floor();
+            s = 60. * deg.fract();
+        }
+        Dms(sgn * d, m, s)
     }
 }
 
@@ -79,29 +116,6 @@ impl AbsDiffEq for Angle {
     }
 }
 
-/// Create an 'Angle' value from a degree/minute/second value.
-/// The returned angle has the same sign as the degrees parameter `d`.
-///
-/// # Parameters
-///
-/// - `d`: the number of degrees. Determine the sign of the returned angle.
-/// - `m`: the number of minutes. Must be >= 0.
-/// - `s`: the number of seconds with fractional part. Must be >= 0.
-///
-/// # Examples
-///
-/// ```
-/// use geokit::quantity::angle::dms;
-/// let a: Angle = dms(2., 20., 14.02500);
-/// assert!(dms(-12., 45., 59.1234).rad() < 0.0);
-/// ```
-pub fn dms(d: f64, m: f64, s: f64) -> Angle {
-    debug_assert!(m >= 0. && s >= 0., "minutes and seconds must be >= 0.0");
-    let f = d.signum();
-    let deg = d.abs() + m / 60. + s / 3600.;
-    f * deg * units::DEG
-}
-
 pub mod units {
     use std::{f64::consts::PI, ops::Mul};
 
@@ -140,74 +154,39 @@ pub mod units {
     pub const SEC: AngleUnit = AngleUnit(PI, 648_000.0);
 }
 
-pub mod formatters {
-    use std::fmt::{Display, Formatter};
+/// An angle value expressed in degrees, minutes and seconds.
+///
+/// Use to display angle in DMS format:
+/// ```
+/// use geokit::quantity::angle::{dms, DMS};
+/// assert_eq!(format!("{}", DMS::from_rad(dms(2., 20., 14.02500))), "   2° 20′ 14.02500000″");
+/// ```
+#[derive(Copy, Clone, Debug, Display)]
+#[display("{:4}° {:02}′ {:011.8}″", _0, _1, _2)]
+pub struct Dms(f64, f64, f64);
 
-    use super::Angle;
-
-    /// Parse a raw angle value given in radians into degrees, minutes and seconds.
-    ///
-    /// Use to display angle in DMS format:
-    /// ```
-    /// use geokit::quantity::angle::{dms, DMS};
-    /// assert_eq!(format!("{}", DMS::from_rad(dms(2., 20., 14.02500))), "   2° 20′ 14.02500000″");
-    /// ```
-    #[derive(Copy, Clone, Debug)]
-    pub struct DMS(f64, f64, f64);
-
-    impl DMS {
-        pub fn from_rad(rad: f64) -> Self {
-            let sgn = rad.signum();
-            let mut deg = rad.abs().to_degrees();
-            let d = deg.floor();
-            deg = 60. * deg.fract();
-            let m;
-            let s;
-            if (deg - deg.round()).abs() < 1e-8 {
-                m = deg.round();
-                s = 0.0;
-            } else {
-                m = deg.floor();
-                s = 60. * deg.fract();
-            }
-            DMS(sgn * d, m, s)
-        }
-
-        pub fn deg(&self) -> f64 {
-            self.0
-        }
-
-        pub fn min(&self) -> f64 {
-            self.1
-        }
-
-        pub fn sec(&self) -> f64 {
-            self.2
-        }
+impl Dms {
+    pub fn deg(&self) -> f64 {
+        self.0
     }
 
-    impl From<Angle> for DMS {
-        fn from(value: Angle) -> Self {
-            DMS::from_rad(value.rad())
-        }
+    pub fn min(&self) -> f64 {
+        self.1
     }
 
-    impl Display for DMS {
-        fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-            write!(f, "{:4}° {:02}′ {:011.8}″", self.0, self.1, self.2)
-        }
+    pub fn sec(&self) -> f64 {
+        self.2
     }
 }
 
 #[cfg(test)]
 mod tests {
     use crate::quantity::angle::{
-        dms,
-        formatters::DMS,
         units::{DEG, GRAD, RAD, SEC},
+        Dms,
     };
 
-    use std::f64::consts::PI;
+    use std::f64::consts::{FRAC_PI_4, PI};
 
     #[test]
     fn units() {
@@ -217,27 +196,24 @@ mod tests {
     }
 
     #[test]
-    fn formatters() {
+    fn dms_display() {
         assert_eq!(
-            format!("{}", DMS::from(dms(-33., 6., 22.01545))),
+            format!("{}", Dms(-33., 6., 22.01545)),
             " -33° 06′ 22.01545000″"
         );
+        assert_eq!(format!("{}", Dms(45., 0., 0.)), "  45° 00′ 00.00000000″");
         assert_eq!(
-            format!("{}", DMS::from(dms(45., 0., 0.))),
+            format!("{}", (FRAC_PI_4 * RAD).to_dms()),
             "  45° 00′ 00.00000000″"
         );
-        // assert_eq!(format!("{}", DMS::fromom_rad(FRAC_PI_4)), "  45° 00′ 00.00000000″");
         assert_eq!(
-            format!("{}", DMS::from(dms(-179., 59., 59.1234))),
+            format!("{}", Dms(-179., 59., 59.1234)),
             "-179° 59′ 59.12340000″"
         );
-        assert_eq!(
-            format!("{}", DMS::from(dms(-33., 26., 0.))),
-            " -33° 26′ 00.00000000″"
-        );
+        assert_eq!(format!("{}", Dms(-33., 26., 0.)), " -33° 26′ 00.00000000″");
         // Check rounding
         assert_eq!(
-            format!("{}", DMS::from(dms(37., 19., 54.95367))),
+            format!("{}", Dms(37., 19., 54.95367)),
             "  37° 19′ 54.95367000″"
         );
     }

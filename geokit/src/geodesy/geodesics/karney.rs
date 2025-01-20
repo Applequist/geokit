@@ -400,7 +400,6 @@ mod tests {
         vincenty_lines,
     };
     use crate::geodesy::geodesics::GeodesicSolver;
-    use crate::quantity::angle::formatters::DMS;
     use crate::quantity::angle::units::{DEG, RAD};
     use approx::assert_abs_diff_eq;
     use std::f64::consts::{FRAC_PI_2, PI};
@@ -452,13 +451,13 @@ mod tests {
             println!("{}", computed);
             println!();
 
-            let diff_lon_dms = DMS::from_rad(computed.p2.0.rad() - input.geodesic.p2.0.rad());
+            let diff_lon_dms = (computed.p2.0.angle() - input.geodesic.p2.0.angle()).to_dms();
             println!("error on lon (computed - input) = {}", diff_lon_dms);
 
-            let diff_lat_dms = DMS::from_rad(computed.p2.1.rad() - input.geodesic.p2.1.rad());
+            let diff_lat_dms = (computed.p2.1.angle() - input.geodesic.p2.1.angle()).to_dms();
             println!("error on lat (computed - input) = {}", diff_lat_dms);
 
-            let diff_az_dms = DMS::from_rad(computed.alpha2.rad() - input.geodesic.alpha2.rad());
+            let diff_az_dms = (computed.alpha2.angle() - input.geodesic.alpha2.angle()).to_dms();
             println!("error on az (computed - input) = {}", diff_az_dms);
 
             assert_eq!(diff_lon_dms.deg(), 0.0);
@@ -490,13 +489,13 @@ mod tests {
             println!("{}", computed);
             println!();
 
-            let diff_lon_dms = DMS::from_rad(computed.p2.0.rad() - input.geodesic.p2.0.rad());
+            let diff_lon_dms = (computed.p2.0.angle() - input.geodesic.p2.0.angle()).to_dms();
             println!("error on lon (computed - input) = {}", diff_lon_dms);
 
-            let diff_lat_dms = DMS::from_rad(computed.p2.1.rad() - input.geodesic.p2.1.rad());
+            let diff_lat_dms = (computed.p2.1.angle() - input.geodesic.p2.1.angle()).to_dms();
             println!("error on lat (computed - input) = {}", diff_lat_dms);
 
-            let diff_az_dms = DMS::from_rad(computed.alpha2.rad() - input.geodesic.alpha2.rad());
+            let diff_az_dms = (computed.alpha2.angle() - input.geodesic.alpha2.angle()).to_dms();
             println!("error on az (computed - input) = {}", diff_az_dms);
 
             assert_abs_diff_eq!(computed.p2.0, input.geodesic.p2.0, epsilon = 1e-10);
@@ -519,13 +518,13 @@ mod tests {
             println!("{}", computed);
             println!();
 
-            let diff_lon_dms = DMS::from_rad(computed.p2.0.rad() - input.geodesic.p2.0.rad());
+            let diff_lon_dms = (computed.p2.0.angle() - input.geodesic.p2.0.angle()).to_dms();
             println!("error on lon (computed - input) = {}", diff_lon_dms);
 
-            let diff_lat_dms = DMS::from_rad(computed.p2.1.rad() - input.geodesic.p2.1.rad());
+            let diff_lat_dms = (computed.p2.1.angle() - input.geodesic.p2.1.angle()).to_dms();
             println!("error on lat (computed - input) = {}", diff_lat_dms);
 
-            let diff_az_dms = DMS::from_rad(computed.alpha2.rad() - input.geodesic.alpha2.rad());
+            let diff_az_dms = (computed.alpha2.angle() - input.geodesic.alpha2.angle()).to_dms();
             println!("error on az (computed - input) = {}", diff_az_dms);
 
             assert_abs_diff_eq!(computed.p2.0, input.geodesic.p2.0, epsilon = 1e-10);
@@ -667,10 +666,10 @@ mod tests {
             println!("{}", computed);
             println!();
 
-            let diff_az1_dms = DMS::from_rad(computed.alpha1.rad() - input.geodesic.alpha1.rad());
+            let diff_az1_dms = (computed.alpha1.angle() - input.geodesic.alpha1.angle()).to_dms();
             println!("error on az1 (computed - input) = {}", diff_az1_dms);
 
-            let diff_az2_dms = DMS::from_rad(computed.alpha2.rad() - input.geodesic.alpha2.rad());
+            let diff_az2_dms = (computed.alpha2.angle() - input.geodesic.alpha2.angle()).to_dms();
             println!("error on az2 (computed - input) = {}", diff_az2_dms);
 
             let diff_s_m = computed.s - input.geodesic.s;
@@ -703,10 +702,10 @@ mod tests {
             println!("{}", computed);
             println!();
 
-            let diff_az1_dms = DMS::from_rad(computed.alpha1.rad() - input.geodesic.alpha1.rad());
+            let diff_az1_dms = (computed.alpha1.angle() - input.geodesic.alpha1.angle()).to_dms();
             println!("error on az1 (computed - input) = {}", diff_az1_dms);
 
-            let diff_az2_dms = DMS::from_rad(computed.alpha2.rad() - input.geodesic.alpha2.rad());
+            let diff_az2_dms = (computed.alpha2.angle() - input.geodesic.alpha2.angle()).to_dms();
             println!("error on az2 (computed - input) = {}", diff_az2_dms);
 
             let diff_s_m = computed.s - input.geodesic.s;
@@ -733,10 +732,10 @@ mod tests {
             println!("{}", computed);
             println!();
 
-            let diff_az1_dms = DMS::from_rad(computed.alpha1.rad() - input.geodesic.alpha1.rad());
+            let diff_az1_dms = (computed.alpha1.angle() - input.geodesic.alpha1.angle()).to_dms();
             println!("error on az1 (computed - input) = {}", diff_az1_dms);
 
-            let diff_az2_dms = DMS::from_rad(computed.alpha2.rad() - input.geodesic.alpha2.rad());
+            let diff_az2_dms = (computed.alpha2.angle() - input.geodesic.alpha2.angle()).to_dms();
             println!("error on az2 (computed - input) = {}", diff_az2_dms);
 
             let diff_s_m = computed.s - input.geodesic.s;
