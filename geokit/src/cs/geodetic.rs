@@ -1,9 +1,92 @@
-use crate::quantity::angle::units::RAD;
+use crate::quantity::angle::units::{AngleUnit, RAD};
 use crate::quantity::angle::Angle;
+use crate::quantity::length::units::{LengthUnit, M};
 use approx::AbsDiffEq;
 use derive_more::derive::{Display, Neg};
 use std::f64::consts::{FRAC_PI_2, PI};
 use std::ops::{Add, AddAssign, Sub, SubAssign};
+
+/// A [`GeodeticAxes`] value defines the *coordinates system* part of a [`GeodeticCrs`], that is:
+/// - the ordering and direction of the axes,
+/// - the angle unit used for longitude and latitude as a number of radians per unit.
+/// - the length unit used for the ellipsoidal height as a number of meters per unit.
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub enum GeodeticAxes {
+    /// Coordinates are given in the following order:
+    /// - longitude positive east of prime meridian,
+    /// - latitude positive north of equatorial plane,
+    /// - ellipsoidal height positive upward.
+    EastNorthUp {
+        /// The angle unit used for longitude and latitude, eg
+        /// `DEG` or `GRAD`
+        angle_unit: AngleUnit,
+        /// The length unit used for ellipsoidal height, eg
+        /// 'M' or 'US_FOOT'
+        height_unit: LengthUnit,
+    },
+    /// Coordinates are given in the following order:
+    /// - latitude positive north of equatorial plane,
+    /// - longitude positive east of prime meridian,
+    /// - ellipsoidal height positive upward.
+    NorthEastUp {
+        /// The angle unit used for longitude and latitude, eg
+        /// `DEG` or `GRAD`
+        angle_unit: AngleUnit,
+        /// The length unit used for ellipsoidal height, eg
+        /// 'M' or 'US_FOOT'
+        height_unit: LengthUnit,
+    },
+    /// Coordinates are, in the given order:
+    /// - longitude positive east of prime meridian,
+    /// - latitude positive north of equatorial plane.
+    EastNorth {
+        /// The angle unit used for longitude and latitude, eg
+        /// `DEG` or `GRAD`
+        angle_unit: AngleUnit,
+    },
+    /// Coordinates are, in the given order:
+    /// - latitude positive north of equatorial plane,
+    /// - longitude positive east of prime meridian.
+    NorthEast {
+        /// The angle unit used for longitude and latitude, eg
+        /// `DEG` or `GRAD`
+        angle_unit: AngleUnit,
+    },
+    NorthWest {
+        /// The angle unit used for longitude and latitude, eg
+        /// `DEG` or `GRAD`
+        angle_unit: AngleUnit,
+    },
+}
+
+impl GeodeticAxes {
+    /// Return the dimension (2D or 3D) of the coordinate system.
+    pub fn dim(&self) -> usize {
+        match self {
+            GeodeticAxes::EastNorthUp {
+                angle_unit: _,
+                height_unit: _,
+            }
+            | GeodeticAxes::NorthEastUp {
+                angle_unit: _,
+                height_unit: _,
+            } => 3,
+            GeodeticAxes::EastNorth { angle_unit: _ }
+            | GeodeticAxes::NorthEast { angle_unit: _ }
+            | GeodeticAxes::NorthWest { angle_unit: _ } => 2,
+        }
+    }
+}
+
+impl Default for GeodeticAxes {
+    /// Return the [`GeodeticAxes`] used in **normalized geodetic coordinates**.
+    fn default() -> Self {
+        Self::EastNorthUp {
+            angle_unit: RAD,
+            height_unit: M,
+        }
+    }
+}
 
 /// A longitude coordinate in [-pi..pi] radians.
 /// You can add, subtract an [Angle] from [Lon],

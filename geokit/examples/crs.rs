@@ -1,7 +1,9 @@
-use geokit::crs::{Crs, GeocentricAxes, GeodeticAxes, ProjectedAxes, ProjectionSpec};
-use geokit::cs::geodetic::{Lat, Lon};
+use geokit::crs::Crs;
+use geokit::cs::cartesian::{GeocentricAxes, ProjectedAxes};
+use geokit::cs::geodetic::{GeodeticAxes, Lat, Lon};
 use geokit::geodesy::geodetic_datum::DatumTransformation;
 use geokit::geodesy::{ellipsoid, prime_meridian, Ellipsoid, GeodeticDatum, PrimeMeridian};
+use geokit::operation::conversion::projection::ProjectionSpec;
 use geokit::quantity::angle::units::DEG;
 use geokit::quantity::length::units::M;
 

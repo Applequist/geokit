@@ -2,6 +2,9 @@ use crate::quantity::angle::Angle;
 use approx::AbsDiffEq;
 use derive_more::derive::Display;
 
+pub mod cartesian;
+pub mod geodetic;
+
 /// An azimuth direction **in (-pi..pi] radians**, positive **clockwise** from North.
 #[derive(Debug, Copy, Clone, PartialEq, Default, Display)]
 #[display("{}", self.0.to_dms())]
@@ -68,5 +71,3 @@ impl AbsDiffEq for Azimuth {
         self.0.abs_diff_eq(&other.0, epsilon)
     }
 }
-
-pub mod geodetic;

@@ -4,17 +4,15 @@
 
 use smol_str::SmolStr;
 
-use crate::cs::geodetic::{Lat, Lon};
-use crate::quantity::angle::units::{AngleUnit, RAD};
-use crate::quantity::length::units::{LengthUnit, M};
-use crate::quantity::length::Length;
+use crate::cs::cartesian::{GeocentricAxes, ProjectedAxes};
+use crate::cs::geodetic::GeodeticAxes;
+use crate::operation::conversion::projection::ProjectionSpec;
+use crate::quantity::angle::units::RAD;
+use crate::quantity::length::units::M;
 use crate::{
-    geodesy::{Ellipsoid, GeodeticDatum},
+    geodesy::GeodeticDatum,
     operation::{
-        conversion::{
-            projection::cyl::{Mercator, TransverseMercator, WebMercator},
-            GeogToGeoc, Normalization,
-        },
+        conversion::{GeogToGeoc, Normalization},
         Inv, Operation,
     },
 };
@@ -162,234 +160,11 @@ impl Crs {
     }
 }
 
-/// The [GeocentricAxes] enum defines the *coordinates system* part of [Geocentric] CRS.
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub enum GeocentricAxes {
-    /// Coordinates are x, y, and z in meters.
-    XYZ,
-}
-
-/// A [`GeodeticAxes`] value defines the *coordinates system* part of a [`GeodeticCrs`], that is:
-/// - the ordering and direction of the axes,
-/// - the angle unit used for longitude and latitude as a number of radians per unit.
-/// - the length unit used for the ellipsoidal height as a number of meters per unit.
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub enum GeodeticAxes {
-    /// Coordinates are given in the following order:
-    /// - longitude positive east of prime meridian,
-    /// - latitude positive north of equatorial plane,
-    /// - ellipsoidal height positive upward.
-    EastNorthUp {
-        /// The angle unit used for longitude and latitude, eg
-        /// `DEG` or `GRAD`
-        angle_unit: AngleUnit,
-        /// The length unit used for ellipsoidal height, eg
-        /// 'M' or 'US_FOOT'
-        height_unit: LengthUnit,
-    },
-    /// Coordinates are given in the following order:
-    /// - latitude positive north of equatorial plane,
-    /// - longitude positive east of prime meridian,
-    /// - ellipsoidal height positive upward.
-    NorthEastUp {
-        /// The angle unit used for longitude and latitude, eg
-        /// `DEG` or `GRAD`
-        angle_unit: AngleUnit,
-        /// The length unit used for ellipsoidal height, eg
-        /// 'M' or 'US_FOOT'
-        height_unit: LengthUnit,
-    },
-    /// Coordinates are, in the given order:
-    /// - longitude positive east of prime meridian,
-    /// - latitude positive north of equatorial plane.
-    EastNorth {
-        /// The angle unit used for longitude and latitude, eg
-        /// `DEG` or `GRAD`
-        angle_unit: AngleUnit,
-    },
-    /// Coordinates are, in the given order:
-    /// - latitude positive north of equatorial plane,
-    /// - longitude positive east of prime meridian.
-    NorthEast {
-        /// The angle unit used for longitude and latitude, eg
-        /// `DEG` or `GRAD`
-        angle_unit: AngleUnit,
-    },
-    NorthWest {
-        /// The angle unit used for longitude and latitude, eg
-        /// `DEG` or `GRAD`
-        angle_unit: AngleUnit,
-    },
-}
-
-impl GeodeticAxes {
-    /// Return the dimension (2D or 3D) of the coordinate system.
-    pub fn dim(&self) -> usize {
-        match self {
-            GeodeticAxes::EastNorthUp {
-                angle_unit: _,
-                height_unit: _,
-            }
-            | GeodeticAxes::NorthEastUp {
-                angle_unit: _,
-                height_unit: _,
-            } => 3,
-            GeodeticAxes::EastNorth { angle_unit: _ }
-            | GeodeticAxes::NorthEast { angle_unit: _ }
-            | GeodeticAxes::NorthWest { angle_unit: _ } => 2,
-        }
-    }
-}
-
-impl Default for GeodeticAxes {
-    /// Return the [`GeodeticAxes`] used in **normalized geodetic coordinates**.
-    fn default() -> Self {
-        Self::EastNorthUp {
-            angle_unit: RAD,
-            height_unit: M,
-        }
-    }
-}
-
-/// A [ProjectedAxes] value defines the **coordinates system** part of a [Crs::Projected] CRS.
-/// That is:
-/// - the ordering and direction of the axes,
-/// - the horizontal length unit used for easting and northing,
-/// - the height length unit used for the ellipsoidal height.
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub enum ProjectedAxes {
-    /// The axes for a 3D projected Crs. Coordinates are, in order:
-    /// - easting positive eastward,
-    /// - northing positive northward,
-    /// - ellipsoidal height positive up.
-    EastNorthUp {
-        /// the length unit for easting and northing, eg
-        /// `M` or `US_FT`
-        horiz_unit: LengthUnit,
-        /// the length unit for easting and northing, eg
-        /// `M` or `US_FT`
-        height_unit: LengthUnit,
-    },
-    /// The axes for a 2D projected Crs. Coordinates are, in order:
-    /// - easting positive eastward,
-    /// - northing positive northward,
-    EastNorth {
-        /// the length unit for easting and northing, eg
-        /// `M` or `US_FT`
-        horiz_unit: LengthUnit,
-    },
-}
-
-impl ProjectedAxes {
-    pub fn dim(&self) -> usize {
-        match self {
-            ProjectedAxes::EastNorthUp {
-                horiz_unit: _,
-                height_unit: _,
-            } => 3,
-            ProjectedAxes::EastNorth { horiz_unit: _ } => 2,
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub enum ProjectionSpec {
-    Mercator1SP {
-        lon0: Lon,
-        k0: f64,
-        false_easting: f64,
-        false_northing: f64,
-    },
-    Mercator2SP {
-        lon0: Lon,
-        lat0: Lat,
-        false_easting: f64,
-        false_northing: f64,
-    },
-    UTMNorth {
-        zone: u8,
-    },
-    UTMSouth {
-        zone: u8,
-    },
-    TransverseMercator {
-        lon0: Lon,
-        lat0: Lat,
-        k0: f64,
-        false_easting: Length,
-        false_northing: Length,
-    },
-    WebMercator {
-        lon0: Lon,
-        lat0: Lat,
-        false_easting: f64,
-        false_northing: f64,
-    },
-}
-
-impl ProjectionSpec {
-    pub fn projection(&self, ellipsoid: &Ellipsoid) -> Box<dyn Operation> {
-        match *self {
-            Self::Mercator1SP {
-                lon0,
-                k0,
-                false_easting,
-                false_northing,
-            } => {
-                Mercator::new_1_sp(ellipsoid, lon0.rad(), k0, false_easting, false_northing).boxed()
-            }
-            Self::Mercator2SP {
-                lon0,
-                lat0,
-                false_easting,
-                false_northing,
-            } => Mercator::new_2_sp(
-                ellipsoid,
-                lon0.rad(),
-                lat0.rad(),
-                false_easting,
-                false_northing,
-            )
-            .boxed(),
-            Self::UTMNorth { zone } => TransverseMercator::new_utm_north(ellipsoid, zone).boxed(),
-            Self::UTMSouth { zone } => TransverseMercator::new_utm_south(ellipsoid, zone).boxed(),
-            Self::TransverseMercator {
-                lon0,
-                lat0,
-                k0,
-                false_easting,
-                false_northing,
-            } => TransverseMercator::new(
-                ellipsoid,
-                lon0.rad(),
-                lat0.rad(),
-                k0,
-                false_easting.m(),
-                false_northing.m(),
-            )
-            .boxed(),
-            Self::WebMercator {
-                lon0,
-                lat0,
-                false_easting,
-                false_northing,
-            } => WebMercator::new(
-                ellipsoid,
-                lon0.rad(),
-                lat0.rad(),
-                false_easting,
-                false_northing,
-            )
-            .boxed(),
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use crate::geodesy::*;
     use crate::quantity::angle::units::RAD;
-    use crate::quantity::length::units::M;
+    use crate::quantity::length::units::{LengthUnit, M};
 
     use super::*;
 

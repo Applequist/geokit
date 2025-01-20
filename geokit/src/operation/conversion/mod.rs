@@ -1,5 +1,8 @@
 use crate::{
-    crs::{GeocentricAxes, GeodeticAxes, ProjectedAxes},
+    cs::{
+        cartesian::{GeocentricAxes, ProjectedAxes},
+        geodetic::GeodeticAxes,
+    },
     geodesy::{Ellipsoid, GeodeticDatum, PrimeMeridian},
 };
 
@@ -239,7 +242,7 @@ pub mod projection;
 
 #[cfg(test)]
 mod tests {
-    use crate::crs::GeodeticAxes;
+    use crate::cs::geodetic::GeodeticAxes;
     use crate::operation::conversion::Normalization;
     use crate::operation::Operation;
     use crate::quantity::angle::units::DEG;

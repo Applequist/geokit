@@ -1,9 +1,11 @@
 use approx::assert_abs_diff_eq;
-use geokit::cs::geodetic::{Lat, Lon};
+use geokit::crs::Crs;
+use geokit::cs::cartesian::ProjectedAxes;
+use geokit::cs::geodetic::{GeodeticAxes, Lat, Lon};
+use geokit::operation::conversion::projection::ProjectionSpec;
 use geokit::quantity::angle::units::DEG;
 use geokit::quantity::length::units::M;
 use geokit::{
-    crs::{Crs::Geographic, Crs::Projected, GeodeticAxes, ProjectedAxes, ProjectionSpec},
     geodesy::{ellipsoid, prime_meridian, GeodeticDatum},
     operation::{self, Operation},
     providers::{DefaultTransformationProvider, TransformationProvider},
@@ -41,7 +43,7 @@ fn llh_to_utm0() -> operation::Result<()> {
         count_llh, count_enh
     );
 
-    let src = Geographic {
+    let src = Crs::Geographic {
         id: "GRS80 (Geographic 3D)".into(),
         datum: GeodeticDatum::new(
             "n/a",
@@ -56,7 +58,7 @@ fn llh_to_utm0() -> operation::Result<()> {
     };
     println!("Source CRS: {:#?}", src);
 
-    let dst = Projected {
+    let dst = Crs::Projected {
         id: "GRS80 + UTM 0".into(),
         datum: GeodeticDatum::new(
             "n/a",

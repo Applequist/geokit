@@ -1,8 +1,10 @@
-use geokit::cs::geodetic::{Lat, Lon};
+use geokit::crs::Crs::{Geographic, Projected};
+use geokit::cs::cartesian::ProjectedAxes;
+use geokit::cs::geodetic::{GeodeticAxes, Lat, Lon};
+use geokit::operation::conversion::projection::ProjectionSpec;
 use geokit::quantity::angle::units::DEG;
 use geokit::quantity::length::units::M;
 use geokit::{
-    crs::{Crs::Geographic, Crs::Projected, GeodeticAxes, ProjectedAxes, ProjectionSpec},
     geodesy::{ellipsoid, prime_meridian, GeodeticDatum},
     operation::Operation,
     providers::{DefaultTransformationProvider, TransformationProvider},
@@ -34,8 +36,8 @@ fn main() {
         ),
         axes: ProjectedAxes::EastNorth { horiz_unit: M },
         projection: ProjectionSpec::TransverseMercator {
-            lon0: Lon::new(0.0 * DEG),
-            lat0: Lat::new(0.0 * DEG),
+            lon0: Lon::zero(),
+            lat0: Lat::zero(),
             k0: 0.9996,
             false_easting: 500_000.0 * M,
             false_northing: 0.0 * M,

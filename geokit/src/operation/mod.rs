@@ -5,7 +5,6 @@ use core::f64;
 use std::fmt::Debug;
 
 use dyn_clone::DynClone;
-use nalgebra::min;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -162,7 +161,8 @@ impl Identity {
     }
 
     fn copy(from: &[f64], to: &mut [f64]) {
-        let num_items = min(from.len(), to.len());
+        //let num_items = min(from.len(), to.len());
+        let num_items = from.len().min(to.len());
         to[0..num_items].copy_from_slice(&from[0..num_items]);
         if to.len() > num_items {
             to[num_items..].fill(0.);

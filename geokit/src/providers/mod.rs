@@ -1,4 +1,6 @@
-use crate::crs::{GeocentricAxes, GeodeticAxes, ProjectedAxes, ProjectionSpec};
+use crate::cs::cartesian::{GeocentricAxes, ProjectedAxes};
+use crate::cs::geodetic::GeodeticAxes;
+use crate::operation::conversion::projection::ProjectionSpec;
 use crate::operation::conversion::{GeogToGeoc, Normalization};
 use crate::operation::{identity, Inv};
 use crate::{
