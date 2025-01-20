@@ -156,7 +156,7 @@ mod tests {
 
     #[test]
     fn geocentric_translation_bwd() {
-        let t = GeocentricTranslation::new(84.87 * M, 96.49 * M, 116.95 * M);
+        let t = GeocentricTranslation::new(84.87, 96.49, 116.95);
         let xs = [3_771_793.97, 140_253.34, 5_124_304.35];
         let mut xyz = [0.; 3];
         let xt = [3_771_878.84, 140_349.83, 5_124_421.30];
@@ -171,7 +171,7 @@ mod tests {
         let t = Helmert7Params::new(
             RotationConvention::PositionVector,
             [0.0, 0.0, 2.685868e-6],
-            [0.0 * M, 0.0 * M, 4.5 * M],
+            [0.0, 0.0, 4.5],
             PPM(0.219),
         );
         let xs = [3_657_660.66, 255_768.55, 5_201_382.11];
@@ -188,7 +188,7 @@ mod tests {
         let t = Helmert7Params::new(
             RotationConvention::PositionVector,
             [0.0, 0.0, 2.685868e-6],
-            [0.0 * M, 0.0 * M, 4.5 * M],
+            [0.0, 0.0, 4.5],
             PPM(0.219),
         );
         let xs = [3_657_660.66, 255_768.55, 5_201_382.11];

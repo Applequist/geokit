@@ -28,9 +28,9 @@ fn main() {
             Some((
                 "WGS84",
                 DatumTransformation::GeocentricTranslation {
-                    tx: -199.87 * M,
-                    ty: 74.79 * M,
-                    tz: 246.64 * M,
+                    tx: (-199.87 * M).m(),
+                    ty: (74.79 * M).m(),
+                    tz: (246.64 * M).m(),
                 },
             )),
         ),
@@ -51,11 +51,11 @@ fn main() {
         ),
         axes: ProjectedAxes::EastNorth { horiz_unit: M },
         projection: ProjectionSpec::TransverseMercator {
-            lon0: Lon::new(0.0 * Deg),
-            lat0: Lat::new(0.0 * Deg),
+            lon0: Lon::zero(),
+            lat0: Lat::zero(),
             k0: 0.9996,
-            false_easting: 500_000.0,
-            false_northing: 0.0,
+            false_easting: 500_000.0 * M,
+            false_northing: 0.0 * M,
         },
     };
     println!("Destination CRS: {:#?}", proj);

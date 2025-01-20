@@ -2,6 +2,8 @@ use std::fmt::Debug;
 
 use smol_str::SmolStr;
 
+use crate::quantity::length::Length;
+
 /// An `Ellipsoid` is a mathematical surface defined by rotating an ellipse around
 /// it semi-minor axis.
 /// It is used in a [GeodeticDatum] as a model of the Earth surface.
@@ -44,13 +46,14 @@ impl Ellipsoid {
     /// # Panics
     ///
     /// if `a` is negative or zero or if `invf` is not greater than 1.
-    pub fn from_ainvf(name: &str, a: f64, invf: f64) -> Self {
-        assert!(a > 0., "Expected semi_major_axis ({} m) > 0.", a);
+    pub fn from_ainvf(name: &str, a: Length, invf: f64) -> Self {
+        let a_m = a.m();
+        assert!(a.m() > 0., "Expected semi_major_axis ({}) > 0.", a);
         assert!(invf > 1., "Expected invf ({}) > 1.", invf);
         Self {
             name: SmolStr::new(name),
-            a,
-            b: a * (1. - 1. / invf),
+            a: a_m,
+            b: a_m * (1. - 1. / invf),
             invf,
         }
     }
@@ -268,9 +271,10 @@ pub mod consts {
 
 #[cfg(test)]
 mod tests {
-    use approx::assert_abs_diff_eq;
-    use crate::geodesy::Ellipsoid;
     use crate::geodesy::ellipsoid::consts;
+    use crate::geodesy::Ellipsoid;
+    use crate::quantity::length::units::M;
+    use approx::assert_abs_diff_eq;
 
     #[test]
     #[should_panic(expected = "Expected semi_minor_axis (-0.5 m) > 0")]
@@ -293,19 +297,19 @@ mod tests {
     #[test]
     #[should_panic(expected = "Expected semi_major_axis (-0.1 m) > 0")]
     fn negative_a() {
-        let _ellipsoid = Ellipsoid::from_ainvf("Negative a", -0.1, 297.0);
+        let _ellipsoid = Ellipsoid::from_ainvf("Negative a", -0.1 * M, 297.0);
     }
 
     #[test]
     #[should_panic(expected = "Expected invf (0.5) > 1")]
     fn small_invf() {
-        let _ellipsoid = Ellipsoid::from_ainvf("Small invf", 1., 0.5);
+        let _ellipsoid = Ellipsoid::from_ainvf("Small invf", 1. * M, 0.5);
     }
 
     #[test]
     #[should_panic(expected = "Expected invf (1) > 1")]
     fn unit_invf() {
-        let _ellipsoid = Ellipsoid::from_ainvf("invf = 1", 1., 1.);
+        let _ellipsoid = Ellipsoid::from_ainvf("invf = 1", 1. * M, 1.);
     }
 
     #[test]
@@ -353,7 +357,7 @@ mod tests {
         assert!(!e.eq(&e2));
         assert!(e.ne(&e2));
 
-        let e3 = Ellipsoid::from_ainvf("E3", 1., 10.0);
+        let e3 = Ellipsoid::from_ainvf("E3", 1. * M, 10.0);
         assert!(!e.eq(&e3));
         assert!(e.ne(&e3));
     }

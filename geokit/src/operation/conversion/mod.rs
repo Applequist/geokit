@@ -39,7 +39,7 @@ impl From<GeodeticAxes> for Normalization {
             } => vec![
                 (0, angle_unit.rad_per_unit()),
                 (1, angle_unit.rad_per_unit()),
-                (2, height_unit),
+                (2, height_unit.m_per_unit()),
             ],
             GeodeticAxes::EastNorth { angle_unit } => {
                 vec![
@@ -53,7 +53,7 @@ impl From<GeodeticAxes> for Normalization {
             } => vec![
                 (1, angle_unit.rad_per_unit()),
                 (0, angle_unit.rad_per_unit()),
-                (2, height_unit),
+                (2, height_unit.m_per_unit()),
             ],
             GeodeticAxes::NorthEast { angle_unit } => {
                 vec![
@@ -78,9 +78,13 @@ impl From<ProjectedAxes> for Normalization {
             ProjectedAxes::EastNorthUp {
                 horiz_unit,
                 height_unit,
-            } => vec![(0, horiz_unit), (1, horiz_unit), (2, height_unit)],
+            } => vec![
+                (0, horiz_unit.m_per_unit()),
+                (1, horiz_unit.m_per_unit()),
+                (2, height_unit.m_per_unit()),
+            ],
             ProjectedAxes::EastNorth { horiz_unit } => {
-                vec![(0, horiz_unit), (1, horiz_unit)]
+                vec![(0, horiz_unit.m_per_unit()), (1, horiz_unit.m_per_unit())]
             }
         };
         Normalization(to_ord)

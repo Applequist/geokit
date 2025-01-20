@@ -6,7 +6,8 @@ use smol_str::SmolStr;
 
 use crate::cs::geodetic::{Lat, Lon};
 use crate::quantity::angle::units::{AngleUnit, Rad};
-use crate::quantity::length::units::M;
+use crate::quantity::length::units::{LengthUnit, M};
+use crate::quantity::length::Length;
 use crate::{
     geodesy::{Ellipsoid, GeodeticDatum},
     operation::{
@@ -184,7 +185,7 @@ pub enum GeodeticAxes {
         angle_unit: AngleUnit,
         /// The length unit used for ellipsoidal height, eg
         /// 'M' or 'US_FOOT'
-        height_unit: f64,
+        height_unit: LengthUnit,
     },
     /// Coordinates are given in the following order:
     /// - latitude positive north of equatorial plane,
@@ -196,7 +197,7 @@ pub enum GeodeticAxes {
         angle_unit: AngleUnit,
         /// The length unit used for ellipsoidal height, eg
         /// 'M' or 'US_FOOT'
-        height_unit: f64,
+        height_unit: LengthUnit,
     },
     /// Coordinates are, in the given order:
     /// - longitude positive east of prime meridian,
@@ -264,10 +265,10 @@ pub enum ProjectedAxes {
     EastNorthUp {
         /// the length unit for easting and northing, eg
         /// `M` or `US_FT`
-        horiz_unit: f64,
+        horiz_unit: LengthUnit,
         /// the length unit for easting and northing, eg
         /// `M` or `US_FT`
-        height_unit: f64,
+        height_unit: LengthUnit,
     },
     /// The axes for a 2D projected Crs. Coordinates are, in order:
     /// - easting positive eastward,
@@ -275,7 +276,7 @@ pub enum ProjectedAxes {
     EastNorth {
         /// the length unit for easting and northing, eg
         /// `M` or `US_FT`
-        horiz_unit: f64,
+        horiz_unit: LengthUnit,
     },
 }
 
@@ -315,8 +316,8 @@ pub enum ProjectionSpec {
         lon0: Lon,
         lat0: Lat,
         k0: f64,
-        false_easting: f64,
-        false_northing: f64,
+        false_easting: Length,
+        false_northing: Length,
     },
     WebMercator {
         lon0: Lon,
@@ -363,8 +364,8 @@ impl ProjectionSpec {
                 lon0.rad(),
                 lat0.rad(),
                 k0,
-                false_easting,
-                false_northing,
+                false_easting.m(),
+                false_northing.m(),
             )
             .boxed(),
             Self::WebMercator {
@@ -562,7 +563,7 @@ mod tests {
             ),
             axes: GeodeticAxes::NorthEastUp {
                 angle_unit: Rad::UNIT,
-                height_unit: 0.29 * M, // a length unit which 29 cm per unit.
+                height_unit: LengthUnit(29.0, 100.0), // a length unit which 29 cm per unit.
             },
         };
         assert!(!geod3d.eq(&different_height_unit));
