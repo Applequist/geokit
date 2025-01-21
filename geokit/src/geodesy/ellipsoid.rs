@@ -2,7 +2,7 @@ use std::fmt::Debug;
 
 use smol_str::SmolStr;
 
-use crate::quantity::length::Length;
+use crate::quantities::length::Length;
 
 /// An `Ellipsoid` is a mathematical surface defined by rotating an ellipse around
 /// it semi-minor axis.
@@ -279,7 +279,7 @@ pub mod consts {
 mod tests {
     use crate::geodesy::ellipsoid::consts;
     use crate::geodesy::Ellipsoid;
-    use crate::quantity::length::units::M;
+    use crate::units::length::M;
     use approx::assert_abs_diff_eq;
 
     #[test]

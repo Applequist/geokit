@@ -1,10 +1,10 @@
+use crate::cs::azimuth::Azimuth;
 use crate::cs::geodetic::{Lat, Lon};
-use crate::cs::Azimuth;
 use crate::geodesy::geodesics::{Geodesic, GeodesicSolver};
 use crate::geodesy::Ellipsoid;
 use crate::math::complex::Complex;
 use crate::math::polynomial::Polynomial;
-use crate::quantity::angle::units::RAD;
+use crate::units::angle::RAD;
 use std::f64::consts::{FRAC_PI_2, PI};
 
 /// Solve direct and inverse geodesic problems on an ellipsoid using algorithms
@@ -391,8 +391,8 @@ impl<'e> GeodesicSolver for KarneyGeodesicSolver<'e> {
 
 #[cfg(test)]
 mod tests {
+    use crate::cs::azimuth::Azimuth;
     use crate::cs::geodetic::{Lat, Lon};
-    use crate::cs::Azimuth;
     use crate::geodesy::ellipsoid::consts;
     use crate::geodesy::geodesics::karney::KarneyGeodesicSolver;
     use crate::geodesy::geodesics::tests::{
@@ -400,7 +400,7 @@ mod tests {
         vincenty_lines,
     };
     use crate::geodesy::geodesics::GeodesicSolver;
-    use crate::quantity::angle::units::{DEG, RAD};
+    use crate::units::angle::{DEG, RAD};
     use approx::assert_abs_diff_eq;
     use std::f64::consts::{FRAC_PI_2, PI};
 

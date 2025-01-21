@@ -4,8 +4,8 @@ use geokit::cs::geodetic::{GeodeticAxes, Lat, Lon};
 use geokit::geodesy::geodetic_datum::DatumTransformation;
 use geokit::geodesy::{ellipsoid, prime_meridian, Ellipsoid, GeodeticDatum, PrimeMeridian};
 use geokit::operation::conversion::projection::ProjectionSpec;
-use geokit::quantity::angle::units::DEG;
-use geokit::quantity::length::units::M;
+use geokit::units::angle::DEG;
+use geokit::units::length::M;
 
 fn main() {
     let geoc = Crs::Geocentric {

@@ -1,10 +1,10 @@
 use nalgebra::Matrix3;
 use nalgebra::Vector3;
 
+use crate::cs::s1::Angle;
 use crate::operation::{self, Operation};
-use crate::quantity::angle::Angle;
-use crate::quantity::length::Length;
-use crate::quantity::scale::PPM;
+use crate::quantities::length::Length;
+use crate::quantities::scale::PPM;
 
 /// The [GeocentricTranslation] transforms **normalized geocentric coordinates** between 2 [GeocentricCrs] whose
 /// [GeodeticDatum] are related by a simple translation of the origin, such that
@@ -137,9 +137,9 @@ mod tests {
     use approx::assert_relative_eq;
 
     use crate::operation::Operation;
-    use crate::quantity::angle::units::RAD;
-    use crate::quantity::length::units::M;
-    use crate::quantity::scale::PPM;
+    use crate::quantities::scale::PPM;
+    use crate::units::angle::RAD;
+    use crate::units::length::M;
 
     use super::GeocentricTranslation;
     use super::{Helmert7Params, RotationConvention};

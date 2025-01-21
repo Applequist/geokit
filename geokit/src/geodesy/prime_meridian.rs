@@ -1,7 +1,7 @@
 use derive_more::derive::Display;
 use smol_str::SmolStr;
 
-use crate::{cs::geodetic::Lon, quantity::angle::units::RAD};
+use crate::{cs::geodetic::Lon, units::angle::RAD};
 
 /// A `PrimeMeridian` defines the origin of longitudes.
 /// It is defined by its longitude with respect to the Greenwich meridian,
@@ -93,7 +93,7 @@ mod tests {
     use crate::{
         cs::geodetic::Lon,
         geodesy::prime_meridian::consts::PARIS,
-        quantity::angle::units::{DEG, RAD},
+        units::angle::{DEG, RAD},
     };
 
     use super::PrimeMeridian;

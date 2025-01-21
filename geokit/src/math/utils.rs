@@ -1,15 +1,5 @@
-/// Wrap 'val' into [-r.abs(), r.abs()]
-pub fn wrap(val: f64, r: f64) -> f64 {
-    debug_assert!(r != 0.0, "Expected r != 0. Got {}", r);
-    let mut x = val;
-    let r_abs = r.abs();
-    while x > r_abs {
-        x -= 2. * r_abs;
-    }
-    while x < -r_abs {
-        x += 2. * r_abs;
-    }
-    x
+pub fn remainder(val: f64, r: f64) -> f64 {
+    val - (val / r).round_ties_even() * r
 }
 
 pub fn iter_fn<const D: usize>(
@@ -34,10 +24,10 @@ pub fn iter_fn<const D: usize>(
 mod test {
     #[test]
     fn wrap() {
-        use super::wrap;
-        assert_eq!(wrap(-180.0, 180.0), -180.0);
-        assert_eq!(wrap(0.0, 180.0), 0.0);
-        assert_eq!(wrap(180.0, 180.0), 180.0);
-        assert_eq!(wrap(360.0, 180.0), 0.0);
+        use super::remainder;
+        assert_eq!(remainder(-180.0, 360.0), -180.0);
+        assert_eq!(remainder(0.0, 360.0), 0.0);
+        assert_eq!(remainder(180.0, 360.0), 180.0);
+        assert_eq!(remainder(360.0, 360.0), 0.0);
     }
 }

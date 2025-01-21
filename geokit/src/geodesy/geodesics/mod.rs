@@ -1,15 +1,27 @@
 use std::fmt::{Display, Formatter};
 
+use crate::cs::azimuth::Azimuth;
 use crate::cs::geodetic::{Lat, Lon};
-use crate::cs::Azimuth;
 
-#[derive(Copy, Clone, Debug, PartialEq, Default)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Geodesic {
     pub p1: (Lon, Lat),
     pub alpha1: Azimuth,
     pub p2: (Lon, Lat),
     pub alpha2: Azimuth,
     pub s: f64,
+}
+
+impl Default for Geodesic {
+    fn default() -> Self {
+        Geodesic {
+            p1: (Lon::zero(), Lat::zero()),
+            alpha1: Azimuth::NORTH,
+            p2: (Lon::zero(), Lat::zero()),
+            alpha2: Azimuth::NORTH,
+            s: 0.0,
+        }
+    }
 }
 
 impl Display for Geodesic {
@@ -62,12 +74,12 @@ pub mod vincenty;
 #[cfg(test)]
 mod tests {
 
+    use crate::cs::azimuth::Azimuth;
     use crate::cs::geodetic::{Lat, Lon};
-    use crate::cs::Azimuth;
     use crate::geodesy::ellipsoid::consts;
     use crate::geodesy::geodesics::Geodesic;
     use crate::geodesy::Ellipsoid;
-    use crate::quantity::angle::units::DEG;
+    use crate::units::angle::DEG;
 
     /// errors in the 5th decimal of a second
     pub struct DirectDeltas {

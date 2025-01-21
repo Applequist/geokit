@@ -1,4 +1,4 @@
-use crate::quantity::length::units::LengthUnit;
+use crate::units::length::LengthUnit;
 
 /// The [GeocentricAxes] enum defines the *coordinates system* part of [GeocentricCrs].
 #[derive(Debug, Clone, Copy, PartialEq)]

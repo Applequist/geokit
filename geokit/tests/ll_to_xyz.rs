@@ -2,7 +2,7 @@ use approx::assert_abs_diff_eq;
 use geokit::crs::Crs;
 use geokit::cs::cartesian::GeocentricAxes;
 use geokit::cs::geodetic::GeodeticAxes;
-use geokit::quantity::angle::units::DEG;
+use geokit::units::angle::DEG;
 use geokit::{
     geodesy::geodetic_datum,
     operation::{self, Operation},

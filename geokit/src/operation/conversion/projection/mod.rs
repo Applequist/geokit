@@ -4,7 +4,7 @@ use crate::{
     cs::geodetic::{Lat, Lon},
     geodesy::Ellipsoid,
     operation::Operation,
-    quantity::length::Length,
+    quantities::length::Length,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq)]

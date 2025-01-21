@@ -3,8 +3,8 @@ use geokit::crs::Crs;
 use geokit::cs::cartesian::ProjectedAxes;
 use geokit::cs::geodetic::{GeodeticAxes, Lat, Lon};
 use geokit::operation::conversion::projection::ProjectionSpec;
-use geokit::quantity::angle::units::DEG;
-use geokit::quantity::length::units::M;
+use geokit::units::angle::DEG;
+use geokit::units::length::M;
 use geokit::{
     geodesy::{ellipsoid, prime_meridian, GeodeticDatum},
     operation::{self, Operation},

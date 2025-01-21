@@ -11,4 +11,5 @@ pub mod cs;
 pub mod geodesy;
 pub mod operation;
 pub mod providers;
-pub mod quantity;
+pub mod quantities;
+pub mod units;

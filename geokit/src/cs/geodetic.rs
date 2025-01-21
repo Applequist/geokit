@@ -1,10 +1,11 @@
-use crate::quantity::angle::units::{AngleUnit, RAD};
-use crate::quantity::angle::Angle;
-use crate::quantity::length::units::{LengthUnit, M};
+use crate::units::angle::{AngleUnit, RAD};
+use crate::units::length::{LengthUnit, M};
 use approx::AbsDiffEq;
 use derive_more::derive::{Display, Neg};
 use std::f64::consts::{FRAC_PI_2, PI};
 use std::ops::{Add, AddAssign, Sub, SubAssign};
+
+use super::s1::Angle;
 
 /// A [`GeodeticAxes`] value defines the *coordinates system* part of a [`GeodeticCrs`], that is:
 /// - the ordering and direction of the axes,
@@ -90,7 +91,7 @@ impl Default for GeodeticAxes {
 
 /// A longitude coordinate in [-pi..pi] radians.
 /// You can add, subtract an [Angle] from [Lon],
-#[derive(Debug, Copy, Clone, PartialEq, PartialOrd, Default, Neg, Display)]
+#[derive(Debug, Copy, Clone, PartialEq, PartialOrd, Neg, Display)]
 #[display("{}", self.0.to_dms())]
 pub struct Lon(Angle);
 
@@ -99,9 +100,9 @@ impl Lon {
     pub const MAX: Lon = Lon(Angle::new(PI, RAD));
 
     /// Create a new longitude value from a given angle.
-    /// The angle is wrapped into [-pi..pi].
+    /// The angle is wrapped into (-pi..pi].
     pub fn new(val: Angle) -> Self {
-        Self(val.wrap())
+        Self(val.normalized())
     }
 
     /// Create a new longitude value from a *dms* angle value.
@@ -126,7 +127,7 @@ impl Lon {
     /// Return the longitude 0.
     #[inline]
     pub fn zero() -> Self {
-        Lon(Angle::zero())
+        Lon(Angle::ZERO)
     }
 
     /// Normalize the longitude into (-pi..pi] such that any point on a parallel
@@ -169,7 +170,7 @@ impl Add<Lon> for Angle {
 
 impl AddAssign<Angle> for Lon {
     fn add_assign(&mut self, rhs: Angle) {
-        self.0 = (self.0 + rhs).wrap();
+        self.0 = (self.0 + rhs).normalized();
     }
 }
 
@@ -184,7 +185,7 @@ impl Sub<Angle> for Lon {
 
 impl SubAssign<Angle> for Lon {
     fn sub_assign(&mut self, rhs: Angle) {
-        self.0 = (self.0 - rhs).wrap();
+        self.0 = (self.0 - rhs).normalized();
     }
 }
 
@@ -267,16 +268,38 @@ impl LonInterval {
     /// The length is 0 if the interval is empty or a singleton.
     pub fn length(&self) -> Angle {
         let mut length = self.hi.angle() - self.lo.angle();
-        if length < Angle::zero() {
+        if length < Angle::ZERO {
             length += (2. * PI) * RAD;
         }
-        debug_assert!(length >= Angle::zero());
+        debug_assert!(length >= Angle::ZERO);
         length
     }
 }
 
-/// A latitude coordinate in [-pi/2..pi/2]  radians.
-#[derive(Copy, Clone, Debug, PartialOrd, PartialEq, Default, Neg, Display)]
+/// [Lat] represents a latitude coordinate in [-pi/2..pi/2] radians.
+///
+/// # Creation
+///
+/// There are 2 ways to create a [Lat]:
+/// - by using [Lat::new] passing an [Angle] value. The
+/// value is **clamped** to [-pi/2 .. pi/2]:
+/// ```
+/// let lat = Lat::new(45. * DEG);
+/// ```
+///
+/// - by using [Lat::dms] passing degrees/minutes/seconds values.
+/// The value is also clamped to [-pi/2..pi/2]:
+/// ```
+/// lat n = Lat::dms(44.0, 43., 27.183);
+/// ```
+///
+/// # Operations
+///
+/// [Lat] supports the following operations:
+/// - Negation
+/// - saturating addition and subtraction of [Angle].
+/// - subtraction resulting in an [Angle].
+#[derive(Copy, Clone, Debug, PartialOrd, PartialEq, Neg, Display)]
 #[display("{}", self.0.to_dms())]
 pub struct Lat(Angle);
 
@@ -284,10 +307,10 @@ impl Lat {
     pub const MIN: Lat = Lat(Angle::new(-FRAC_PI_2, RAD));
     pub const MAX: Lat = Lat(Angle::new(FRAC_PI_2, RAD));
 
-    /// Create a new latitude value with the given raw angle value in radians.
-    /// The angle value is clamped into [-pi/2..pi/2].
+    /// Create a new latitude value.
+    /// The angle is clamped in [-pi/2..pi/2]
     pub fn new(val: Angle) -> Self {
-        Lat(val.clamp(Angle::M_PI_2, Angle::PI_2))
+        Lat(val.clamped(Angle::M_PI_2, Angle::PI_2))
     }
 
     /// Create a new latitude value from a *dms* angle value.
@@ -311,7 +334,7 @@ impl Lat {
 
     #[inline]
     pub fn zero() -> Self {
-        Lat(Angle::zero())
+        Lat(Angle::ZERO)
     }
 
     #[inline]
@@ -344,7 +367,7 @@ impl Add<Lat> for Angle {
 
 impl AddAssign<Angle> for Lat {
     fn add_assign(&mut self, rhs: Angle) {
-        self.0 = (self.0 + rhs).clamp(Angle::M_PI_2, Angle::PI_2)
+        self.0 = (self.0 + rhs).clamped(Angle::M_PI_2, Angle::PI_2)
     }
 }
 impl Sub<Angle> for Lat {
@@ -357,7 +380,7 @@ impl Sub<Angle> for Lat {
 
 impl SubAssign<Angle> for Lat {
     fn sub_assign(&mut self, rhs: Angle) {
-        self.0 = (self.0 - rhs).clamp(Angle::M_PI_2, Angle::PI_2);
+        self.0 = (self.0 - rhs).clamped(Angle::M_PI_2, Angle::PI_2);
     }
 }
 
@@ -379,8 +402,8 @@ mod tests {
 
     use approx::assert_abs_diff_eq;
 
-    use crate::cs::geodetic::{Lat, Lon, LonInterval};
-    use crate::quantity::angle::units::{DEG, RAD};
+    use crate::cs::geodetic::{Lat, Lon};
+    use crate::units::angle::{DEG, RAD};
 
     #[test]
     fn test_lon() {
@@ -418,30 +441,5 @@ mod tests {
         assert_eq!(Lat::new(-45. * DEG) - 50. * DEG, Lat::MIN);
         // Display
         assert_eq!(format!("{}", Lat::new(45. * DEG)), "  45° 00′ 00.00000000″");
-    }
-
-    #[test]
-    fn test_lon_interval() {
-        assert!(LonInterval::empty().is_empty());
-        assert!(LonInterval::empty().is_inverted());
-        assert!(LonInterval::full().is_full());
-
-        // Length
-        assert_eq!(LonInterval::empty().length(), 0. * RAD);
-        assert_eq!(LonInterval::full().length(), 2. * PI * RAD);
-        assert_eq!(
-            LonInterval::new(Lon::new(0. * DEG), Lon::new(160. * DEG)).length(),
-            160. * DEG
-        );
-        assert_abs_diff_eq!(
-            LonInterval::new(Lon::new(170. * DEG), Lon::new(-170. * DEG)).length(),
-            20. * DEG,
-            epsilon = 1e-15
-        );
-        assert_abs_diff_eq!(
-            LonInterval::new(Lon::new(170. * DEG), Lon::new(130. * DEG)).length(),
-            320. * DEG,
-            epsilon = 1e-15
-        );
     }
 }

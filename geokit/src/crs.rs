@@ -7,8 +7,8 @@ use smol_str::SmolStr;
 use crate::cs::cartesian::{GeocentricAxes, ProjectedAxes};
 use crate::cs::geodetic::GeodeticAxes;
 use crate::operation::conversion::projection::ProjectionSpec;
-use crate::quantity::angle::units::RAD;
-use crate::quantity::length::units::M;
+use crate::units::angle::RAD;
+use crate::units::length::M;
 use crate::{
     geodesy::GeodeticDatum,
     operation::{
@@ -163,8 +163,8 @@ impl Crs {
 #[cfg(test)]
 mod tests {
     use crate::geodesy::*;
-    use crate::quantity::angle::units::RAD;
-    use crate::quantity::length::units::{LengthUnit, M};
+    use crate::units::angle::RAD;
+    use crate::units::length::{LengthUnit, M};
 
     use super::*;
 

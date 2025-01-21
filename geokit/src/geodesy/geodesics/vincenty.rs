@@ -1,10 +1,10 @@
 #![allow(non_snake_case)]
 
+use crate::cs::azimuth::Azimuth;
 use crate::cs::geodetic::{Lat, Lon};
-use crate::cs::Azimuth;
 use crate::geodesy::geodesics::{Geodesic, GeodesicSolver};
 use crate::geodesy::Ellipsoid;
-use crate::quantity::angle::units::RAD;
+use crate::units::angle::RAD;
 
 pub struct VincentyGeodesicSolver<'e> {
     ellipsoid: &'e Ellipsoid,
@@ -232,8 +232,8 @@ impl<'e> GeodesicSolver for VincentyGeodesicSolver<'e> {
 
 #[cfg(test)]
 mod tests {
+    use crate::cs::azimuth::Azimuth;
     use crate::cs::geodetic::{Lat, Lon};
-    use crate::cs::Azimuth;
     use crate::geodesy::ellipsoid::consts;
     use crate::geodesy::geodesics::tests::{
         antipodal_lines, standard_lines, vincenty_direct_deltas, vincenty_inverse_deltas,
@@ -241,7 +241,7 @@ mod tests {
     };
     use crate::geodesy::geodesics::vincenty::VincentyGeodesicSolver;
     use crate::geodesy::geodesics::GeodesicSolver;
-    use crate::quantity::angle::units::{DEG, RAD};
+    use crate::units::angle::{DEG, RAD};
     use approx::assert_abs_diff_eq;
     use std::f64::consts::{FRAC_PI_2, PI};
 
@@ -392,18 +392,18 @@ mod tests {
         let computed = solver
             .solve_direct(
                 (Lon::zero(), Lat::new(-10. * DEG)),
-                Azimuth::zero(),
+                Azimuth::NORTH,
                 2_000_000.0,
             )
             .unwrap();
         assert_abs_diff_eq!(computed.p2.0, Lon::zero(), epsilon = 1e-10);
         assert_abs_diff_eq!(computed.p2.1, Lat::new(8.08583903 * DEG), epsilon = 1e-10);
-        assert_abs_diff_eq!(computed.alpha2, Azimuth::zero(), epsilon = 1e-8);
+        assert_abs_diff_eq!(computed.alpha2, Azimuth::NORTH, epsilon = 1e-8);
 
         let computed = solver
             .solve_direct(
                 (Lon::zero(), Lat::new(80. * DEG)),
-                Azimuth::zero(),
+                Azimuth::NORTH,
                 2_000_000.0,
             )
             .unwrap();

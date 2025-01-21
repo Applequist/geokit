@@ -2,15 +2,15 @@ use std::fmt::Debug;
 
 use smol_str::SmolStr;
 
-use crate::quantity::angle::Angle;
-use crate::quantity::scale::PPM;
+use crate::quantities::length::Length;
+use crate::quantities::scale::PPM;
 use crate::{
+    cs::s1::Angle,
     operation::{
         identity,
         transformation::{GeocentricTranslation, Helmert7Params, RotationConvention},
         Operation,
     },
-    quantity::length::Length,
 };
 
 use super::{Ellipsoid, PrimeMeridian};
@@ -147,11 +147,11 @@ impl PartialEq for GeodeticDatum {
 
 /// Well known datum definition.
 pub mod consts {
-    use crate::quantity::angle::units::RAD;
-    use crate::quantity::angle::Angle;
-    use crate::quantity::length::units::M;
-    use crate::quantity::length::Length;
-    use crate::quantity::scale::PPM;
+    use crate::cs::s1::Angle;
+    use crate::quantities::length::Length;
+    use crate::quantities::scale::PPM;
+    use crate::units::angle::RAD;
+    use crate::units::length::M;
     use crate::{
         geodesy::{ellipsoid, prime_meridian},
         operation::transformation::RotationConvention,
@@ -215,8 +215,8 @@ pub mod consts {
 mod tests {
     use crate::cs::geodetic::Lon;
     use crate::geodesy::{ellipsoid, geodetic_datum, prime_meridian, Ellipsoid, PrimeMeridian};
-    use crate::quantity::angle::units::DEG;
-    use crate::quantity::length::units::M;
+    use crate::units::angle::DEG;
+    use crate::units::length::M;
 
     use super::GeodeticDatum;
 

@@ -245,7 +245,7 @@ mod tests {
     use crate::cs::geodetic::GeodeticAxes;
     use crate::operation::conversion::Normalization;
     use crate::operation::Operation;
-    use crate::quantity::angle::units::DEG;
+    use crate::units::angle::DEG;
 
     #[test]
     fn normalization() {
