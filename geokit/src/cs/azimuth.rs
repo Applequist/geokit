@@ -1,8 +1,5 @@
-<<<<<<< HEAD
-=======
 //! Provide a value type to work with [Azimuth].
 
->>>>>>> 0cd5143 (Add s1 Interval. Module restructuring.)
 use super::s1::Angle;
 use approx::AbsDiffEq;
 use derive_more::derive::Display;
