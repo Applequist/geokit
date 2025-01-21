@@ -1,11 +1,7 @@
-use std::ops::Add;
-
+use super::s1::Angle;
 use approx::AbsDiffEq;
 use derive_more::derive::Display;
-
-use crate::units::angle::AngleUnit;
-
-use super::s1::Angle;
+use std::ops::Add;
 
 /// An [Azimuth] value represents a direction **in (-pi..pi] radians**, positive **clockwise** from North.
 ///
@@ -68,10 +64,8 @@ impl Azimuth {
         self.0.rad()
     }
 
-    /// Returns the smallest [Angle] between `self` and `rhs`,
-    /// positive if going **counter-clockwise from `self` to `rhs`,
-    /// negative otherwise.
-    fn to(self, other: Self) -> ToAz {
+    /// Return the smallest turn from this azimuth to the `other` azimuth.
+    fn turn_to(self, other: Self) -> ToAz {
         // convert from (-pi..pi] to [0 2pi) clockwise
         let start = if self.0 < Angle::ZERO {
             self.0 + Angle::TWO_PI
