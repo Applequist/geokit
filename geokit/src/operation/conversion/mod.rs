@@ -1,3 +1,4 @@
+use super::{Operation, Result};
 use crate::{
     cs::{
         cartesian::{GeocentricAxes, ProjectedAxes},
@@ -5,8 +6,6 @@ use crate::{
     },
     geodesy::{Ellipsoid, GeodeticDatum, PrimeMeridian},
 };
-
-use super::{Operation, Result};
 
 type ToOrd = (usize, f64);
 

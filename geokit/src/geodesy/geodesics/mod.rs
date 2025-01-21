@@ -1,7 +1,6 @@
-use std::fmt::{Display, Formatter};
-
 use crate::cs::azimuth::Azimuth;
 use crate::cs::geodetic::{Lat, Lon};
+use std::fmt::{Display, Formatter};
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Geodesic {
@@ -15,9 +14,9 @@ pub struct Geodesic {
 impl Default for Geodesic {
     fn default() -> Self {
         Geodesic {
-            p1: (Lon::zero(), Lat::zero()),
+            p1: (Lon::ZERO, Lat::ZERO),
             alpha1: Azimuth::NORTH,
-            p2: (Lon::zero(), Lat::zero()),
+            p2: (Lon::ZERO, Lat::ZERO),
             alpha2: Azimuth::NORTH,
             s: 0.0,
         }
@@ -111,7 +110,7 @@ mod tests {
             LineData {
                 ellipsoid: consts::BESSEL,
                 geodesic: Geodesic {
-                    p1: (Lon::zero(), Lat::dms(55., 45., 0.)),
+                    p1: (Lon::ZERO, Lat::dms(55., 45., 0.)),
                     alpha1: Azimuth::dms(96., 36., 8.79960),
                     p2: (Lon::dms(108., 13., 0.), Lat::dms(-33., 26., 0.)),
                     alpha2: Azimuth::dms(137., 52., 22.01454),
@@ -122,7 +121,7 @@ mod tests {
             LineData {
                 ellipsoid: consts::INTL,
                 geodesic: Geodesic {
-                    p1: (Lon::zero(), Lat::dms(37., 19., 54.95367)),
+                    p1: (Lon::ZERO, Lat::dms(37., 19., 54.95367)),
                     alpha1: Azimuth::dms(95., 27., 59.63089),
                     p2: (Lon::dms(41., 28., 35.50729), Lat::dms(26., 7., 42.83946)),
                     alpha2: Azimuth::dms(118., 5., 58.96161),
@@ -133,7 +132,7 @@ mod tests {
             LineData {
                 ellipsoid: consts::INTL,
                 geodesic: Geodesic {
-                    p1: (Lon::zero(), Lat::dms(35., 16., 11.24862)),
+                    p1: (Lon::ZERO, Lat::dms(35., 16., 11.24862)),
                     alpha1: Azimuth::dms(15., 44., 23.74850),
                     p2: (Lon::dms(137., 47., 28.31435), Lat::dms(67., 22., 14.77638)),
                     alpha2: Azimuth::dms(144., 55., 39.92147),
@@ -144,7 +143,7 @@ mod tests {
             LineData {
                 ellipsoid: consts::INTL,
                 geodesic: Geodesic {
-                    p1: (Lon::zero(), Lat::dms(1., 0., 0.)),
+                    p1: (Lon::ZERO, Lat::dms(1., 0., 0.)),
                     alpha1: Azimuth::dms(89., 0., 0.),
                     p2: (Lon::dms(179., 17., 48.02997), Lat::dms(-0., 59., 53.83076)),
                     alpha2: Azimuth::dms(91., 0., 6.11733),
@@ -155,7 +154,7 @@ mod tests {
             LineData {
                 ellipsoid: consts::INTL,
                 geodesic: Geodesic {
-                    p1: (Lon::zero(), Lat::dms(1., 0., 0.)),
+                    p1: (Lon::ZERO, Lat::dms(1., 0., 0.)),
                     alpha1: Azimuth::dms(4., 59., 59.99995),
                     p2: (Lon::dms(179., 46., 17.84244), Lat::dms(1., 1., 15.18952)),
                     alpha2: Azimuth::dms(174., 59., 59.88481),

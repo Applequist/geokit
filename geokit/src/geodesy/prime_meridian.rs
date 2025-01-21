@@ -1,7 +1,6 @@
+use crate::{cs::geodetic::Lon, units::angle::RAD};
 use derive_more::derive::Display;
 use smol_str::SmolStr;
-
-use crate::{cs::geodetic::Lon, units::angle::RAD};
 
 /// A `PrimeMeridian` defines the origin of longitudes.
 /// It is defined by its longitude with respect to the Greenwich meridian,

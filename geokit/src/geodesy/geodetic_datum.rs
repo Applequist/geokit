@@ -1,8 +1,5 @@
-use std::fmt::Debug;
-
-use smol_str::SmolStr;
-
-use crate::quantities::length::Length;
+use super::{Ellipsoid, PrimeMeridian};
+use crate::cs::cartesian::Length;
 use crate::quantities::scale::PPM;
 use crate::{
     cs::s1::Angle,
@@ -12,8 +9,8 @@ use crate::{
         Operation,
     },
 };
-
-use super::{Ellipsoid, PrimeMeridian};
+use smol_str::SmolStr;
+use std::fmt::Debug;
 
 /// Coordinates can be transformed between different datum.
 /// A [`DatumTransformation`] specifies how to transform normalized geocentric coordinates from
@@ -147,8 +144,8 @@ impl PartialEq for GeodeticDatum {
 
 /// Well known datum definition.
 pub mod consts {
+    use crate::cs::cartesian::Length;
     use crate::cs::s1::Angle;
-    use crate::quantities::length::Length;
     use crate::quantities::scale::PPM;
     use crate::units::angle::RAD;
     use crate::units::length::M;

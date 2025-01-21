@@ -1,4 +1,10 @@
-/// A length unit is basically a conversion to meters.
+/// A Length unit as a to-meter length converter.
+/// A length expressed in this unit is converted to meters as follow:
+/// ```
+/// let ft = LengthUnit(0.304_8, 1.0);
+/// let l_ft = 1 * ft;
+/// let l_m = l_ft * ft.0 / ft.1;
+/// ```
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub struct LengthUnit(pub f64, pub f64);
 

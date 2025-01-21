@@ -1,9 +1,9 @@
 use nalgebra::Matrix3;
 use nalgebra::Vector3;
 
+use crate::cs::cartesian::Length;
 use crate::cs::s1::Angle;
 use crate::operation::{self, Operation};
-use crate::quantities::length::Length;
 use crate::quantities::scale::PPM;
 
 /// The [GeocentricTranslation] transforms **normalized geocentric coordinates** between 2 [GeocentricCrs] whose

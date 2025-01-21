@@ -1,8 +1,6 @@
-use std::fmt::Debug;
-
+use crate::cs::cartesian::Length;
 use smol_str::SmolStr;
-
-use crate::quantities::length::Length;
+use std::fmt::Debug;
 
 /// An `Ellipsoid` is a mathematical surface defined by rotating an ellipse around
 /// it semi-minor axis.

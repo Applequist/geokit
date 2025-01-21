@@ -350,14 +350,10 @@ mod tests {
         let wgs84 = consts::WGS84;
         let solver = VincentyGeodesicSolver::new(&wgs84);
         let computed = solver
-            .solve_direct(
-                (Lon::zero(), Lat::zero()),
-                Azimuth::new(90.0 * DEG),
-                20_000.0,
-            )
+            .solve_direct((Lon::ZERO, Lat::ZERO), Azimuth::new(90.0 * DEG), 20_000.0)
             .unwrap();
         assert_abs_diff_eq!(computed.p2.0, Lon::new(0.17966306 * DEG), epsilon = 1e-8);
-        assert_abs_diff_eq!(computed.p2.1, Lat::zero(), epsilon = 1e-8);
+        assert_abs_diff_eq!(computed.p2.1, Lat::ZERO, epsilon = 1e-8);
         assert_abs_diff_eq!(
             computed.alpha2,
             Azimuth::new(FRAC_PI_2 * RAD),
@@ -366,7 +362,7 @@ mod tests {
 
         let computed = solver
             .solve_direct(
-                (Lon::new(170.0 * DEG), Lat::zero()),
+                (Lon::new(170.0 * DEG), Lat::ZERO),
                 Azimuth::new(90.0 * DEG),
                 2_000_000.0,
             )
@@ -376,7 +372,7 @@ mod tests {
             Lon::new(-172.03369432 * DEG),
             epsilon = 1e-10
         );
-        assert_abs_diff_eq!(computed.p2.1, Lat::zero(), epsilon = 1e-10);
+        assert_abs_diff_eq!(computed.p2.1, Lat::ZERO, epsilon = 1e-10);
         assert_abs_diff_eq!(
             computed.alpha2,
             Azimuth::new(FRAC_PI_2 * RAD),
@@ -391,18 +387,18 @@ mod tests {
 
         let computed = solver
             .solve_direct(
-                (Lon::zero(), Lat::new(-10. * DEG)),
+                (Lon::ZERO, Lat::new(-10. * DEG)),
                 Azimuth::NORTH,
                 2_000_000.0,
             )
             .unwrap();
-        assert_abs_diff_eq!(computed.p2.0, Lon::zero(), epsilon = 1e-10);
+        assert_abs_diff_eq!(computed.p2.0, Lon::ZERO, epsilon = 1e-10);
         assert_abs_diff_eq!(computed.p2.1, Lat::new(8.08583903 * DEG), epsilon = 1e-10);
         assert_abs_diff_eq!(computed.alpha2, Azimuth::NORTH, epsilon = 1e-8);
 
         let computed = solver
             .solve_direct(
-                (Lon::zero(), Lat::new(80. * DEG)),
+                (Lon::ZERO, Lat::new(80. * DEG)),
                 Azimuth::NORTH,
                 2_000_000.0,
             )
@@ -519,8 +515,8 @@ mod tests {
         let solver = VincentyGeodesicSolver::new(&wgs84);
         let computed = solver
             .solve_inverse(
-                (Lon::new(-10. * DEG), Lat::zero()),
-                (Lon::new(10. * DEG), Lat::zero()),
+                (Lon::new(-10. * DEG), Lat::ZERO),
+                (Lon::new(10. * DEG), Lat::ZERO),
             )
             .unwrap();
         assert_abs_diff_eq!(computed.alpha1, Azimuth::EAST, epsilon = 1e-10);
@@ -529,8 +525,8 @@ mod tests {
 
         let computed = solver
             .solve_inverse(
-                (Lon::new(10. * DEG), Lat::zero()),
-                (Lon::new(-10. * DEG), Lat::zero()),
+                (Lon::new(10. * DEG), Lat::ZERO),
+                (Lon::new(-10. * DEG), Lat::ZERO),
             )
             .unwrap();
         assert_abs_diff_eq!(computed.alpha1, Azimuth::WEST, epsilon = 1e-10);
@@ -539,8 +535,8 @@ mod tests {
 
         let computed = solver
             .solve_inverse(
-                (Lon::new(170. * DEG), Lat::zero()),
-                (Lon::new(-170. * DEG), Lat::zero()),
+                (Lon::new(170. * DEG), Lat::ZERO),
+                (Lon::new(-170. * DEG), Lat::ZERO),
             )
             .unwrap();
         assert_abs_diff_eq!(computed.alpha1, Azimuth::EAST, epsilon = 1e-10);
@@ -554,8 +550,8 @@ mod tests {
         let solver = VincentyGeodesicSolver::new(&wgs84);
         let computed = solver
             .solve_inverse(
-                (Lon::zero(), Lat::new(-10. * DEG)),
-                (Lon::zero(), Lat::new(10. * DEG)),
+                (Lon::ZERO, Lat::new(-10. * DEG)),
+                (Lon::ZERO, Lat::new(10. * DEG)),
             )
             .unwrap();
         assert_abs_diff_eq!(computed.alpha1, Azimuth::NORTH, epsilon = 1e-10);
@@ -564,8 +560,8 @@ mod tests {
 
         let computed = solver
             .solve_inverse(
-                (Lon::zero(), Lat::new(10. * DEG)),
-                (Lon::zero(), Lat::new(-10. * DEG)),
+                (Lon::ZERO, Lat::new(10. * DEG)),
+                (Lon::ZERO, Lat::new(-10. * DEG)),
             )
             .unwrap();
         assert_abs_diff_eq!(computed.alpha1, Azimuth::SOUTH, epsilon = 1e-10);
@@ -574,7 +570,7 @@ mod tests {
 
         let computed = solver
             .solve_inverse(
-                (Lon::zero(), Lat::new(80. * DEG)),
+                (Lon::ZERO, Lat::new(80. * DEG)),
                 (Lon::new(180. * DEG), Lat::new(80. * DEG)),
             )
             .unwrap();

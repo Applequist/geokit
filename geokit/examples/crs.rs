@@ -53,8 +53,8 @@ fn main() {
         ),
         axes: ProjectedAxes::EastNorth { horiz_unit: M },
         projection: ProjectionSpec::TransverseMercator {
-            lon0: Lon::zero(),
-            lat0: Lat::zero(),
+            lon0: Lon::ZERO,
+            lat0: Lat::ZERO,
             k0: 0.9996,
             false_easting: 500_000.0 * M,
             false_northing: 0.0 * M,

@@ -1,3 +1,9 @@
+//! Provide basic value types like [angle][Angle] and [interval][Interval]
+//! to work on an abstract 1-dimensional *polar* coordinates system on the unit circle.
+//!
+//! These types are used to define other value types in more concrete CS like 2D- and 3D-
+//! geodetic CS.
+
 use crate::{
     math::utils::remainder,
     units::angle::{AngleUnit, DEG},
@@ -121,6 +127,7 @@ impl Angle {
         self.0 = a;
     }
 
+    /// Return the absolute value of this angle.
     pub fn abs(self) -> Angle {
         Angle(self.0.abs())
     }
@@ -272,9 +279,9 @@ impl Dms {
 /// represented by its lower and upper bounds (inclusive).
 ///
 /// Note that the lower may be greater that the higher bound,
-/// in this case the interval contains the point on the ante-meridian.
+/// in this case the interval contains the point (-1, 0) of the unit circle.
 ///
-/// The lower and higher bound representations may also be inverted
+/// The lower and higher bound representations may *also* be inverted
 /// in special cases to allow the empty and the full intervals as well:
 /// - the empty interval is represented as the inverted interval `[pi..-pi]`
 /// - the full interval is represented as the `[-pi..pi]`
@@ -282,14 +289,15 @@ impl Dms {
 ///     - `[lo..hi]` for lo != -pi
 ///     - `[-pi..hi]` for lo == -pi and hi != pi,
 ///     - `[lo..hi]` otherwise
-#[derive(Debug, Copy, Clone, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq, Display)]
+#[display("lo = {}, hi = {}", lo, hi)]
 pub struct Interval {
     lo: Angle,
     hi: Angle,
 }
 
 impl Interval {
-    /// Return an empty interval.
+    /// Create an empty interval.
     pub fn empty() -> Self {
         Self {
             lo: Angle::PI,
@@ -297,7 +305,13 @@ impl Interval {
         }
     }
 
-    /// Return a full interval.
+    /// Create an interval only containing the single value `p`.
+    pub fn singleton(p: Angle) -> Self {
+        let p_n = p.normalized();
+        Self { lo: p_n, hi: p_n }
+    }
+
+    /// Create a full interval [-pi..pi].
     pub fn full() -> Self {
         Self {
             lo: Angle::M_PI,
@@ -306,6 +320,13 @@ impl Interval {
     }
 
     /// Create a new interval.
+    ///
+    /// The actual interval
+    /// - the empty interval is represented as the inverted interval `[pi..-pi]`
+    /// - the full interval is represented as the `[-pi..pi]`
+    ///     - `[lo..hi]` for lo != -pi
+    ///     - `[-pi..hi]` for lo == -pi and hi != pi,
+    ///     - `[lo..hi]` otherwise
     pub fn new(lo: Angle, hi: Angle) -> Self {
         let mut low = lo.wrapped();
         let hig = hi.wrapped();
@@ -323,7 +344,7 @@ impl Interval {
         self.lo == Angle::M_PI && self.hi == Angle::PI
     }
 
-    fn is_inverted(&self) -> bool {
+    pub(crate) fn is_inverted(&self) -> bool {
         self.lo > self.hi
     }
 
@@ -352,20 +373,20 @@ mod tests {
     };
 
     #[test]
-    fn conversions() {
+    fn angle_unit_equivalence() {
         assert_eq!(1. * DEG, (PI / 180.0) * RAD);
         assert_eq!(1. * GRAD, (PI / 200.0) * RAD);
         assert_eq!(1. * SEC, (PI / 648_000.0) * RAD);
     }
 
     #[test]
-    fn normalization() {
+    fn angle_normalization() {
         assert_eq!((-180. * DEG).normalized(), 180. * DEG);
         assert_eq!(Angle::M_PI.normalized(), 180. * DEG);
     }
 
     #[test]
-    fn dms_display() {
+    fn angle_dms_display() {
         assert_eq!(
             format!("{}", Dms(-33., 6., 22.01545)),
             " -33° 06′ 22.01545000″"
@@ -387,26 +408,63 @@ mod tests {
         );
     }
 
-    #[test]
-    fn test_interval() {
-        assert!(Interval::empty().is_empty());
-        assert!(Interval::empty().is_inverted());
-        assert!(Interval::full().is_full());
+    fn check_interval(
+        tag: &str,
+        ab: Interval,
+        empty: bool,
+        full: bool,
+        inverted: bool,
+        length: Angle,
+    ) {
+        dbg!(tag);
+        assert_eq!(ab.is_empty(), empty, "Expected {} empty", ab);
+        assert_eq!(ab.is_full(), full, "Expected {} full", ab);
+        assert_eq!(ab.is_inverted(), inverted, "Expected {} inverted", ab);
+        assert_abs_diff_eq!(ab.length(), length, epsilon = 1e-15);
+    }
 
-        // Length
-        assert_eq!(Interval::empty().length(), Angle::ZERO);
-        assert_eq!(Interval::new(20. * DEG, 20. * DEG).length(), Angle::ZERO);
-        assert_eq!(Interval::full().length(), 2. * PI * RAD);
-        assert_eq!(Interval::new(0. * DEG, 160. * DEG).length(), 160. * DEG);
-        assert_abs_diff_eq!(
-            Interval::new(170. * DEG, -170. * DEG).length(),
-            20. * DEG,
-            epsilon = 1e-15
+    #[test]
+    fn empty_interval() {
+        check_interval("empty", Interval::empty(), true, false, true, Angle::ZERO);
+    }
+
+    #[test]
+    fn singleton_interval() {
+        check_interval(
+            "singleton",
+            Interval::singleton(10. * DEG),
+            false,
+            false,
+            false,
+            Angle::ZERO,
         );
-        assert_abs_diff_eq!(
-            Interval::new(170. * DEG, 130. * DEG).length(),
-            320. * DEG,
-            epsilon = 1e-15
-        );
+    }
+
+    #[test]
+    fn full_interval() {
+        check_interval("full", Interval::full(), false, true, false, Angle::TWO_PI);
+    }
+
+    #[test]
+    fn interval() {
+        // Non-inverted intervals
+        let ab = Interval::new(5. * DEG, 15 * DEG);
+        check_interval("[5..10]", ab, false, false, false, 10. * DEG);
+
+        let cd = Interval::new(-110. * DEG, 90. * DEG);
+        check_interval("[-110..90]", cd, false, false, false, 200. * DEG);
+
+        let ef = Interval::new(-170. * DEG, -30. * DEG);
+        check_interval("[-170..-30]", ef, false, false, false, 140. * DEG);
+
+        // Inverted intervals
+        let ab_inv = Interval::new(15. * DEG, 5. * DEG);
+        check_interval("[15..5]", ab_inv, false, false, true, 350. * DEG);
+
+        let cd_inv = Interval::new(90. * DEG, -110. * DEG);
+        check_interval("[90..-110]", cd_inv, false, false, true, 160. * DEG);
+
+        let ef_inv = Interval::new(-30. * DEG, -170. * DEG);
+        check_interval("[-30..-170]", ef_inv, false, false, true, 220. * DEG);
     }
 }

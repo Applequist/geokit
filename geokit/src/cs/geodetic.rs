@@ -1,3 +1,6 @@
+//! Provide a of [system of axes][GeodeticAxes] for geodetic CS as well as
+//! [longitude][Lon], [latitude][Lat] and related value types used in geodetic CS.
+
 use crate::units::angle::{AngleUnit, RAD};
 use crate::units::length::{LengthUnit, M};
 use approx::AbsDiffEq;
@@ -5,12 +8,12 @@ use derive_more::derive::{Display, Neg};
 use std::f64::consts::{FRAC_PI_2, PI};
 use std::ops::{Add, AddAssign, Sub, SubAssign};
 
-use super::s1::Angle;
+use super::s1::{Angle, Interval};
 
-/// A [`GeodeticAxes`] value defines the *coordinates system* part of a [`GeodeticCrs`], that is:
+/// A [GeodeticAxes] value defines the *coordinates system* part of a [Geographic CRS][crate::crs::Crs::Geographic] CRS, that is:
 /// - the ordering and direction of the axes,
-/// - the angle unit used for longitude and latitude as a number of radians per unit.
-/// - the length unit used for the ellipsoidal height as a number of meters per unit.
+/// - the [angle unit][AngleUnit] used for longitude and latitude,
+/// - the [length unit][LengthUnit] used for the ellipsoidal height,
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum GeodeticAxes {
     /// Coordinates are given in the following order:
@@ -96,13 +99,14 @@ impl Default for GeodeticAxes {
 pub struct Lon(Angle);
 
 impl Lon {
-    pub const MIN: Lon = Lon(Angle::new(-PI, RAD));
-    pub const MAX: Lon = Lon(Angle::new(PI, RAD));
+    pub const MIN: Lon = Lon(Angle::M_PI);
+    pub const ZERO: Lon = Lon(Angle::ZERO);
+    pub const MAX: Lon = Lon(Angle::PI);
 
     /// Create a new longitude value from a given angle.
-    /// The angle is wrapped into (-pi..pi].
+    /// The angle is wrapped into [-pi..pi].
     pub fn new(val: Angle) -> Self {
-        Self(val.normalized())
+        Self(val.wrapped())
     }
 
     /// Create a new longitude value from a *dms* angle value.
@@ -124,12 +128,6 @@ impl Lon {
         Self::new(Angle::dms(d, m, s))
     }
 
-    /// Return the longitude 0.
-    #[inline]
-    pub fn zero() -> Self {
-        Lon(Angle::ZERO)
-    }
-
     /// Normalize the longitude into (-pi..pi] such that any point on a parallel
     /// has a unique *normalized* longitude.
     pub fn normalize(self) -> Self {
@@ -140,6 +138,7 @@ impl Lon {
         }
     }
 
+    /// Return the angle of the longitude.
     #[inline]
     pub fn angle(self) -> Angle {
         self.0
@@ -221,58 +220,44 @@ impl Sub for Lon {
 ///     - `[pi..hi]` for lo == -pi and hi != pi,
 ///     - `[lo..hi]` otherwise
 #[derive(Debug, Copy, Clone, PartialEq)]
-pub struct LonInterval {
-    lo: Lon,
-    hi: Lon,
-}
+pub struct LonInterval(Interval);
 
 impl LonInterval {
     /// Return an empty interval.
     pub fn empty() -> Self {
-        Self {
-            lo: Lon::MAX,
-            hi: Lon::MIN,
-        }
+        Self(Interval::empty())
+    }
+
+    pub fn singleton(lon: Lon) -> Self {
+        Self(Interval::singleton(lon.angle()))
     }
 
     /// Return a full interval.
     pub fn full() -> Self {
-        Self {
-            lo: Lon::MIN,
-            hi: Lon::MAX,
-        }
+        Self(Interval::full())
     }
 
     /// Create a new interval.
     pub fn new(lo: Lon, hi: Lon) -> Self {
-        let mut low = lo;
-        if lo == Lon::MIN && hi != Lon::MAX {
-            low = Lon::MAX;
-        }
-        Self { lo: low, hi: hi }
+        Self(Interval::new(lo.angle(), hi.angle()))
     }
 
     pub fn is_empty(&self) -> bool {
-        self.lo == Lon::MAX && self.hi == Lon::MIN
+        self.0.is_empty()
     }
 
     pub fn is_full(&self) -> bool {
-        self.lo == Lon::MIN && self.hi == Lon::MAX
+        self.0.is_full()
     }
 
-    fn is_inverted(&self) -> bool {
-        self.lo > self.hi
+    fn contains_antemeridian(&self) -> bool {
+        self.0.is_inverted()
     }
 
     /// Return the **positive** length of this interval.
     /// The length is 0 if the interval is empty or a singleton.
     pub fn length(&self) -> Angle {
-        let mut length = self.hi.angle() - self.lo.angle();
-        if length < Angle::ZERO {
-            length += (2. * PI) * RAD;
-        }
-        debug_assert!(length >= Angle::ZERO);
-        length
+        self.0.length()
     }
 }
 
@@ -305,6 +290,7 @@ pub struct Lat(Angle);
 
 impl Lat {
     pub const MIN: Lat = Lat(Angle::new(-FRAC_PI_2, RAD));
+    pub const ZERO: Lat = Lat(Angle::ZERO);
     pub const MAX: Lat = Lat(Angle::new(FRAC_PI_2, RAD));
 
     /// Create a new latitude value.
@@ -332,11 +318,7 @@ impl Lat {
         Self::new(Angle::dms(d, m, s))
     }
 
-    #[inline]
-    pub fn zero() -> Self {
-        Lat(Angle::ZERO)
-    }
-
+    /// Return the latitude angle.
     #[inline]
     pub fn angle(self) -> Angle {
         self.0
@@ -395,6 +377,13 @@ impl AbsDiffEq for Lat {
         self.0.abs_diff_eq(&other.0, epsilon)
     }
 }
+
+// TODO: Add the following:
+// - a LatInterval.
+// - a Height similar to Length
+// - a LonLat and LonLatHeight
+// - a LonLatRect
+// - a LonLatHeightRect
 
 #[cfg(test)]
 mod tests {

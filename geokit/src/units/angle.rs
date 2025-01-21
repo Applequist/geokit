@@ -1,7 +1,7 @@
 use std::f64::consts::PI;
 
-/// A to-radians angle converter.
-/// A angle expressed in this unit is converted to radians as follow:
+/// An angle unit as a to-radians angle converter.
+/// An angle expressed in this unit is converted to radians as follow:
 /// ```
 /// let deg = AngleUnit(PI, 180.0);
 /// let angle_deg = 1.0;

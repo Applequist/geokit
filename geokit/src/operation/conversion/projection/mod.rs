@@ -1,11 +1,10 @@
-use cyl::{Mercator, TransverseMercator, WebMercator};
-
 use crate::{
+    cs::cartesian::Length,
     cs::geodetic::{Lat, Lon},
     geodesy::Ellipsoid,
     operation::Operation,
-    quantities::length::Length,
 };
+use cyl::{Mercator, TransverseMercator, WebMercator};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum ProjectionSpec {
