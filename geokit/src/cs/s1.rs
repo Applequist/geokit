@@ -1,19 +1,21 @@
-//! Provide basic value types like [angle][Angle] and [interval][Interval]
-//! to work on an abstract 1-dimensional *polar* coordinates system on the unit circle.
+//! The S1 *abstract* coordinate space is used to represent points from the unit circle.
+//! Each point on the circle is represented by the angle at the center of the circle between
+//! an origin and the point, in the range [-pi..pi].
+//!
+//! This module provides the following value types:
+//! - [Angle] to represent a single S1 point coordinate
+//! - and [interval][Interval] to represent a segment on S1.
 //!
 //! These types are used to define other value types in more concrete CS like 2D- and 3D-
 //! geodetic CS.
 
 use crate::{
-    math::utils::remainder,
+    math::{utils::remainder, Float, PI, PI_2, TAU},
     units::angle::{AngleUnit, DEG},
 };
 use approx::AbsDiffEq;
 use derive_more::derive::{Add, AddAssign, Display, Neg, Sub, SubAssign};
-use std::{
-    f64::consts::{FRAC_PI_2, PI},
-    ops::{Div, DivAssign, Mul, MulAssign},
-};
+use std::ops::{Div, DivAssign, Mul, MulAssign};
 
 /// [Angle] is a generic 1-dimensional angle value type.
 ///
@@ -30,7 +32,7 @@ use std::{
 /// use crate::quantities::angle::{Angle};
 /// let dms = Angle::dms(-110., 45., 53.234);
 /// ```
-/// - by multiplying a [f64] quantity by an [AngleUnit] value:
+/// - by multiplying a [Float] quantity by an [AngleUnit] value:
 /// ```
 /// use crate::quantities::angle::{Angle, units::GRAD};
 /// let a: Angle = 100. * GRAD;
@@ -51,19 +53,19 @@ use std::{
     Debug, Copy, Clone, PartialEq, PartialOrd, Add, AddAssign, Sub, SubAssign, Neg, Display,
 )]
 #[display("{} rad", _0)]
-pub struct Angle(f64);
+pub struct Angle(Float);
 
 impl Angle {
     pub const ZERO: Angle = Angle(0.0);
-    pub const PI_2: Angle = Angle(FRAC_PI_2);
+    pub const PI_2: Angle = Angle(PI_2);
     pub const PI: Angle = Angle(PI);
-    pub const TWO_PI: Angle = Angle(2. * PI);
-    pub const M_PI_2: Angle = Angle(-FRAC_PI_2);
+    pub const TWO_PI: Angle = Angle(TAU);
+    pub const M_PI_2: Angle = Angle(-PI_2);
     pub const M_PI: Angle = Angle(-PI);
 
     /// Create an angle value whose `qty` is given in `unit`.
     #[inline]
-    pub const fn new(qty: f64, unit: AngleUnit) -> Self {
+    pub const fn new(qty: Float, unit: AngleUnit) -> Self {
         Angle(qty * unit.rad_per_unit())
     }
 
@@ -75,7 +77,7 @@ impl Angle {
     /// - `m`: the number of minutes. Must be >= 0. and <= 59.
     /// - `s`: the number of seconds with fractional part. Must be >= 0 and < 60.
     ///
-    pub fn dms(d: f64, m: f64, s: f64) -> Angle {
+    pub fn dms(d: Float, m: Float, s: Float) -> Angle {
         debug_assert!(m >= 0. && m <= 59.0, "minutes must be in [0..59]");
         debug_assert!(s >= 0. && s < 60., "seconds must be in [0..60)");
         let f = d.signum();
@@ -96,7 +98,7 @@ impl Angle {
 
     /// Return the angle value wrapped in [-pi, pi].
     pub(crate) fn wrapped(self) -> Self {
-        let mut a = remainder(self.0, 2. * PI);
+        let mut a = remainder(self.0, TAU);
         if a < -PI {
             a = PI;
         }
@@ -112,7 +114,7 @@ impl Angle {
     /// assert_eq!(normalized, -175. * DEG);
     /// ```
     pub fn normalized(self) -> Self {
-        let mut a = remainder(self.0, 2. * PI);
+        let mut a = remainder(self.0, TAU);
         if a <= -PI {
             a = PI;
         }
@@ -120,7 +122,7 @@ impl Angle {
     }
 
     pub fn normalize(&mut self) {
-        let mut a = remainder(self.0, 2. * PI);
+        let mut a = remainder(self.0, TAU);
         if a <= -PI {
             a = PI;
         }
@@ -140,14 +142,34 @@ impl Angle {
     /// let a_deg = a.val(DEG);
     /// assert_eq!(a, a_deg * DEG);
     /// ```
-    pub fn val(self, unit: AngleUnit) -> f64 {
+    pub fn val(self, unit: AngleUnit) -> Float {
         self.0 * unit.1 / unit.0
     }
 
     /// Return this angle value in radians.
     #[inline]
-    pub fn rad(self) -> f64 {
+    pub fn rad(self) -> Float {
         self.0
+    }
+
+    #[inline]
+    pub fn sin(self) -> Float {
+        self.0.sin()
+    }
+
+    #[inline]
+    pub fn cos(self) -> Float {
+        self.0.cos()
+    }
+
+    #[inline]
+    pub fn sin_cos(self) -> (Float, Float) {
+        self.0.sin_cos()
+    }
+
+    #[inline]
+    pub fn tan(self) -> Float {
+        self.0.tan()
     }
 
     /// Convert this angle into a [Dms] value for formatting.
@@ -170,7 +192,7 @@ impl Angle {
     }
 }
 
-impl Mul<Angle> for f64 {
+impl Mul<Angle> for Float {
     type Output = Angle;
 
     fn mul(self, rhs: Angle) -> Self::Output {
@@ -178,39 +200,39 @@ impl Mul<Angle> for f64 {
     }
 }
 
-impl Mul<f64> for Angle {
+impl Mul<Float> for Angle {
     type Output = Angle;
 
-    fn mul(self, rhs: f64) -> Self::Output {
+    fn mul(self, rhs: Float) -> Self::Output {
         Angle(self.0 * rhs)
     }
 }
 
-impl MulAssign<f64> for Angle {
-    fn mul_assign(&mut self, rhs: f64) {
+impl MulAssign<Float> for Angle {
+    fn mul_assign(&mut self, rhs: Float) {
         self.0 *= rhs;
     }
 }
 
-impl Div<f64> for Angle {
+impl Div<Float> for Angle {
     type Output = Angle;
 
-    fn div(self, rhs: f64) -> Self::Output {
+    fn div(self, rhs: Float) -> Self::Output {
         Angle(self.0 / rhs)
     }
 }
 
-impl DivAssign<f64> for Angle {
-    fn div_assign(&mut self, rhs: f64) {
+impl DivAssign<Float> for Angle {
+    fn div_assign(&mut self, rhs: Float) {
         self.0 /= rhs;
     }
 }
 
 impl AbsDiffEq for Angle {
-    type Epsilon = f64;
+    type Epsilon = Float;
 
     fn default_epsilon() -> Self::Epsilon {
-        f64::default_epsilon()
+        Float::default_epsilon()
     }
 
     fn abs_diff_eq(&self, other: &Self, epsilon: Self::Epsilon) -> bool {
@@ -218,7 +240,7 @@ impl AbsDiffEq for Angle {
     }
 }
 
-impl Mul<AngleUnit> for f64 {
+impl Mul<AngleUnit> for Float {
     type Output = Angle;
 
     fn mul(self, rhs: AngleUnit) -> Self::Output {
@@ -226,10 +248,10 @@ impl Mul<AngleUnit> for f64 {
     }
 }
 
-impl Mul<f64> for AngleUnit {
+impl Mul<Float> for AngleUnit {
     type Output = Angle;
 
-    fn mul(self, rhs: f64) -> Self::Output {
+    fn mul(self, rhs: Float) -> Self::Output {
         rhs * self
     }
 }
@@ -238,7 +260,7 @@ impl Mul<AngleUnit> for i32 {
     type Output = Angle;
 
     fn mul(self, rhs: AngleUnit) -> Self::Output {
-        Angle::new(self as f64, rhs)
+        Angle::new(self as Float, rhs)
     }
 }
 
@@ -246,7 +268,7 @@ impl Mul<i32> for AngleUnit {
     type Output = Angle;
 
     fn mul(self, rhs: i32) -> Self::Output {
-        (rhs as f64) * self
+        (rhs as Float) * self
     }
 }
 
@@ -259,18 +281,18 @@ impl Mul<i32> for AngleUnit {
 /// ```
 #[derive(Copy, Clone, Debug, Display)]
 #[display("{:4}° {:02}′ {:011.8}″", _0, _1, _2)]
-pub struct Dms(f64, f64, f64);
+pub struct Dms(Float, Float, Float);
 
 impl Dms {
-    pub fn deg(&self) -> f64 {
+    pub fn deg(&self) -> Float {
         self.0
     }
 
-    pub fn min(&self) -> f64 {
+    pub fn min(&self) -> Float {
         self.1
     }
 
-    pub fn sec(&self) -> f64 {
+    pub fn sec(&self) -> Float {
         self.2
     }
 }
@@ -362,13 +384,13 @@ impl Interval {
 
 #[cfg(test)]
 mod tests {
-    use std::f64::consts::{FRAC_PI_4, PI};
 
     use approx::assert_abs_diff_eq;
 
     use super::Dms;
     use crate::{
         cs::s1::{Angle, Interval},
+        math::{PI, PI_4},
         units::angle::{DEG, GRAD, RAD, SEC},
     };
 
@@ -393,7 +415,7 @@ mod tests {
         );
         assert_eq!(format!("{}", Dms(45., 0., 0.)), "  45° 00′ 00.00000000″");
         assert_eq!(
-            format!("{}", (FRAC_PI_4 * RAD).to_dms()),
+            format!("{}", (PI_4 * RAD).to_dms()),
             "  45° 00′ 00.00000000″"
         );
         assert_eq!(

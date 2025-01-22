@@ -1,6 +1,7 @@
-use crate::cs::cartesian::Length;
 use smol_str::SmolStr;
 use std::fmt::Debug;
+
+use crate::{cs::r1::Length, math::Float};
 
 /// An `Ellipsoid` is a mathematical surface defined by rotating an ellipse around
 /// it semi-minor axis.
@@ -9,12 +10,12 @@ use std::fmt::Debug;
 pub struct Ellipsoid {
     /// The name of this ellipsoid.
     name: SmolStr,
-    /// The semi major axis length **in meters**.
-    a: f64,
-    /// The semi minor axis length **in meters**.
-    b: f64,
+    /// The semi major axis length,
+    a: Length,
+    /// The semi minor axis length.
+    b: Length,
     /// The inverse flattening: `a / (a - b)``. INFINITY if a == b.
-    invf: f64,
+    invf: Float,
 }
 
 impl Ellipsoid {
@@ -31,17 +32,11 @@ impl Ellipsoid {
             a,
             b
         );
-        let a_m = a.m();
-        let b_m = b.m();
         Self {
             name: SmolStr::new(name),
-            a: a_m,
-            b: b_m,
-            invf: if a_m > b_m {
-                a_m / (a_m - b_m)
-            } else {
-                f64::INFINITY
-            },
+            a,
+            b,
+            invf: if a > b { a / (a - b) } else { Float::INFINITY },
         }
     }
 
@@ -50,25 +45,23 @@ impl Ellipsoid {
     /// # Panics
     ///
     /// if `a` is negative or zero or if `invf` is not greater than 1.
-    pub fn from_ainvf(name: &str, a: Length, invf: f64) -> Self {
-        let a_m = a.m();
-        assert!(a.m() > 0., "Expected semi_major_axis ({}) > 0.", a);
+    pub fn from_ainvf(name: &str, a: Length, invf: Float) -> Self {
+        assert!(a > Length::ZERO, "Expected semi_major_axis ({}) > 0.", a);
         assert!(invf > 1., "Expected invf ({}) > 1.", invf);
         Self {
             name: SmolStr::new(name),
-            a: a_m,
-            b: a_m * (1. - 1. / invf),
+            a,
+            b: a * (1. - 1. / invf),
             invf,
         }
     }
 
     /// Creates a new [Ellipsoid] with the given precomputed elements:
-    /// - `a` semi-major axis length **in meters**,
-    /// - `b`: semi-minor axis length **in meters**. **Must be less than or equal to `a`**
+    /// - `a` semi-major axis length,
+    /// - `b`: semi-minor axis length. **Must be less than or equal to `a`**
     /// - `invf`: inverse-flattening. **Must be greater than 1, possibly infinite if `a == b`**
     #[inline(always)]
-    pub(crate) const fn new_static(name: &'static str, a: f64, b: f64, invf: f64) -> Self {
-        // TODO: const assert ?
+    pub(crate) const fn new_static(name: &'static str, a: Length, b: Length, invf: Float) -> Self {
         Self {
             name: SmolStr::new_static(name),
             a,
@@ -88,65 +81,65 @@ impl Ellipsoid {
 
     /// Return the semi-major axis length **in meters**.
     #[inline]
-    pub fn a(&self) -> f64 {
-        self.a
+    pub fn a(&self) -> Float {
+        self.a.m()
     }
 
     /// Return the semi-major axis squared.
     #[inline]
-    pub fn a_sq(&self) -> f64 {
-        self.a * self.a
+    pub fn a_sq(&self) -> Float {
+        self.a.m() * self.a.m()
     }
 
     /// Return the semi-minor axis length **in meters**.
     #[inline]
-    pub fn b(&self) -> f64 {
-        self.b
+    pub fn b(&self) -> Float {
+        self.b.m()
     }
 
     /// Return the semi minor axis squared.
     #[inline]
-    pub fn b_sq(&self) -> f64 {
-        self.b * self.b
+    pub fn b_sq(&self) -> Float {
+        self.b.m() * self.b.m()
     }
 
     /// Return the flattening.
     #[inline]
-    pub fn f(&self) -> f64 {
+    pub fn f(&self) -> Float {
         1. / self.invf
     }
     /// Return the inverse flattening: `a / (a - b)`.
     #[inline]
-    pub fn invf(&self) -> f64 {
+    pub fn invf(&self) -> Float {
         self.invf
     }
 
     /// Return the 3rd flattening: `n = (a - b) / (a + b)`
     #[inline]
-    pub fn n(&self) -> f64 {
+    pub fn n(&self) -> Float {
         (self.a - self.b) / (self.a + self.b)
     }
 
     /// Return the first eccentricity squared: `(a^2 -b^2) / a^2`.
     #[inline]
-    pub fn e_sq(&self) -> f64 {
+    pub fn e_sq(&self) -> Float {
         (self.a_sq() - self.b_sq()) / self.a_sq()
     }
 
     /// Return the first eccentricity.
     /// See [e_sq]
-    pub fn e(&self) -> f64 {
+    pub fn e(&self) -> Float {
         self.e_sq().sqrt()
     }
 
     /// Return the second eccentricity squared: `(a^2 - b^2) / b^2`.
-    pub fn e_prime_sq(&self) -> f64 {
+    pub fn e_prime_sq(&self) -> Float {
         (self.a_sq() - self.b_sq()) / self.b_sq()
     }
 
     /// Return the second eccentricity.
     /// See [e_prime_sq]
-    pub fn e_prime(&self) -> f64 {
+    pub fn e_prime(&self) -> Float {
         self.e_prime_sq().sqrt()
     }
 
@@ -157,7 +150,7 @@ impl Ellipsoid {
     /// tangent to the ellipsoid on the equator (radius = a), between the equatorial plane and a
     /// radius to a point Q on the sphere whose projection along the z-axis intersect the ellipsoid
     /// at P.
-    pub fn reduced_latitude(&self, lat: f64) -> f64 {
+    pub fn reduced_latitude(&self, lat: Float) -> Float {
         ((1. - self.f()) * lat.tan()).atan()
     }
 
@@ -166,7 +159,7 @@ impl Ellipsoid {
     ///
     /// The geocentric latitude of a point P on the ellipsoid is the angle at the centre of the
     /// ellipsoid between the equatorial plane and a line to the point P.
-    pub fn geocentric_latitude(&self, lat: f64) -> f64 {
+    pub fn geocentric_latitude(&self, lat: Float) -> Float {
         ((1. - self.e_sq()) * lat.tan()).atan()
     }
 
@@ -174,17 +167,17 @@ impl Ellipsoid {
     /// of the prime vertical normal section, i.e. the normal section perpendicular to the meridional
     /// normal section.
     /// See [prime_meridional_radius]
-    pub fn prime_vertical_radius(&self, lat: f64) -> f64 {
-        self.a / (1.0 - self.e_sq() * lat.sin().powi(2)).sqrt()
+    pub fn prime_vertical_radius(&self, lat: Float) -> Float {
+        self.a.m() / (1.0 - self.e_sq() * lat.sin().powi(2)).sqrt()
     }
 
     /// Return the radius of curvature `M` **in meters** at the given **geodetic latitude in radians**
     /// of the meridional normal section, i.e. the normal section passing through the poles.
-    pub fn prime_meridional_radius(&self, lat: f64) -> f64 {
-        self.a * (1.0 - self.e_sq()) / (1.0 - self.e_sq() * lat.sin().powi(2)).powf(1.5)
+    pub fn prime_meridional_radius(&self, lat: Float) -> Float {
+        self.a.m() * (1.0 - self.e_sq()) / (1.0 - self.e_sq() * lat.sin().powi(2)).powf(1.5)
     }
 
-    pub fn conformal_sphere_radius(&self, lat: f64) -> f64 {
+    pub fn conformal_sphere_radius(&self, lat: Float) -> Float {
         (self.prime_meridional_radius(lat) * self.prime_vertical_radius(lat)).sqrt()
     }
 }
@@ -198,22 +191,29 @@ impl PartialEq for Ellipsoid {
 /// Well known ellipsoid definitions.
 pub mod consts {
     use super::Ellipsoid;
-
+    use crate::cs::r1::Length;
+    use crate::math::Float;
+    use crate::units::length::M;
     macro_rules! def {
         ( ($name:literal, a = $a:expr, b = $b:expr ) ) => {
             Ellipsoid::new_static(
                 $name,
-                $a,
-                $b,
+                Length::new($a, M),
+                Length::new($b, M),
                 if $a != $b {
                     $a / ($a - $b)
                 } else {
-                    f64::INFINITY
+                    Float::INFINITY
                 },
             )
         };
         ( ($name:literal, a = $a:expr, invf = $invf:literal ) ) => {
-            Ellipsoid::new_static($name, $a, $a * (1. - 1. / $invf), $invf)
+            Ellipsoid::new_static(
+                $name,
+                Length::new($a, M),
+                Length::new($a * (1. - 1. / $invf), M),
+                $invf,
+            )
         };
     }
 
@@ -277,6 +277,7 @@ pub mod consts {
 mod tests {
     use crate::geodesy::ellipsoid::consts;
     use crate::geodesy::Ellipsoid;
+    use crate::math::PI_2;
     use crate::units::length::M;
     use approx::assert_abs_diff_eq;
 
@@ -325,7 +326,7 @@ mod tests {
             epsilon = 1e-10
         );
         assert_abs_diff_eq!(
-            wgs84.prime_meridional_radius(std::f64::consts::FRAC_PI_2),
+            wgs84.prime_meridional_radius(PI_2),
             wgs84.a_sq() / wgs84.b(),
             epsilon = 1e-8
         );
@@ -336,7 +337,7 @@ mod tests {
         let wgs84 = consts::WGS84;
         assert_abs_diff_eq!(wgs84.prime_vertical_radius(0.0), wgs84.a(), epsilon = 1e-10);
         assert_abs_diff_eq!(
-            wgs84.prime_vertical_radius(std::f64::consts::FRAC_PI_2),
+            wgs84.prime_vertical_radius(PI_2),
             wgs84.a_sq() / wgs84.b(),
             epsilon = 1e-8
         );

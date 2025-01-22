@@ -1,37 +1,42 @@
+use num::Zero;
+
+use crate::math::Float;
 use std::ops::{Add, Div, Mul, Sub};
 
-use num::{Float, One, Zero};
-
 #[derive(Debug, Copy, Clone, PartialEq)]
-pub struct Complex<T = f64> {
-    pub re: T,
-    pub im: T,
+pub struct Complex {
+    pub re: Float,
+    pub im: Float,
 }
 
-impl<T: Float> Complex<T> {
-    pub fn new(re: T, im: T) -> Self {
+impl Complex {
+    pub const fn zero() -> Self {
+        Self { re: 0.0, im: 0.0 }
+    }
+
+    pub fn new(re: Float, im: Float) -> Self {
         Self { re, im }
     }
 
     /// Return the squared absolute value of this complex.
-    pub fn abs_sq(&self) -> T {
-        self.re.clone() * self.re.clone() + self.im.clone() * self.im.clone()
+    pub fn abs_sq(&self) -> Float {
+        self.re * self.re + self.im * self.im
     }
 
     /// Return the absolute value of this complex.
-    pub fn abs(&self) -> T {
+    pub fn abs(&self) -> Float {
         self.re.hypot(self.im)
     }
 
     /// Return the argument **in radians** of this complex.
-    pub fn arg(&self) -> T {
+    pub fn arg(&self) -> Float {
         self.im.atan2(self.re)
     }
 
     /// Return the multiplicative inverse of this complex.
     pub fn inv(&self) -> Self {
         let m = self.abs_sq();
-        if m == T::zero() {
+        if m == 0.0 {
             panic!("Zero is an invalid denominator!");
         }
         Self {
@@ -41,28 +46,31 @@ impl<T: Float> Complex<T> {
     }
 }
 
-impl<T: Float> Zero for Complex<T> {
+impl Zero for Complex {
     fn zero() -> Self {
-        Self::new(T::zero(), T::zero())
+        Self::new(0.0, 0.0)
     }
 
     fn is_zero(&self) -> bool {
-        self.re.is_zero() && self.im.is_zero()
+        self.re == 0.0 && self.im == 0.0
     }
 }
 
-impl<T: Float> Add for Complex<T> {
+impl Add for Complex {
     type Output = Self;
 
     fn add(self, rhs: Self) -> Self::Output {
-        Self::new(self.re + rhs.re, self.im + rhs.im)
+        Self {
+            re: self.re + rhs.re,
+            im: self.im + rhs.im,
+        }
     }
 }
 
-impl<T: Float> Add<T> for Complex<T> {
+impl Add<Float> for Complex {
     type Output = Self;
 
-    fn add(self, rhs: T) -> Self::Output {
+    fn add(self, rhs: Float) -> Self::Output {
         Self {
             re: self.re + rhs,
             im: self.im,
@@ -70,7 +78,7 @@ impl<T: Float> Add<T> for Complex<T> {
     }
 }
 
-impl<T: Float> Sub for Complex<T> {
+impl Sub for Complex {
     type Output = Self;
 
     fn sub(self, rhs: Self) -> Self::Output {
@@ -81,10 +89,10 @@ impl<T: Float> Sub for Complex<T> {
     }
 }
 
-impl<T: Float> Sub<T> for Complex<T> {
-    type Output = Complex<T>;
+impl Sub<Float> for Complex {
+    type Output = Complex;
 
-    fn sub(self, rhs: T) -> Self::Output {
+    fn sub(self, rhs: Float) -> Self::Output {
         Self {
             re: self.re - rhs,
             im: self.im,
@@ -92,13 +100,7 @@ impl<T: Float> Sub<T> for Complex<T> {
     }
 }
 
-impl<T: Float> One for Complex<T> {
-    fn one() -> Self {
-        Self::new(T::one(), T::zero())
-    }
-}
-
-impl<T: Float> Mul for Complex<T> {
+impl Mul for Complex {
     type Output = Self;
 
     fn mul(self, rhs: Self) -> Self::Output {
@@ -109,10 +111,10 @@ impl<T: Float> Mul for Complex<T> {
     }
 }
 
-impl<T: Float> Mul<T> for Complex<T> {
-    type Output = Complex<T>;
+impl Mul<Float> for Complex {
+    type Output = Complex;
 
-    fn mul(self, rhs: T) -> Self::Output {
+    fn mul(self, rhs: Float) -> Self::Output {
         Self {
             re: self.re * rhs,
             im: self.im * rhs,
@@ -120,7 +122,7 @@ impl<T: Float> Mul<T> for Complex<T> {
     }
 }
 
-impl<T: Float> Div for Complex<T> {
+impl Div for Complex {
     type Output = Self;
 
     fn div(self, rhs: Self) -> Self::Output {
@@ -128,10 +130,10 @@ impl<T: Float> Div for Complex<T> {
     }
 }
 
-impl<T: Float> Div<T> for Complex<T> {
-    type Output = Complex<T>;
+impl Div<Float> for Complex {
+    type Output = Complex;
 
-    fn div(self, rhs: T) -> Self::Output {
+    fn div(self, rhs: Float) -> Self::Output {
         Self {
             re: self.re / rhs,
             im: self.im / rhs,
@@ -141,9 +143,10 @@ impl<T: Float> Div<T> for Complex<T> {
 
 #[cfg(test)]
 mod tests {
-    use std::f64::consts::{FRAC_PI_4, PI};
 
     use crate::math::complex::Complex;
+    use crate::math::PI;
+    use crate::math::PI_4;
 
     #[test]
     fn test_eq() {
@@ -153,7 +156,7 @@ mod tests {
 
     #[test]
     fn test_arg() {
-        assert_eq!(Complex::new(1., 1.).arg(), FRAC_PI_4);
+        assert_eq!(Complex::new(1., 1.).arg(), PI_4);
         assert_eq!(Complex::new(0.5, 3f64.sqrt() / 2.).arg(), PI / 3.);
         assert_eq!(Complex::new(-1., 0.).arg(), PI);
     }
@@ -171,7 +174,6 @@ mod tests {
         let inv_z = z.inv();
         assert_eq!(z * inv_z, Complex::new(1., 0.));
     }
-
 
     #[test]
     fn test_ops() {

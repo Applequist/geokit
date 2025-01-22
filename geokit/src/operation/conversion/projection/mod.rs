@@ -1,6 +1,6 @@
 use crate::{
-    cs::cartesian::Length,
     cs::geodetic::{Lat, Lon},
+    cs::r1::Length,
     geodesy::Ellipsoid,
     operation::Operation,
 };

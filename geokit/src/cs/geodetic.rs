@@ -1,25 +1,32 @@
-//! Provide a of [system of axes][GeodeticAxes] for geodetic CS as well as
-//! [longitude][Lon], [latitude][Lat] and related value types used in geodetic CS.
+//! Geodetic coordinates spaces are used to represent points on or near the surface of an ellipsoid
+//! of revolution.
+//!
+//! Points in those spaces are represented using:
+//! - longitude,
+//! - latitude,
+//! - and in the 3D case, ellipsoidal height.
+//!
+//! A special set of axes is said to be **normalized**.
+//!
+//! This module a [system of axes][GeodeticAxes] for geodetic CS and
+//! a set of value types to represent **normalized** geodetic coordinates.
 
+use crate::math::Float;
 use crate::units::angle::{AngleUnit, RAD};
 use crate::units::length::{LengthUnit, M};
 use approx::AbsDiffEq;
 use derive_more::derive::{Display, Neg};
-use std::f64::consts::{FRAC_PI_2, PI};
 use std::ops::{Add, AddAssign, Sub, SubAssign};
 
 use super::s1::{Angle, Interval};
 
-/// A [GeodeticAxes] value defines the *coordinates system* part of a [Geographic CRS][crate::crs::Crs::Geographic] CRS, that is:
-/// - the ordering and direction of the axes,
-/// - the [angle unit][AngleUnit] used for longitude and latitude,
-/// - the [length unit][LengthUnit] used for the ellipsoidal height,
+/// A [GeodeticAxes] defines the possible set of axes used in **geodetic** CS.
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum GeodeticAxes {
     /// Coordinates are given in the following order:
-    /// - longitude positive east of prime meridian,
-    /// - latitude positive north of equatorial plane,
-    /// - ellipsoidal height positive upward.
+    /// - longitude positive east of prime meridian, using `angle_unit` [AngleUnit]
+    /// - latitude positive north of equatorial plane, using `angle_unit` [AngleUnit],
+    /// - ellipsoidal height positive upward, using `height_unit` [LengthUnit]
     EastNorthUp {
         /// The angle unit used for longitude and latitude, eg
         /// `DEG` or `GRAD`
@@ -29,9 +36,9 @@ pub enum GeodeticAxes {
         height_unit: LengthUnit,
     },
     /// Coordinates are given in the following order:
-    /// - latitude positive north of equatorial plane,
-    /// - longitude positive east of prime meridian,
-    /// - ellipsoidal height positive upward.
+    /// - latitude positive north of equatorial plane, using `angle_unit` [AngleUnit],
+    /// - longitude positive east of prime meridian, using `angle_unit` [AngleUnit]
+    /// - ellipsoidal height positive upward, using `height_unit` [LengthUnit]
     NorthEastUp {
         /// The angle unit used for longitude and latitude, eg
         /// `DEG` or `GRAD`
@@ -41,21 +48,24 @@ pub enum GeodeticAxes {
         height_unit: LengthUnit,
     },
     /// Coordinates are, in the given order:
-    /// - longitude positive east of prime meridian,
-    /// - latitude positive north of equatorial plane.
+    /// - longitude positive east of prime meridian, using `angle_unit` [AngleUnit]
+    /// - latitude positive north of equatorial plane, using `angle_unit` [AngleUnit],
     EastNorth {
         /// The angle unit used for longitude and latitude, eg
         /// `DEG` or `GRAD`
         angle_unit: AngleUnit,
     },
     /// Coordinates are, in the given order:
-    /// - latitude positive north of equatorial plane,
-    /// - longitude positive east of prime meridian.
+    /// - latitude positive north of equatorial plane, using `angle_unit` [AngleUnit],
+    /// - longitude positive east of prime meridian, using `angle_unit` [AngleUnit]
     NorthEast {
         /// The angle unit used for longitude and latitude, eg
         /// `DEG` or `GRAD`
         angle_unit: AngleUnit,
     },
+    /// Coordinates are, in the given order:
+    /// - latitude positive north of equatorial plane, using `angle_unit` [AngleUnit],
+    /// - longitude positive west of prime meridian, using `angle_unit` [AngleUnit]
     NorthWest {
         /// The angle unit used for longitude and latitude, eg
         /// `DEG` or `GRAD`
@@ -109,7 +119,12 @@ impl Lon {
         Self(val.wrapped())
     }
 
-    /// Create a new longitude value from a *dms* angle value.
+    /// Create a new longitude value from an [Angle] ***ALREADY*** in [-pi..pi]
+    pub const fn const_new(val: Angle) -> Self {
+        Self(val)
+    }
+
+    /// Create a new longitue value from a *dms* angle value.
     /// The angle value is converted to radians and wrapped into [-pi, pi].
     ///
     /// # Parameters
@@ -124,7 +139,7 @@ impl Lon {
     /// let a: Lon = Lon::dms(2., 20., 14.02500);
     /// assert!(Lon::dms(-12., 45., 59.1234).rad() < 0.0);
     /// ```
-    pub fn dms(d: f64, m: f64, s: f64) -> Self {
+    pub fn dms(d: Float, m: Float, s: Float) -> Self {
         Self::new(Angle::dms(d, m, s))
     }
 
@@ -146,7 +161,7 @@ impl Lon {
 
     /// Return the longitude as a raw angle value **in radians**.
     #[inline]
-    pub fn rad(self) -> f64 {
+    pub fn rad(self) -> Float {
         self.0.rad()
     }
 }
@@ -189,10 +204,10 @@ impl SubAssign<Angle> for Lon {
 }
 
 impl AbsDiffEq for Lon {
-    type Epsilon = f64;
+    type Epsilon = Float;
 
     fn default_epsilon() -> Self::Epsilon {
-        f64::default_epsilon()
+        Float::default_epsilon()
     }
 
     fn abs_diff_eq(&self, other: &Self, epsilon: Self::Epsilon) -> bool {
@@ -289,9 +304,9 @@ impl LonInterval {
 pub struct Lat(Angle);
 
 impl Lat {
-    pub const MIN: Lat = Lat(Angle::new(-FRAC_PI_2, RAD));
+    pub const MIN: Lat = Lat(Angle::M_PI_2);
     pub const ZERO: Lat = Lat(Angle::ZERO);
-    pub const MAX: Lat = Lat(Angle::new(FRAC_PI_2, RAD));
+    pub const MAX: Lat = Lat(Angle::PI_2);
 
     /// Create a new latitude value.
     /// The angle is clamped in [-pi/2..pi/2]
@@ -314,7 +329,7 @@ impl Lat {
     /// let a: Lat = Lat::dms(2., 20., 14.02500);
     /// assert!(Lat::dms(-12., 45., 59.1234).rad() < 0.0);
     /// ```
-    pub fn dms(d: f64, m: f64, s: f64) -> Self {
+    pub fn dms(d: Float, m: Float, s: Float) -> Self {
         Self::new(Angle::dms(d, m, s))
     }
 
@@ -326,7 +341,7 @@ impl Lat {
 
     /// Return this latitude as a raw angle value in radians.
     #[inline]
-    pub fn rad(self) -> f64 {
+    pub fn rad(self) -> Float {
         self.0.rad()
     }
 }
@@ -367,10 +382,10 @@ impl SubAssign<Angle> for Lat {
 }
 
 impl AbsDiffEq for Lat {
-    type Epsilon = f64;
+    type Epsilon = Float;
 
     fn default_epsilon() -> Self::Epsilon {
-        f64::default_epsilon()
+        Float::default_epsilon()
     }
 
     fn abs_diff_eq(&self, other: &Self, epsilon: Self::Epsilon) -> bool {

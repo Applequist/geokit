@@ -1,5 +1,7 @@
 //! Provide a value type to work with [Azimuth].
 
+use crate::math::Float;
+
 use super::s1::Angle;
 use approx::AbsDiffEq;
 use derive_more::derive::Display;
@@ -50,7 +52,7 @@ impl Azimuth {
     /// - `d`: the number of degrees. Determine the sign of the returned angle.
     /// - `m`: the number of minutes. Must be >= 0 and <= 59.
     /// - `s`: the number of seconds with fractional part. Must be >= 0 and <= 60.
-    pub fn dms(d: f64, m: f64, s: f64) -> Self {
+    pub fn dms(d: Float, m: Float, s: Float) -> Self {
         Self::new(Angle::dms(d, m, s))
     }
 
@@ -62,7 +64,7 @@ impl Azimuth {
 
     /// Return this azimuth as a raw angle value (-pi..pi] radians.
     #[inline]
-    pub fn rad(self) -> f64 {
+    pub fn rad(self) -> Float {
         self.0.rad()
     }
 
@@ -119,10 +121,10 @@ impl Add<Azimuth> for Angle {
 }
 
 impl AbsDiffEq for Azimuth {
-    type Epsilon = f64;
+    type Epsilon = Float;
 
     fn default_epsilon() -> Self::Epsilon {
-        f64::default_epsilon()
+        Float::default_epsilon()
     }
 
     fn abs_diff_eq(&self, other: &Self, epsilon: Self::Epsilon) -> bool {
@@ -138,10 +140,10 @@ pub enum ToAz {
 }
 
 impl AbsDiffEq for ToAz {
-    type Epsilon = f64;
+    type Epsilon = Float;
 
     fn default_epsilon() -> Self::Epsilon {
-        f64::default_epsilon()
+        Float::default_epsilon()
     }
 
     fn abs_diff_eq(&self, other: &Self, epsilon: Self::Epsilon) -> bool {

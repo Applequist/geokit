@@ -1,12 +1,14 @@
-pub fn remainder(val: f64, r: f64) -> f64 {
+use super::Float;
+
+pub fn remainder(val: Float, r: Float) -> Float {
     val - (val / r).round_ties_even() * r
 }
 
 pub fn iter_fn<const D: usize>(
-    init: [f64; D],
-    deltas: &dyn Fn([f64; D]) -> [f64; D],
-    epsilon: [f64; D],
-) -> [f64; D] {
+    init: [Float; D],
+    deltas: &dyn Fn([Float; D]) -> [Float; D],
+    epsilon: [Float; D],
+) -> [Float; D] {
     let mut res = init;
     loop {
         let ds = deltas(res);

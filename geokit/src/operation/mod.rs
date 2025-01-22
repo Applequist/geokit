@@ -2,10 +2,11 @@
 //! Except for the [Normalization], all operations take **normalized coordinates as input.
 //! See [Crs::is_normalized] for the definition of normalized coordinates.
 
-use core::f64;
 use dyn_clone::DynClone;
 use std::fmt::Debug;
 use thiserror::Error;
+
+use crate::math::Float;
 
 #[derive(Error, Debug)]
 pub enum OperationError {
@@ -30,10 +31,10 @@ pub trait Operation: DynClone {
     fn out_dim(&self) -> usize;
 
     /// Perform the forward operation on the given input.
-    fn apply_fwd(&self, input: &[f64], output: &mut [f64]) -> Result<()>;
+    fn apply_fwd(&self, input: &[Float], output: &mut [Float]) -> Result<()>;
 
     /// Perform the backward, e.g. inverse, operation on the given input.
-    fn apply_bwd(&self, _input: &[f64], _output: &mut [f64]) -> Result<()> {
+    fn apply_bwd(&self, _input: &[Float], _output: &mut [Float]) -> Result<()> {
         Err(OperationError::NotInvertible)
     }
 
@@ -59,7 +60,7 @@ pub trait Operation: DynClone {
     }
 
     /// Apply the fwd transformation into the given mutable slice.
-    fn fwd(&self, input: &[f64], output: &mut [f64]) -> Result<usize> {
+    fn fwd(&self, input: &[Float], output: &mut [Float]) -> Result<usize> {
         debug_assert_eq!(
             input.len() % self.in_dim(), 0,
             "For forward transformation, the input sequence length must be a multiple of the operation's input dimension."
@@ -83,7 +84,7 @@ pub trait Operation: DynClone {
     }
 
     /// Apply the bwd transformation into the given mutable slice.
-    fn bwd(&self, input: &[f64], output: &mut [f64]) -> Result<usize> {
+    fn bwd(&self, input: &[Float], output: &mut [Float]) -> Result<usize> {
         debug_assert_eq!(
             input.len() % self.out_dim(), 0,
             "For backward transformation, the input sequence length must be a multiple of the operation's output dimension."
@@ -106,7 +107,7 @@ pub trait Operation: DynClone {
         Ok(ix)
     }
     /// Apply the fwd transformation to the input and stores the output into a newly allocated vector.
-    fn fwd_new(&self, input: &[f64]) -> Result<Vec<f64>> {
+    fn fwd_new(&self, input: &[Float]) -> Result<Vec<Float>> {
         debug_assert_eq!(
             input.len() % self.in_dim(), 0,
             "For forward transformation, the input sequence length must be a multiple of the operation's input dimension."
@@ -117,7 +118,7 @@ pub trait Operation: DynClone {
         Ok(output)
     }
 
-    fn bwd_new(&self, input: &[f64]) -> Result<Vec<f64>> {
+    fn bwd_new(&self, input: &[Float]) -> Result<Vec<Float>> {
         debug_assert_eq!(input.len() % self.out_dim(), 0,
             "For backward transformation, the input sequence length must be a multiple of the operation's output dimension.",
         );
@@ -139,11 +140,11 @@ impl Operation for Box<dyn Operation> {
         self.as_ref().out_dim()
     }
 
-    fn apply_fwd(&self, input: &[f64], output: &mut [f64]) -> Result<()> {
+    fn apply_fwd(&self, input: &[Float], output: &mut [Float]) -> Result<()> {
         self.as_ref().apply_fwd(input, output)
     }
 
-    fn apply_bwd(&self, input: &[f64], output: &mut [f64]) -> Result<()> {
+    fn apply_bwd(&self, input: &[Float], output: &mut [Float]) -> Result<()> {
         self.as_ref().apply_bwd(input, output)
     }
 }
@@ -160,7 +161,7 @@ impl Identity {
         Self { in_dim, out_dim }
     }
 
-    fn copy(from: &[f64], to: &mut [f64]) {
+    fn copy(from: &[Float], to: &mut [Float]) {
         //let num_items = min(from.len(), to.len());
         let num_items = from.len().min(to.len());
         to[0..num_items].copy_from_slice(&from[0..num_items]);
@@ -182,7 +183,7 @@ impl Operation for Identity {
     }
 
     #[inline]
-    fn apply_fwd(&self, i: &[f64], o: &mut [f64]) -> Result<()> {
+    fn apply_fwd(&self, i: &[Float], o: &mut [Float]) -> Result<()> {
         debug_assert_eq!(i.len(), self.in_dim(), "Invalid fwd input length");
         debug_assert_eq!(o.len(), self.out_dim(), "Invalid fwd output length");
         Self::copy(i, o);
@@ -190,7 +191,7 @@ impl Operation for Identity {
     }
 
     #[inline]
-    fn apply_bwd(&self, i: &[f64], o: &mut [f64]) -> Result<()> {
+    fn apply_bwd(&self, i: &[Float], o: &mut [Float]) -> Result<()> {
         debug_assert_eq!(i.len(), self.out_dim(), "Invalid bwd input length");
         debug_assert_eq!(o.len(), self.in_dim(), "Invalid bwd output length");
         Self::copy(i, o);
@@ -218,11 +219,11 @@ where
         self.0.in_dim()
     }
 
-    fn apply_fwd(&self, input: &[f64], output: &mut [f64]) -> Result<()> {
+    fn apply_fwd(&self, input: &[Float], output: &mut [Float]) -> Result<()> {
         self.0.apply_bwd(input, output)
     }
 
-    fn apply_bwd(&self, input: &[f64], output: &mut [f64]) -> Result<()> {
+    fn apply_bwd(&self, input: &[Float], output: &mut [Float]) -> Result<()> {
         self.0.apply_fwd(input, output)
     }
 }
@@ -247,13 +248,13 @@ where
         self.then.out_dim()
     }
 
-    fn apply_fwd(&self, i: &[f64], o: &mut [f64]) -> Result<()> {
+    fn apply_fwd(&self, i: &[Float], o: &mut [Float]) -> Result<()> {
         let mut os = [0.0; 3];
         self.first.apply_fwd(i, &mut os[0..self.first.out_dim()])?;
         self.then.apply_fwd(&os, o)
     }
 
-    fn apply_bwd(&self, i: &[f64], o: &mut [f64]) -> Result<()> {
+    fn apply_bwd(&self, i: &[Float], o: &mut [Float]) -> Result<()> {
         let mut os = [0.0; 3];
         self.then.apply_bwd(i, &mut os[0..self.then.in_dim()])?;
         self.first.apply_bwd(&os, o)

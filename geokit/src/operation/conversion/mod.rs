@@ -5,9 +5,10 @@ use crate::{
         geodetic::GeodeticAxes,
     },
     geodesy::{Ellipsoid, GeodeticDatum, PrimeMeridian},
+    math::Float,
 };
 
-type ToOrd = (usize, f64);
+type ToOrd = (usize, Float);
 
 /// [Normalization] is used to normalize(fwd)/denormalize(bwd) coordinates by:
 /// - reordering coordinates
@@ -102,7 +103,7 @@ impl Operation for Normalization {
         3
     }
 
-    fn apply_fwd(&self, input: &[f64], output: &mut [f64]) -> Result<()> {
+    fn apply_fwd(&self, input: &[Float], output: &mut [Float]) -> Result<()> {
         output.copy_from_slice(&[0.; 3]);
         for (nix, (ix, f)) in self.0.iter().enumerate() {
             output[nix] = input[*ix] * f;
@@ -110,7 +111,7 @@ impl Operation for Normalization {
         Ok(())
     }
 
-    fn apply_bwd(&self, input: &[f64], output: &mut [f64]) -> Result<()> {
+    fn apply_bwd(&self, input: &[Float], output: &mut [Float]) -> Result<()> {
         for (nix, (ix, f)) in self.0.iter().enumerate() {
             output[*ix] = input[nix] / f;
         }
@@ -142,7 +143,7 @@ impl GeogToGeoc {
 
     /// Convert **normalized geodetic coordinates** (lon in rad, lat in rad, height in meters)
     /// into **normalized geocentric coordinates** (x, y, z) all in meters.
-    fn llh_to_xyz(&self, llh: &[f64], xyz: &mut [f64]) {
+    fn llh_to_xyz(&self, llh: &[Float], xyz: &mut [Float]) {
         let lon = llh[0];
         let lat = llh[1];
         let h = llh[2];
@@ -159,7 +160,7 @@ impl GeogToGeoc {
     /// Convert **normalized geocentric coordinates** (x, y, z) in meters
     /// into **normalized geodetic coordinates** (lon in rad, lat in rad, height in meters)
     /// using Heiskanen and Moritz iterative method.
-    fn xyz_to_llh(&self, xyz: &[f64], llh: &mut [f64]) {
+    fn xyz_to_llh(&self, xyz: &[Float], llh: &mut [Float]) {
         let x = xyz[0];
         let y = xyz[1];
         let z = xyz[2];
@@ -197,17 +198,17 @@ impl GeogToGeoc {
     /// Convert a **normalized longitude** with the prime meridian as origin into
     /// a **normalized longitude** with the Greenwich prime meridian as origin.
     #[inline]
-    fn convert_lon_to_gw(&self, lon: f64) -> f64 {
+    fn convert_lon_to_gw(&self, lon: Float) -> Float {
         // FIX: What if we cross the antimeridian?
-        lon + self.prime_meridian.lon()
+        lon + self.prime_meridian.lon().rad()
     }
 
     /// Convert a **normalized longitude** with the Greenwich prime meridian as origin into
     /// a **normalized longitude** with this prime meridian as origin.
     #[inline]
-    fn convert_lon_from_gw(&self, lon: f64) -> f64 {
+    fn convert_lon_from_gw(&self, lon: Float) -> Float {
         // FIX: What if we cross the antimeridian?
-        lon - self.prime_meridian.lon()
+        lon - self.prime_meridian.lon().rad()
     }
 }
 
@@ -221,7 +222,7 @@ impl Operation for GeogToGeoc {
     }
 
     /// Convert geographic coordinates to geocentric coordinates.
-    fn apply_fwd(&self, input: &[f64], output: &mut [f64]) -> Result<()> {
+    fn apply_fwd(&self, input: &[Float], output: &mut [Float]) -> Result<()> {
         let mut llh_cpy = [0.0; 3];
         llh_cpy.copy_from_slice(input);
         llh_cpy[0] = self.convert_lon_to_gw(input[0]);
@@ -230,7 +231,7 @@ impl Operation for GeogToGeoc {
     }
 
     /// Convert geocentric coordinates to geographic coordinates.
-    fn apply_bwd(&self, input: &[f64], output: &mut [f64]) -> Result<()> {
+    fn apply_bwd(&self, input: &[Float], output: &mut [Float]) -> Result<()> {
         self.xyz_to_llh(input, output);
         output[0] = self.convert_lon_from_gw(output[0]);
         Ok(())
@@ -256,6 +257,7 @@ mod tests {
         let i = [10.0, 110.0];
         let mut o = [0.0; 3];
         t.apply_fwd(&i, &mut o).unwrap();
+        // FIX: remove the need to use f64 suffixes
         assert_eq!(o, [-110.0f64.to_radians(), 10.0f64.to_radians(), 0.0]);
     }
 
