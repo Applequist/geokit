@@ -1,6 +1,6 @@
 use num::Zero;
 
-use crate::math::Float;
+use crate::{cs::s1::Angle, math::Float, units::angle::RAD};
 use std::ops::{Add, Div, Mul, Sub};
 
 #[derive(Debug, Copy, Clone, PartialEq)]
@@ -29,8 +29,8 @@ impl Complex {
     }
 
     /// Return the argument **in radians** of this complex.
-    pub fn arg(&self) -> Float {
-        self.im.atan2(self.re)
+    pub fn arg(&self) -> Angle {
+        self.im.atan2(self.re) * RAD
     }
 
     /// Return the multiplicative inverse of this complex.
@@ -144,9 +144,8 @@ impl Div<Float> for Complex {
 #[cfg(test)]
 mod tests {
 
+    use crate::cs::s1::Angle;
     use crate::math::complex::Complex;
-    use crate::math::PI;
-    use crate::math::PI_4;
 
     #[test]
     fn test_eq() {
@@ -156,9 +155,9 @@ mod tests {
 
     #[test]
     fn test_arg() {
-        assert_eq!(Complex::new(1., 1.).arg(), PI_4);
-        assert_eq!(Complex::new(0.5, 3f64.sqrt() / 2.).arg(), PI / 3.);
-        assert_eq!(Complex::new(-1., 0.).arg(), PI);
+        assert_eq!(Complex::new(1., 1.).arg(), Angle::PI / 4.);
+        assert_eq!(Complex::new(0.5, 3f64.sqrt() / 2.).arg(), Angle::PI / 3.);
+        assert_eq!(Complex::new(-1., 0.).arg(), Angle::PI);
     }
 
     #[test]

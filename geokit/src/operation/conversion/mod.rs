@@ -17,6 +17,7 @@ type ToOrd = (usize, Float);
 ///
 /// Normalized geocentric coordinates are (x, y, z) measured in metres.
 /// Normalized geographic coordinates are using the `GeodeticAxes::EastNorthUp(RAD, M)` axes..
+#[deprecated(note = "Use the axes")]
 #[derive(Debug, Clone)]
 pub struct Normalization(Vec<ToOrd>);
 
@@ -133,6 +134,7 @@ pub struct GeogToGeoc {
     prime_meridian: PrimeMeridian,
 }
 
+#[deprecated(note = "Use the GeodeticDatum")]
 impl GeogToGeoc {
     pub fn new(datum: &GeodeticDatum) -> Self {
         Self {
@@ -141,74 +143,33 @@ impl GeogToGeoc {
         }
     }
 
-    /// Convert **normalized geodetic coordinates** (lon in rad, lat in rad, height in meters)
-    /// into **normalized geocentric coordinates** (x, y, z) all in meters.
+    ///// Convert **normalized geodetic coordinates** (lon in rad, lat in rad, height in meters)
+    ///// into **normalized geocentric coordinates** (x, y, z) all in meters.
+    #[deprecated(note = "llh_to_xyz is now done in GeodeticDatum")]
     fn llh_to_xyz(&self, llh: &[Float], xyz: &mut [Float]) {
-        let lon = llh[0];
-        let lat = llh[1];
-        let h = llh[2];
-
-        let v = self.ellipsoid.prime_vertical_radius(lat);
-        let (sin_lon, cos_lon) = lon.sin_cos();
-        let (sin_lat, cos_lat) = lat.sin_cos();
-
-        xyz[0] = (v + h) * cos_lat * cos_lon;
-        xyz[1] = (v + h) * cos_lat * sin_lon;
-        xyz[2] = (v * (1.0 - self.ellipsoid.e_sq()) + h) * sin_lat;
+        panic!("llh_to_xyz is now done in GeodeticDatum");
     }
 
     /// Convert **normalized geocentric coordinates** (x, y, z) in meters
     /// into **normalized geodetic coordinates** (lon in rad, lat in rad, height in meters)
     /// using Heiskanen and Moritz iterative method.
+    #[deprecated(note = "xyz_to_llh is now done in GeodeticDatum")]
     fn xyz_to_llh(&self, xyz: &[Float], llh: &mut [Float]) {
-        let x = xyz[0];
-        let y = xyz[1];
-        let z = xyz[2];
-
-        let a2 = self.ellipsoid.a_sq();
-        let b2 = self.ellipsoid.b_sq();
-        let e2 = self.ellipsoid.e_sq();
-
-        let lon = y.atan2(x);
-
-        let p = x.hypot(y);
-        let mut lat = z.atan2(p * (1.0 - e2));
-        let (sin_lat, cos_lat) = lat.sin_cos();
-        let n = a2 / (a2 * cos_lat * cos_lat + b2 * sin_lat * sin_lat).sqrt();
-        let mut h = p / cos_lat - n;
-        loop {
-            let next_lat = z.atan2(p * (1.0 - e2 * n / (n + h)));
-            let (sin_nlat, cos_nlat) = next_lat.sin_cos();
-            let next_n = a2 / ((a2 * cos_nlat * cos_nlat) + b2 * sin_nlat * sin_nlat).sqrt();
-            let next_h = p / cos_nlat - next_n;
-            let delta_lat = (lat - next_lat).abs();
-            let delta_h = (h - next_h).abs();
-            lat = next_lat;
-            h = next_h;
-            if delta_lat < 0.5e-5 && delta_h < 0.5e-3 {
-                break;
-            }
-        }
-
-        llh[0] = lon;
-        llh[1] = lat;
-        llh[2] = h;
+        panic!("xyz_to_llh is now done in GeodeticDatum");
     }
 
     /// Convert a **normalized longitude** with the prime meridian as origin into
     /// a **normalized longitude** with the Greenwich prime meridian as origin.
-    #[inline]
+    #[deprecated(note = "done in llh_to_xyz")]
     fn convert_lon_to_gw(&self, lon: Float) -> Float {
-        // FIX: What if we cross the antimeridian?
-        lon + self.prime_meridian.lon().rad()
+        panic!("conversion to Greenwich-based longitude is done in llh_to_xyz");
     }
 
     /// Convert a **normalized longitude** with the Greenwich prime meridian as origin into
     /// a **normalized longitude** with this prime meridian as origin.
-    #[inline]
+    #[deprecated(note = "done in xyz_to_llh")]
     fn convert_lon_from_gw(&self, lon: Float) -> Float {
-        // FIX: What if we cross the antimeridian?
-        lon - self.prime_meridian.lon().rad()
+        panic!("conversion from Greenwich-based longitude is done in llh_to_xyz");
     }
 }
 

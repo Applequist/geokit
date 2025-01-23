@@ -32,7 +32,7 @@ impl Mercator {
         false_northing: Float,
     ) -> Self {
         Self {
-            a: ellipsoid.a(),
+            a: ellipsoid.a().m(),
             e: ellipsoid.e(),
             e2: ellipsoid.e_sq(),
             lon0,
@@ -57,7 +57,7 @@ impl Mercator {
     ) -> Self {
         let (sin_lat1, cos_lat1) = lat0.abs().sin_cos();
         Self {
-            a: ellipsoid.a(),
+            a: ellipsoid.a().m(),
             e: ellipsoid.e(),
             e2: ellipsoid.e_sq(),
             lon0,
@@ -192,7 +192,7 @@ impl TransverseMercator {
         let e = ellipsoid.e();
         let f = 1.0 / ellipsoid.invf();
         let n = f / (2.0 - f);
-        let upper_b = ellipsoid.a() / (1.0 + n)
+        let upper_b = ellipsoid.a().m() / (1.0 + n)
             * Polynomial::new([1.0, 0.0, 0.25, 0.0, 1.0 / 64.0]).eval_at(n);
         let h = [
             Polynomial::new([0.0, 0.5, -2.0 / 3.0, 5.0 / 16.0, 41.0 / 180.0]).eval_at(n),
@@ -364,7 +364,7 @@ impl WebMercator {
         false_northing: Float,
     ) -> Self {
         Self {
-            a: ellipsoid.a(),
+            a: ellipsoid.a().m(),
             lon0,
             lat0,
             false_easting,

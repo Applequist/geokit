@@ -1,4 +1,4 @@
-//! Geodetic coordinates spaces are used to represent points on or near the surface of an ellipsoid
+//! aeodetic coordinates spaces are used to represent points on or near the surface of an ellipsoid
 //! of revolution.
 //!
 //! Points in those spaces are represented using:
@@ -12,12 +12,13 @@
 //! a set of value types to represent **normalized** geodetic coordinates.
 
 use crate::math::Float;
-use crate::units::angle::{AngleUnit, RAD};
+use crate::units::angle::{self, AngleUnit, RAD};
 use crate::units::length::{LengthUnit, M};
 use approx::AbsDiffEq;
 use derive_more::derive::{Display, Neg};
 use std::ops::{Add, AddAssign, Sub, SubAssign};
 
+use super::r1::Length;
 use super::s1::{Angle, Interval};
 
 /// A [GeodeticAxes] defines the possible set of axes used in **geodetic** CS.
@@ -74,6 +75,75 @@ pub enum GeodeticAxes {
 }
 
 impl GeodeticAxes {
+    pub fn normalize(&self, coords: &[Float]) -> LLH {
+        match self {
+            GeodeticAxes::EastNorthUp {
+                angle_unit,
+                height_unit,
+            } => LLH {
+                lon: Lon::new(Angle::new(coords[0], *angle_unit)),
+                lat: Lat::new(Angle::new(coords[1], *angle_unit)),
+                h: Height::new(coords[3], *height_unit),
+            },
+            GeodeticAxes::EastNorth { angle_unit } => LLH {
+                lon: Lon::new(Angle::new(coords[0], *angle_unit)),
+                lat: Lat::new(Angle::new(coords[1], *angle_unit)),
+                h: Height::ZERO,
+            },
+            GeodeticAxes::NorthEastUp {
+                angle_unit,
+                height_unit,
+            } => LLH {
+                lon: Lon::new(Angle::new(coords[1], *angle_unit)),
+                lat: Lat::new(Angle::new(coords[0], *angle_unit)),
+                h: Height::new(coords[2], *height_unit),
+            },
+            GeodeticAxes::NorthEast { angle_unit } => LLH {
+                lon: Lon::new(Angle::new(coords[1], *angle_unit)),
+                lat: Lat::new(Angle::new(coords[0], *angle_unit)),
+                h: Height::ZERO,
+            },
+            GeodeticAxes::NorthWest { angle_unit } => LLH {
+                lon: Lon::new(Angle::new(-coords[1], *angle_unit)),
+                lat: Lat::new(Angle::new(coords[0], *angle_unit)),
+                h: Height::ZERO,
+            },
+        }
+    }
+
+    pub fn denormalize(&self, llh: LLH, coords: &mut [Float]) {
+        match self {
+            GeodeticAxes::EastNorthUp {
+                angle_unit,
+                height_unit,
+            } => {
+                coords[0] = llh.lon.val(*angle_unit);
+                coords[1] = llh.lat.val(*angle_unit);
+                coords[2] = llh.h.val(*height_unit);
+            }
+            GeodeticAxes::EastNorth { angle_unit } => {
+                coords[0] = llh.lon.val(*angle_unit);
+                coords[1] = llh.lat.val(*angle_unit);
+            }
+            GeodeticAxes::NorthEastUp {
+                angle_unit,
+                height_unit,
+            } => {
+                coords[1] = llh.lon.val(*angle_unit);
+                coords[0] = llh.lat.val(*angle_unit);
+                coords[2] = llh.h.val(*height_unit);
+            }
+            GeodeticAxes::NorthEast { angle_unit } => {
+                coords[1] = llh.lon.val(*angle_unit);
+                coords[0] = llh.lat.val(*angle_unit);
+            }
+            GeodeticAxes::NorthWest { angle_unit } => {
+                coords[1] = -llh.lon.val(*angle_unit);
+                coords[0] = llh.lat.val(*angle_unit);
+            }
+        }
+    }
+
     /// Return the dimension (2D or 3D) of the coordinate system.
     pub fn dim(&self) -> usize {
         match self {
@@ -102,7 +172,31 @@ impl Default for GeodeticAxes {
     }
 }
 
-/// A longitude coordinate in [-pi..pi] radians.
+/// [LLH] represents **normalized** geodeetic coordinates.
+#[derive(Debug, Copy, Clone, PartialEq, Display)]
+#[display("(lon = {}, lat = {}, h = {})", lon, lat, h)]
+pub struct LLH {
+    pub lon: Lon,
+    pub lat: Lat,
+    pub h: Height,
+}
+
+impl AbsDiffEq for LLH {
+    type Epsilon = Float;
+
+    fn default_epsilon() -> Self::Epsilon {
+        Float::default_epsilon()
+    }
+
+    fn abs_diff_eq(&self, other: &Self, epsilon: Self::Epsilon) -> bool {
+        self.lon.abs_diff_eq(&other.lon, epsilon)
+            && self.lat.abs_diff_eq(&other.lat, epsilon)
+            && self.h.abs_diff_eq(&other.h, epsilon)
+    }
+}
+
+/// [Lon] represents a longitude coordinate in [-pi..pi] radians.
+///
 /// You can add, subtract an [Angle] from [Lon],
 #[derive(Debug, Copy, Clone, PartialEq, PartialOrd, Neg, Display)]
 #[display("{}", self.0.to_dms())]
@@ -159,10 +253,35 @@ impl Lon {
         self.0
     }
 
+    #[inline]
+    pub fn val(self, unit: AngleUnit) -> Float {
+        self.0.val(unit)
+    }
+
     /// Return the longitude as a raw angle value **in radians**.
     #[inline]
     pub fn rad(self) -> Float {
         self.0.rad()
+    }
+
+    #[inline]
+    pub fn sin(self) -> Float {
+        self.0.sin()
+    }
+
+    #[inline]
+    pub fn cos(self) -> Float {
+        self.0.cos()
+    }
+
+    #[inline]
+    pub fn sin_cos(self) -> (Float, Float) {
+        self.0.sin_cos()
+    }
+
+    #[inline]
+    pub fn tan(self) -> Float {
+        self.0.tan()
     }
 }
 
@@ -234,7 +353,7 @@ impl Sub for Lon {
 ///     - `[lo..hi]` for lo != -pi
 ///     - `[pi..hi]` for lo == -pi and hi != pi,
 ///     - `[lo..hi]` otherwise
-#[derive(Debug, Copy, Clone, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq, Display)]
 pub struct LonInterval(Interval);
 
 impl LonInterval {
@@ -276,7 +395,8 @@ impl LonInterval {
     }
 }
 
-/// [Lat] represents a latitude coordinate in [-pi/2..pi/2] radians.
+/// [Lat] represents a latitude coordinate (geodetic or other auxiliary ones)
+/// in [-pi/2..pi/2] radians.
 ///
 /// # Creation
 ///
@@ -339,10 +459,35 @@ impl Lat {
         self.0
     }
 
+    #[inline]
+    pub fn val(self, unit: AngleUnit) -> Float {
+        self.0.val(unit)
+    }
+
     /// Return this latitude as a raw angle value in radians.
     #[inline]
     pub fn rad(self) -> Float {
         self.0.rad()
+    }
+
+    #[inline]
+    pub fn sin(self) -> Float {
+        self.0.sin()
+    }
+
+    #[inline]
+    pub fn cos(self) -> Float {
+        self.0.cos()
+    }
+
+    #[inline]
+    pub fn sin_cos(self) -> (Float, Float) {
+        self.0.sin_cos()
+    }
+
+    #[inline]
+    pub fn tan(self) -> Float {
+        self.0.tan()
     }
 }
 
@@ -367,6 +512,15 @@ impl AddAssign<Angle> for Lat {
         self.0 = (self.0 + rhs).clamped(Angle::M_PI_2, Angle::PI_2)
     }
 }
+
+impl Sub for Lat {
+    type Output = Angle;
+
+    fn sub(self, rhs: Self) -> Self::Output {
+        self.0 - rhs.0
+    }
+}
+
 impl Sub<Angle> for Lat {
     type Output = Self;
 
@@ -393,6 +547,9 @@ impl AbsDiffEq for Lat {
     }
 }
 
+/// A type alias for
+pub type Height = Length;
+
 // TODO: Add the following:
 // - a LatInterval.
 // - a Height similar to Length
@@ -402,12 +559,30 @@ impl AbsDiffEq for Lat {
 
 #[cfg(test)]
 mod tests {
+    use crate::cs::geodetic::{GeodeticAxes, Height, Lat, Lon, LLH};
+    use crate::math::Float;
+    use crate::units::angle::{DEG, RAD};
+    use approx::assert_abs_diff_eq;
     use std::f64::consts::{FRAC_PI_2, FRAC_PI_4, PI};
 
-    use approx::assert_abs_diff_eq;
+    #[test]
+    fn normalization() {
+        let latlon_deg = GeodeticAxes::NorthWest { angle_unit: DEG };
 
-    use crate::cs::geodetic::{Lat, Lon};
-    use crate::units::angle::{DEG, RAD};
+        let llh = latlon_deg.normalize(&[10.0, 110.0]);
+        assert_eq!(
+            llh,
+            LLH {
+                lon: Lon::new(-110. * DEG),
+                lat: Lat::new(10.0 * DEG),
+                h: Height::ZERO
+            }
+        );
+
+        let mut coords: [Float; 2] = [0.0; 2];
+        latlon_deg.denormalize(llh, &mut coords);
+        assert_eq!(coords, [10.0, 110.0]);
+    }
 
     #[test]
     fn test_lon() {

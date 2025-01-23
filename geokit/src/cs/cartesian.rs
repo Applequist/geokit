@@ -11,9 +11,14 @@
 //!
 //! And a set of value type to represent **normalized** coordinates.
 
-use crate::units::length::LengthUnit;
+use crate::{
+    math::Float,
+    units::length::{LengthUnit, M},
+};
+use approx::AbsDiffEq;
+use derive_more::derive::Display;
 
-use super::r1::Length;
+use super::{geodetic::Height, r1::Length};
 
 /// [GeocentricAxes] defines the possible set of axes used in **geocentric** 3D cartesion CS.
 /// Geocentric CS uses [meter][crate::units::length::M] unit by default for all axes.
@@ -23,12 +28,48 @@ pub enum GeocentricAxes {
     XYZ,
 }
 
-/// First normalized geocentric coordinates type.
-pub type X = Length;
-/// Second normalized geocentric coordinates type.
-pub type Y = Length;
-/// Third normalized geocentric coordinates type.
-pub type Z = Length;
+/// [XYZ] represents **normalized** geocentric coordinates.
+#[derive(Debug, Copy, Clone, PartialEq, Display)]
+#[display("({}, {}, {})", x, y, z)]
+pub struct XYZ {
+    pub x: Length,
+    pub y: Length,
+    pub z: Length,
+}
+
+impl AbsDiffEq for XYZ {
+    type Epsilon = Float;
+
+    fn default_epsilon() -> Self::Epsilon {
+        Float::default_epsilon()
+    }
+
+    fn abs_diff_eq(&self, other: &Self, epsilon: Self::Epsilon) -> bool {
+        self.x.abs_diff_eq(&other.x, epsilon)
+            && self.y.abs_diff_eq(&other.y, epsilon)
+            && self.z.abs_diff_eq(&other.z, epsilon)
+    }
+}
+
+impl GeocentricAxes {
+    pub fn normalize(&self, coords: &[Float]) -> XYZ {
+        XYZ {
+            x: Length::new(coords[0], M),
+            y: Length::new(coords[1], M),
+            z: Length::new(coords[2], M),
+        }
+    }
+
+    pub fn denormalize(&self, xyz: XYZ, coords: &mut [Float]) {
+        coords[0] = xyz.x.m();
+        coords[1] = xyz.y.m();
+        coords[2] = xyz.z.m();
+    }
+
+    pub fn dim(&self) -> usize {
+        3
+    }
+}
 
 /// [ProjectedAxes] defines the possible set of axes used in 2D or 3D **projected** cartesian CS.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -56,6 +97,41 @@ pub enum ProjectedAxes {
 }
 
 impl ProjectedAxes {
+    pub fn normalize(&self, coords: &[Float]) -> ENH {
+        match self {
+            ProjectedAxes::EastNorthUp {
+                horiz_unit,
+                height_unit,
+            } => ENH {
+                e: Length::new(coords[0], *horiz_unit),
+                n: Length::new(coords[1], *horiz_unit),
+                h: Length::new(coords[2], *height_unit),
+            },
+            ProjectedAxes::EastNorth { horiz_unit } => ENH {
+                e: Length::new(coords[0], *horiz_unit),
+                n: Length::new(coords[1], *horiz_unit),
+                h: Length::ZERO,
+            },
+        }
+    }
+
+    pub fn denormalize(&self, enh: ENH, coords: &mut [Float]) {
+        match self {
+            ProjectedAxes::EastNorthUp {
+                horiz_unit,
+                height_unit,
+            } => {
+                coords[0] = enh.e.val(*horiz_unit);
+                coords[1] = enh.n.val(*horiz_unit);
+                coords[2] = enh.h.val(*height_unit);
+            }
+            ProjectedAxes::EastNorth { horiz_unit } => {
+                coords[0] = enh.e.val(*horiz_unit);
+                coords[1] = enh.n.val(*horiz_unit);
+            }
+        }
+    }
+
     pub fn dim(&self) -> usize {
         match self {
             ProjectedAxes::EastNorthUp {
@@ -67,7 +143,11 @@ impl ProjectedAxes {
     }
 }
 
-/// First normalized projected coordinates type
-pub type Easting = Length;
-/// Second normalized projected coordinates type
-pub type Northing = Length;
+/// [ENH] represents **normalized** Projected coordinates.
+#[derive(Debug, Copy, Clone, PartialEq, Display)]
+#[display("(e = {}, n = {}, h = {})", e, n, h)]
+pub struct ENH {
+    pub e: Length,
+    pub n: Length,
+    pub h: Height,
+}

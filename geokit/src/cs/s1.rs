@@ -1,4 +1,4 @@
-//! The S1 *abstract* coordinate space is used to represent points from the unit circle.
+//! The S1 space is used to represent points on the unit circle.
 //! Each point on the circle is represented by the angle at the center of the circle between
 //! an origin and the point, in the range [-pi..pi].
 //!
@@ -17,12 +17,15 @@ use approx::AbsDiffEq;
 use derive_more::derive::{Add, AddAssign, Display, Neg, Sub, SubAssign};
 use std::ops::{Div, DivAssign, Mul, MulAssign};
 
-/// [Angle] is a generic 1-dimensional angle value type.
+/// [Angle] is a generic angle value type used to represent S1 point coordinate.
+/// Compared to a raw [Float], it carries the extra meaning that it is internally
+/// measured in **radians**.
 ///
 /// # Creation
 ///
 /// There are several ways to create an [Angle] value:
-/// - by using [Angle::new], passing a quantity and an [AngleUnit]:
+/// - by using [Angle::new], passing a quantity and an [AngleUnit].
+///   The quantity expressed in the given unit is then converted to radians.
 /// ```
 /// use crate::quantities::angle::{Angle, units::GRAD};
 /// let a = Angle::new(100., GRAD);
@@ -33,6 +36,7 @@ use std::ops::{Div, DivAssign, Mul, MulAssign};
 /// let dms = Angle::dms(-110., 45., 53.234);
 /// ```
 /// - by multiplying a [Float] quantity by an [AngleUnit] value:
+///   The quantity expressed in the given unit is then converted to radians.
 /// ```
 /// use crate::quantities::angle::{Angle, units::GRAD};
 /// let a: Angle = 100. * GRAD;

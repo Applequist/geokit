@@ -1,4 +1,4 @@
-//! The R1 *abstract* coordinate space is used to represents points on the oriented line.
+//! The R1 space is used to represents points on the oriented line.
 //!
 //! Each point on the line is represented by the distance of the point from an origin on the line.
 //!
@@ -6,33 +6,44 @@
 //! - [Length] to represent the coordinate of a single R1 point coordinate.
 //!
 
-use crate::{math::Float, units::length::LengthUnit};
+use crate::{
+    math::Float,
+    units::{angle::RAD, length::LengthUnit},
+};
 use approx::AbsDiffEq;
 use derive_more::derive::{Add, AddAssign, Display, Sub, SubAssign};
 use std::ops::{Div, DivAssign, Mul, MulAssign};
 
-/// [Length] is a generic length value type used to expressed coordinates
-/// in cartesion CS.
+use super::s1::Angle;
+
+/// [Length] is a generic length value type used to expressed R1 point coordinates.
+///
+/// Compared to a raw [Float] value, it carries the extra meaning that it is internally
+/// measured in **meters**.
 ///
 /// # Creation
 ///
 /// There are 2 ways to create a [Length] value:
-/// 1. By multiplying a [Float] quantity by a [LengthUnit] value:
+/// 1. By multiplying a [Float] quantity by a [LengthUnit] value.
+///    The quantity expressed in the given unit is then converted to meters:
 /// ```
 /// let l: Length = 100. * US_FT;
 /// ```
 ///
-/// 2. Or by using [Length::new], passing a quantity and a [LengthUnit]:
+/// 2. Or by using [Length::new], passing a quantity and a [LengthUnit].
+///    The quantity expressed in the given unit is then converted to meters:
 /// ```
 /// let l = Length::new(100., US_FT);
 /// ```
+///
 /// The 2nd way can also be used in `const` context.
 ///
 /// # Operations
 ///
 /// [Length] supports the following operations:
 /// - Addition, subtraction,
-/// - negation (yep [Length] can be negative:)),
+/// - negation,
+/// - division
 /// - multiplication by a scalar (left and right)
 /// - division by a scalor (right)
 #[derive(Debug, Copy, Clone, PartialEq, PartialOrd, Add, AddAssign, Sub, SubAssign, Display)]
@@ -63,6 +74,18 @@ impl Length {
     /// Return this length value in meters.
     pub fn m(self) -> Float {
         self.0
+    }
+
+    pub fn abs(self) -> Length {
+        Self(self.0.abs())
+    }
+
+    pub fn atan2(self, other: Self) -> Angle {
+        Angle::new(self.m().atan2(other.m()), RAD)
+    }
+
+    pub fn hypot(self, other: Self) -> Length {
+        Self(self.m().hypot(other.m()))
     }
 }
 

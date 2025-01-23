@@ -1,11 +1,15 @@
 use crate::cs::azimuth::Azimuth;
 use crate::cs::geodetic::{Lat, Lon};
+use crate::cs::s1::Angle;
 use crate::geodesy::geodesics::{Geodesic, GeodesicSolver};
 use crate::geodesy::Ellipsoid;
 use crate::math::complex::Complex;
 use crate::math::polynomial::Polynomial;
-use crate::units::angle::RAD;
-use std::f64::consts::{FRAC_PI_2, PI};
+use crate::math::{Float, PI};
+use crate::units::angle::{DEG, RAD};
+use crate::units::length::M;
+
+use super::CurveLength;
 
 /// Solve direct and inverse geodesic problems on an ellipsoid using algorithms
 /// for Karney - Algorithms for Geodesics.
@@ -76,9 +80,9 @@ impl<'e> KarneyGeodesicSolver<'e> {
         }
     }
 
-    pub fn direct(&self, p1: (Lon, Lat), alpha1: Azimuth, s12: f64) -> Geodesic {
+    pub fn direct(&self, p1: (Lon, Lat), alpha1: Azimuth, s12: CurveLength) -> Geodesic {
         let (lon1, lat1) = p1;
-        let beta1 = self.ellipsoid.reduced_latitude(lat1.rad());
+        let beta1 = self.ellipsoid.reduced_latitude(lat1);
         let (sin_beta1, cos_beta1) = beta1.sin_cos();
         let (sin_alpha1, cos_alpha1) = alpha1.rad().sin_cos();
 
@@ -105,14 +109,17 @@ impl<'e> KarneyGeodesicSolver<'e> {
         // Eq (17)
         let a1 = Self::a1(epsilon);
         // Eq (15) geodesic arc length from point on the geodesic at equator to p1 in meters
-        let s1 = self.ellipsoid.b() * Self::i1(a1, epsilon, sigma1);
+        let s1 = CurveLength::new(
+            self.ellipsoid.b().m() * Self::i1(a1, epsilon, sigma1.rad()),
+            M,
+        );
 
         // geodesic arc length from point on the geodesic at equator to p2 in meters (p2 is what we are looking for)
         let s2 = s1 + s12;
 
-        let tau2 = s2 / (self.ellipsoid.b() * a1);
+        let tau2 = Angle::new(s2.m() / (self.ellipsoid.b() * a1).m(), RAD);
         // Eq (11) arc length on the auxiliary sphere from E to p2 in radians
-        let sigma2 = Self::sigma(epsilon, tau2);
+        let sigma2 = Self::sigma(epsilon, tau2.rad());
         let (sin_sigma2, cos_sigma2) = sigma2.sin_cos();
 
         // Eq (14)
@@ -129,19 +136,20 @@ impl<'e> KarneyGeodesicSolver<'e> {
 
         let a3 = self.a3(epsilon);
         // Eq (8)
-        let lambda1 = omega1 - self.ellipsoid.f() * sin_alpha0 * self.i3(a3, epsilon, sigma1);
-        let lambda2 = omega2 - self.ellipsoid.f() * sin_alpha0 * self.i3(a3, epsilon, sigma2);
+        let lambda1 =
+            omega1 - self.ellipsoid.f() * sin_alpha0 * self.i3(a3, epsilon, sigma1.rad()) * RAD;
+        let lambda2 = omega2 - self.ellipsoid.f() * sin_alpha0 * self.i3(a3, epsilon, sigma2) * RAD;
 
         let lambda12 = lambda2 - lambda1;
 
         // from: tan(beta) = (1 - f)*tan(lat)
-        let lat2 = (beta2.tan() / (1. - self.ellipsoid.f())).atan();
+        let lat2 = (beta2.tan() / (1. - self.ellipsoid.f())).atan() * RAD;
 
         Geodesic {
             p1,
             alpha1,
-            p2: (lon1 + lambda12 * RAD, Lat::new(lat2 * RAD)),
-            alpha2: Azimuth::new(alpha2 * RAD),
+            p2: (lon1 + lambda12, Lat::new(lat2)),
+            alpha2: Azimuth::new(alpha2),
             s: s12,
         }
     }
@@ -153,20 +161,20 @@ impl<'e> KarneyGeodesicSolver<'e> {
         // TODO: swap  endpoints and coordinates signs so that lat1 <= 0,
         //       lat1 <= lat2 <= -lat1 and 0 <= lat2 - lat2 <= pi
 
-        let beta1 = self.ellipsoid.reduced_latitude(p1.1.rad());
-        println!("beta1 = {}", beta1.to_degrees());
-        let beta2 = self.ellipsoid.reduced_latitude(p2.1.rad());
+        let beta1 = self.ellipsoid.reduced_latitude(p1.1);
+        println!("beta1 = {}", beta1);
+        let beta2 = self.ellipsoid.reduced_latitude(p2.1);
         let (sin_beta1, cos_beta1) = beta1.sin_cos();
         let (sin_beta2, cos_beta2) = beta2.sin_cos();
 
-        let lambda12_0 = (p2.0 - p1.0).length().rad();
-        println!("lambda12_0 = {}", lambda12_0.to_degrees());
+        let lambda12_0 = (p2.0 - p1.0).length();
+        println!("lambda12_0 = {}", lambda12_0.val(DEG));
 
         // Get initial value of alpha1
         let delta = f * a * PI * cos_beta1.powi(2);
-        let x = (lambda12_0 - PI) * a * cos_beta1 / delta;
+        let x = (lambda12_0 - Angle::PI).rad() * a * cos_beta1 / delta;
         println!("x = {}", x);
-        let y = (beta2 + beta1) * a / delta;
+        let y = (beta2.angle() + beta1.angle()).rad() * a / delta;
         println!("y = {}", y);
 
         let y_sq = y * y;
@@ -178,7 +186,7 @@ impl<'e> KarneyGeodesicSolver<'e> {
             Complex::new(y / mu, -x / (1. + mu)).arg()
         } else {
             // TODO
-            0.0f64
+            Angle::ZERO
         };
         println!("alpha1 = {}", alpha1);
         let mut iter_count = 0;
@@ -206,20 +214,20 @@ impl<'e> KarneyGeodesicSolver<'e> {
             // Compute sigma1 and omega1
             // Eq (11)
             let sigma1 = Complex::new(cos_alpha1 * cos_beta1, sin_beta1).arg();
-            println!("sigma1 = {}", sigma1.to_degrees());
+            println!("sigma1 = {}", sigma1.val(DEG));
             let (sin_sigma1, cos_sigma1) = sigma1.sin_cos();
             // Eq (12)
             let omega1 = Complex::new(cos_sigma1, sin_alpha0 * sin_sigma1).arg();
-            println!("omega1 = {}", omega1.to_degrees());
+            println!("omega1 = {}", omega1.val(DEG));
 
             // Compute sigma2 and omega2
             // Eq (11)
             let sigma2 = Complex::new(cos_alpha2 * cos_beta2, sin_beta2).arg();
-            println!("sigma2 = {}", sigma2.to_degrees());
+            println!("sigma2 = {}", sigma2.val(DEG));
             let (sin_sigma2, cos_sigma2) = sigma2.sin_cos();
             // Eq (12)
             let omega2 = Complex::new(cos_sigma2, sin_alpha0 * sin_sigma2).arg();
-            println!("omega2 = {}", omega2.to_degrees());
+            println!("omega2 = {}", omega2.val(DEG));
 
             // Determine lambda12
             // Eq (9)
@@ -233,45 +241,48 @@ impl<'e> KarneyGeodesicSolver<'e> {
 
             let a3 = self.a3(epsilon);
             // Eq (8)
-            let lambda1 = omega1 - self.ellipsoid.f() * sin_alpha0 * self.i3(a3, epsilon, sigma1);
-            println!("lambda1 = {}", lambda1.to_degrees());
-            let lambda2 = omega2 - self.ellipsoid.f() * sin_alpha0 * self.i3(a3, epsilon, sigma2);
-            println!("lambda2 = {}", lambda2.to_degrees());
+            let lambda1 =
+                omega1 - self.ellipsoid.f() * sin_alpha0 * self.i3(a3, epsilon, sigma1.rad()) * RAD;
+            println!("lambda1 = {}", lambda1.val(DEG));
+            let lambda2 =
+                omega2 - self.ellipsoid.f() * sin_alpha0 * self.i3(a3, epsilon, sigma2.rad()) * RAD;
+            println!("lambda2 = {}", lambda2.val(DEG));
 
             let lambda12 = lambda2 - lambda1;
             println!("lambda12 = {}", lambda12);
 
             let d_lambda12 = lambda12 - lambda12_0;
             println!("d_lambda12 = {}", d_lambda12);
-            let d_lambda12_d_alpha1 = if beta2.abs() == beta1.abs() && alpha1 == FRAC_PI_2 {
-                // Eq (47): special case
-                let sign = (beta2 / beta1).signum();
-                -(1. - self.ellipsoid.e_sq() * cos_beta1.powi(2)).sqrt() / sin_beta1
-                    * (1. + sign * cos_alpha1)
-            } else {
-                let a1 = Self::a1(epsilon);
-                let a2 = Self::a2(epsilon);
-                // Eq (40)
-                let j = |sigma| Self::i1(a1, epsilon, sigma) - Self::i2(a2, epsilon, sigma);
+            let d_lambda12_d_alpha1 =
+                if beta2.angle().abs() == beta1.angle().abs() && alpha1 == Angle::PI_2 {
+                    // Eq (47): special case
+                    let sign = (beta2.rad() / beta1.rad()).signum();
+                    -(1. - self.ellipsoid.e_sq() * cos_beta1.powi(2)).sqrt() / sin_beta1
+                        * (1. + sign * cos_alpha1)
+                } else {
+                    let a1 = Self::a1(epsilon);
+                    let a2 = Self::a2(epsilon);
+                    // Eq (40)
+                    let j = |sigma| Self::i1(a1, epsilon, sigma) - Self::i2(a2, epsilon, sigma);
 
-                let j_sigma1 = j(sigma1);
-                println!("J(sigma1) = {}", j_sigma1);
-                let j_sigma2 = j(sigma2);
-                println!("J(sigma1) = {}", j_sigma1);
-                let m12 = self.ellipsoid.b()
-                    * ((1. + k_sq * sin_sigma2.powi(2)).sqrt() * cos_sigma1 * sin_sigma2
-                        - (1. + k_sq * sin_sigma1.powi(2)).sqrt() * sin_sigma1 * cos_sigma2
-                        - cos_sigma1 * cos_sigma2 * (j_sigma2 - j_sigma1));
-                println!("m12 = {}", m12);
+                    let j_sigma1 = j(sigma1.rad());
+                    println!("J(sigma1) = {}", j_sigma1);
+                    let j_sigma2 = j(sigma2.rad());
+                    println!("J(sigma1) = {}", j_sigma1);
+                    let m12 = self.ellipsoid.b()
+                        * ((1. + k_sq * sin_sigma2.powi(2)).sqrt() * cos_sigma1 * sin_sigma2
+                            - (1. + k_sq * sin_sigma1.powi(2)).sqrt() * sin_sigma1 * cos_sigma2
+                            - cos_sigma1 * cos_sigma2 * (j_sigma2 - j_sigma1));
+                    println!("m12 = {}", m12);
 
-                m12 / (self.ellipsoid.a() * cos_alpha2 * cos_beta2)
-            };
+                    m12 / (self.ellipsoid.a() * cos_alpha2 * cos_beta2)
+                };
             println!("d_lambda12_d_alpha1 = {}", d_lambda12_d_alpha1);
 
             let d_alpha1 = -d_lambda12 / d_lambda12_d_alpha1;
             println!("d_alpha1 = {}", d_alpha1);
             alpha1 += d_alpha1;
-            println!("alpha1 = {}", alpha1.to_degrees());
+            println!("alpha1 = {}", alpha1.val(DEG));
 
             if iter_count == 2 {
                 break;
@@ -315,7 +326,7 @@ impl<'e> KarneyGeodesicSolver<'e> {
 
     /// From Karney - Algorithms for geodesics eqn 20:
     /// sigma = tau + sum(1, inf, Cp1l * sin(2l * tau)) where tau = s / (b * A1)
-    fn sigma(epsilon: f64, tau: f64) -> f64 {
+    fn sigma(epsilon: Float, tau: Float) -> Float {
         let cp1xs = [
             Polynomial::new([0., 1. / 2., 0., -9. / 32., 0., 205. / 1536.]).fast_eval_at(epsilon),
             Polynomial::new([0., 0., 5. / 16., 0., -37. / 96., 0., 1335. / 4096.])
@@ -329,7 +340,7 @@ impl<'e> KarneyGeodesicSolver<'e> {
         tau + cp1xs
             .into_iter()
             .enumerate()
-            .map(|(ix, cp1x)| cp1x * (2. * tau * (ix + 1) as f64).sin())
+            .map(|(ix, cp1x)| cp1x * (2. * tau * (ix + 1) as Float).sin())
             .sum::<f64>()
     }
 
@@ -363,7 +374,7 @@ impl<'e> KarneyGeodesicSolver<'e> {
 
     /// From Karney - Algorithms for geodesics eqn 23
     /// I3(sigma) = A3 * (sigma + sum(1, inf, C3l * sin(2l * sigma))
-    fn i3(&self, a3: f64, epsilon: f64, sigma: f64) -> f64 {
+    fn i3(&self, a3: Float, epsilon: Float, sigma: Float) -> f64 {
         let c3xs = self.c3xs.map(|p| p.fast_eval_at(epsilon));
         a3 * (sigma
             + c3xs
@@ -379,7 +390,7 @@ impl<'e> GeodesicSolver for KarneyGeodesicSolver<'e> {
         &self,
         p1: (Lon, Lat),
         alpha1: Azimuth,
-        s12: f64,
+        s12: CurveLength,
     ) -> Result<Geodesic, &'static str> {
         Ok(self.direct(p1, alpha1, s12))
     }
@@ -399,8 +410,9 @@ mod tests {
         antipodal_lines, standard_lines, vincenty_direct_deltas, vincenty_inverse_deltas,
         vincenty_lines,
     };
-    use crate::geodesy::geodesics::GeodesicSolver;
+    use crate::geodesy::geodesics::{CurveLength, GeodesicSolver};
     use crate::units::angle::{DEG, RAD};
+    use crate::units::length::M;
     use approx::assert_abs_diff_eq;
     use std::f64::consts::{FRAC_PI_2, PI};
 
@@ -412,7 +424,7 @@ mod tests {
             .solve_direct(
                 (Lon::new(0. * DEG), Lat::new(40. * DEG)),
                 Azimuth::new(30. * DEG),
-                10_000_000.,
+                CurveLength::new(10_000_000., M),
             )
             .unwrap();
         assert_abs_diff_eq!(
@@ -541,7 +553,7 @@ mod tests {
             .solve_direct(
                 (Lon::new(0.0 * RAD), Lat::new(0.0 * RAD)),
                 Azimuth::new(90.0 * DEG),
-                20_000.0,
+                CurveLength::new(20_000.0, M),
             )
             .unwrap();
         assert_abs_diff_eq!(
@@ -556,7 +568,7 @@ mod tests {
             .solve_direct(
                 (Lon::new(170.0 * DEG), Lat::new(0.0 * DEG)),
                 Azimuth::new(90.0 * DEG),
-                2_000_000.0,
+                CurveLength::new(2_000_000.0, M),
             )
             .unwrap();
         assert_abs_diff_eq!(
@@ -581,7 +593,7 @@ mod tests {
             .solve_direct(
                 (Lon::new(0. * DEG), Lat::new(-10. * DEG)),
                 Azimuth::new(0. * DEG),
-                2_000_000.0,
+                CurveLength::new(2_000_000.0, M),
             )
             .unwrap();
         assert_abs_diff_eq!(computed.p2.0, Lon::new(0.0 * RAD), epsilon = 1e-10);
@@ -592,7 +604,7 @@ mod tests {
             .solve_direct(
                 (Lon::new(0. * DEG), Lat::new(80. * DEG)),
                 Azimuth::new(0. * DEG),
-                2_000_000.0,
+                CurveLength::new(2_000_000.0, M),
             )
             .unwrap();
         assert_abs_diff_eq!(computed.p2.0, Lon::new(PI * RAD), epsilon = 1e-10);
@@ -620,7 +632,7 @@ mod tests {
             Azimuth::new(77.043_508_449_13 * DEG),
             epsilon = 1e-12
         );
-        assert_abs_diff_eq!(computed.s, 4.944_208, epsilon = 1e-6);
+        assert_abs_diff_eq!(computed.s.m(), 4.944_208, epsilon = 1e-6);
     }
 
     #[test]
@@ -643,7 +655,7 @@ mod tests {
             Azimuth::new(18.090_737_245_74 * DEG),
             epsilon = 1e-12
         );
-        assert_abs_diff_eq!(computed.s, 19_989_832.82761, epsilon = 1e-6);
+        assert_abs_diff_eq!(computed.s.m(), 19_989_832.82761, epsilon = 1e-6);
     }
 
     #[test]
@@ -683,7 +695,7 @@ mod tests {
             assert_eq!(diff_az2_dms.min(), 0.0);
             assert!(diff_az2_dms.sec() < delta.delta_alpha2.abs());
 
-            assert!(diff_s_m < delta.delta_s.abs());
+            assert!(diff_s_m.m() < delta.delta_s.abs());
         }
     }
 
@@ -759,7 +771,11 @@ mod tests {
             .unwrap();
         assert_abs_diff_eq!(computed.alpha1.rad(), FRAC_PI_2, epsilon = 1e-10);
         assert_abs_diff_eq!(computed.alpha2.rad(), FRAC_PI_2, epsilon = 1e-10);
-        assert_abs_diff_eq!(computed.s, 2_226_389.816, epsilon = 1e-3);
+        assert_abs_diff_eq!(
+            computed.s,
+            CurveLength::new(2_226_389.816, M),
+            epsilon = 1e-3
+        );
 
         let computed = solver
             .solve_inverse(
@@ -769,7 +785,11 @@ mod tests {
             .unwrap();
         assert_abs_diff_eq!(computed.alpha1.rad(), -FRAC_PI_2, epsilon = 1e-10);
         assert_abs_diff_eq!(computed.alpha2.rad(), -FRAC_PI_2, epsilon = 1e-10);
-        assert_abs_diff_eq!(computed.s, 2_226_389.816, epsilon = 1e-3);
+        assert_abs_diff_eq!(
+            computed.s,
+            CurveLength::new(2_226_389.816, M),
+            epsilon = 1e-3
+        );
 
         let computed = solver
             .solve_inverse(
@@ -779,7 +799,11 @@ mod tests {
             .unwrap();
         assert_abs_diff_eq!(computed.alpha1.rad(), FRAC_PI_2, epsilon = 1e-10);
         assert_abs_diff_eq!(computed.alpha2.rad(), FRAC_PI_2, epsilon = 1e-10);
-        assert_abs_diff_eq!(computed.s, 2_226_389.816, epsilon = 1e-3);
+        assert_abs_diff_eq!(
+            computed.s,
+            CurveLength::new(2_226_389.816, M),
+            epsilon = 1e-3
+        );
     }
 
     #[test]
@@ -794,7 +818,11 @@ mod tests {
             .unwrap();
         assert_abs_diff_eq!(computed.alpha1.rad(), 0., epsilon = 1e-10);
         assert_abs_diff_eq!(computed.alpha2.rad(), 0., epsilon = 1e-10);
-        assert_abs_diff_eq!(computed.s, 2_211_709.666, epsilon = 1e-3);
+        assert_abs_diff_eq!(
+            computed.s,
+            CurveLength::new(2_211_709.666, M),
+            epsilon = 1e-3
+        );
 
         let computed = solver
             .solve_inverse(
@@ -804,7 +832,11 @@ mod tests {
             .unwrap();
         assert_abs_diff_eq!(computed.alpha1.rad(), PI, epsilon = 1e-10);
         assert_abs_diff_eq!(computed.alpha2.rad(), PI, epsilon = 1e-10);
-        assert_abs_diff_eq!(computed.s, 2_211_709.666, epsilon = 1e-3);
+        assert_abs_diff_eq!(
+            computed.s,
+            CurveLength::new(2_211_709.666, M),
+            epsilon = 1e-3
+        );
 
         let computed = solver
             .solve_inverse(
@@ -814,6 +846,10 @@ mod tests {
             .unwrap();
         assert_abs_diff_eq!(computed.alpha1.rad(), 0., epsilon = 1e-10);
         assert_abs_diff_eq!(computed.alpha2.rad(), PI, epsilon = 1e-10);
-        assert_abs_diff_eq!(computed.s, 2_233_651.715, epsilon = 1e-3);
+        assert_abs_diff_eq!(
+            computed.s,
+            CurveLength::new(2_233_651.715, M),
+            epsilon = 1e-3
+        );
     }
 }

@@ -1,7 +1,11 @@
 use smol_str::SmolStr;
 use std::fmt::Debug;
 
-use crate::{cs::r1::Length, math::Float};
+use crate::{
+    cs::{geodetic::Lat, r1::Length},
+    math::Float,
+    units::{angle::RAD, length::M},
+};
 
 /// An `Ellipsoid` is a mathematical surface defined by rotating an ellipse around
 /// it semi-minor axis.
@@ -81,8 +85,8 @@ impl Ellipsoid {
 
     /// Return the semi-major axis length **in meters**.
     #[inline]
-    pub fn a(&self) -> Float {
-        self.a.m()
+    pub fn a(&self) -> Length {
+        self.a
     }
 
     /// Return the semi-major axis squared.
@@ -93,8 +97,8 @@ impl Ellipsoid {
 
     /// Return the semi-minor axis length **in meters**.
     #[inline]
-    pub fn b(&self) -> Float {
-        self.b.m()
+    pub fn b(&self) -> Length {
+        self.b
     }
 
     /// Return the semi minor axis squared.
@@ -150,8 +154,8 @@ impl Ellipsoid {
     /// tangent to the ellipsoid on the equator (radius = a), between the equatorial plane and a
     /// radius to a point Q on the sphere whose projection along the z-axis intersect the ellipsoid
     /// at P.
-    pub fn reduced_latitude(&self, lat: Float) -> Float {
-        ((1. - self.f()) * lat.tan()).atan()
+    pub fn reduced_latitude(&self, lat: Lat) -> Lat {
+        Lat::new(((1. - self.f()) * lat.tan()).atan() * RAD)
     }
 
     /// Return the geocentric latitude, `psi`: `tan(psi) = (1 - e^2)tan(lat)`
@@ -159,26 +163,26 @@ impl Ellipsoid {
     ///
     /// The geocentric latitude of a point P on the ellipsoid is the angle at the centre of the
     /// ellipsoid between the equatorial plane and a line to the point P.
-    pub fn geocentric_latitude(&self, lat: Float) -> Float {
-        ((1. - self.e_sq()) * lat.tan()).atan()
+    pub fn geocentric_latitude(&self, lat: Lat) -> Lat {
+        Lat::new(((1. - self.e_sq()) * lat.tan()).atan() * RAD)
     }
 
     /// Return the radius of curvature `N` **in meters** at the given **geodetic latitude in radians**
     /// of the prime vertical normal section, i.e. the normal section perpendicular to the meridional
     /// normal section.
     /// See [prime_meridional_radius]
-    pub fn prime_vertical_radius(&self, lat: Float) -> Float {
-        self.a.m() / (1.0 - self.e_sq() * lat.sin().powi(2)).sqrt()
+    pub fn prime_vertical_radius(&self, lat: Lat) -> Length {
+        self.a / (1.0 - self.e_sq() * lat.sin().powi(2)).sqrt()
     }
 
     /// Return the radius of curvature `M` **in meters** at the given **geodetic latitude in radians**
     /// of the meridional normal section, i.e. the normal section passing through the poles.
-    pub fn prime_meridional_radius(&self, lat: Float) -> Float {
-        self.a.m() * (1.0 - self.e_sq()) / (1.0 - self.e_sq() * lat.sin().powi(2)).powf(1.5)
+    pub fn prime_meridional_radius(&self, lat: Lat) -> Length {
+        self.a * (1.0 - self.e_sq()) / (1.0 - self.e_sq() * lat.sin().powi(2)).powf(1.5)
     }
 
-    pub fn conformal_sphere_radius(&self, lat: Float) -> Float {
-        (self.prime_meridional_radius(lat) * self.prime_vertical_radius(lat)).sqrt()
+    pub fn conformal_sphere_radius(&self, lat: Lat) -> Length {
+        (self.prime_meridional_radius(lat).m() * self.prime_vertical_radius(lat).m()).sqrt() * M
     }
 }
 
@@ -275,6 +279,7 @@ pub mod consts {
 
 #[cfg(test)]
 mod tests {
+    use crate::cs::geodetic::Lat;
     use crate::geodesy::ellipsoid::consts;
     use crate::geodesy::Ellipsoid;
     use crate::math::PI_2;
@@ -321,13 +326,13 @@ mod tests {
     fn test_prime_meridional_radius() {
         let wgs84 = consts::WGS84;
         assert_abs_diff_eq!(
-            wgs84.prime_meridional_radius(0.0),
+            wgs84.prime_meridional_radius(Lat::ZERO),
             wgs84.a() * (1. - wgs84.e_sq()),
             epsilon = 1e-10
         );
         assert_abs_diff_eq!(
-            wgs84.prime_meridional_radius(PI_2),
-            wgs84.a_sq() / wgs84.b(),
+            wgs84.prime_meridional_radius(Lat::MAX),
+            wgs84.a_sq() / wgs84.b().m() * M,
             epsilon = 1e-8
         );
     }
@@ -335,10 +340,14 @@ mod tests {
     #[test]
     fn test_prime_vertical_radius() {
         let wgs84 = consts::WGS84;
-        assert_abs_diff_eq!(wgs84.prime_vertical_radius(0.0), wgs84.a(), epsilon = 1e-10);
         assert_abs_diff_eq!(
-            wgs84.prime_vertical_radius(PI_2),
-            wgs84.a_sq() / wgs84.b(),
+            wgs84.prime_vertical_radius(Lat::ZERO),
+            wgs84.a(),
+            epsilon = 1e-10
+        );
+        assert_abs_diff_eq!(
+            wgs84.prime_vertical_radius(Lat::MAX),
+            wgs84.a_sq() / wgs84.b().m() * M,
             epsilon = 1e-8
         );
     }
