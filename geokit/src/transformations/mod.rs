@@ -1,10 +1,16 @@
-use crate::cs::r1::Length;
-use crate::cs::s1::Angle;
+use crate::cs::cartesian::XYZ;
 use crate::math::Float;
-use crate::operation::{self, Operation};
+use crate::quantities::angle::Angle;
+use crate::quantities::length::Length;
 use crate::quantities::scale::PPM;
+use crate::units::length::M;
 use nalgebra::Matrix3;
 use nalgebra::Vector3;
+
+pub trait GeocentricTransformation {
+    fn src_to_dst(&self, src: XYZ) -> XYZ;
+    fn dst_to_src(&self, dst: XYZ) -> XYZ;
+}
 
 /// The [GeocentricTranslation] transforms **normalized geocentric coordinates** between 2 [GeocentricCrs] whose
 /// [GeodeticDatum] are related by a simple translation of the origin, such that
@@ -13,7 +19,9 @@ use nalgebra::Vector3;
 /// This epsg:1031.
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct GeocentricTranslation {
-    t: Vector3<Float>,
+    tx: Length,
+    ty: Length,
+    tz: Length,
 }
 
 impl GeocentricTranslation {
@@ -25,33 +33,23 @@ impl GeocentricTranslation {
     /// - ty: the Y coordinates of the origin of source CRS in the target CRS
     /// - tz: the Z coordinates of the origin of source CRS in the target CRS
     pub(crate) fn new(tx: Length, ty: Length, tz: Length) -> Self {
-        GeocentricTranslation {
-            t: Vector3::new(tx.m(), ty.m(), tz.m()),
+        GeocentricTranslation { tx, ty, tz }
+    }
+
+    fn src_to_dst(&self, src: XYZ) -> XYZ {
+        XYZ {
+            x: src.x + self.tx,
+            y: src.y + self.ty,
+            z: src.z + self.tz,
         }
     }
-}
 
-impl Operation for GeocentricTranslation {
-    fn in_dim(&self) -> usize {
-        3
-    }
-
-    fn out_dim(&self) -> usize {
-        3
-    }
-
-    fn apply_fwd(&self, xyz_src: &[Float], xyz_dst: &mut [Float]) -> operation::Result<()> {
-        xyz_dst[0] = xyz_src[0] + self.t[0];
-        xyz_dst[1] = xyz_src[1] + self.t[1];
-        xyz_dst[2] = xyz_src[2] + self.t[2];
-        Ok(())
-    }
-
-    fn apply_bwd(&self, xyz_dst: &[Float], xyz_src: &mut [Float]) -> operation::Result<()> {
-        xyz_src[0] = xyz_dst[0] - self.t[0];
-        xyz_src[1] = xyz_dst[1] - self.t[1];
-        xyz_src[2] = xyz_dst[2] - self.t[2];
-        Ok(())
+    fn dst_to_src(&self, dst: XYZ) -> XYZ {
+        XYZ {
+            x: dst.x - self.tx,
+            y: dst.y - self.ty,
+            z: dst.z - self.tz,
+        }
     }
 }
 
@@ -106,29 +104,27 @@ impl Helmert7Params {
             ppm,
         }
     }
-}
 
-impl Operation for Helmert7Params {
-    fn in_dim(&self) -> usize {
-        3
-    }
-
-    fn out_dim(&self) -> usize {
-        3
-    }
-
-    fn apply_fwd(&self, input: &[Float], output: &mut [Float]) -> operation::Result<()> {
-        let s = Vector3::new(input[0], input[1], input[2]);
+    fn src_to_dst(&self, src: XYZ) -> XYZ {
+        let s = Vector3::new(src.x.m(), src.y.m(), src.z.m());
         let x = self.rot * self.ppm.factor() * s + self.t;
-        output.copy_from_slice(x.as_ref());
-        Ok(())
+
+        XYZ {
+            x: x[0] * M,
+            y: x[1] * M,
+            z: x[2] * M,
+        }
     }
 
-    fn apply_bwd(&self, input: &[Float], output: &mut [Float]) -> operation::Result<()> {
-        let t = Vector3::new(input[0], input[1], input[2]);
+    fn dst_to_src(&self, dst: XYZ) -> XYZ {
+        let t = Vector3::new(dst.x.m(), dst.y.m(), dst.z.m());
         let s = self.inv_rot * self.ppm.inv_factor() * t - self.t;
-        output.copy_from_slice(s.as_ref());
-        Ok(())
+
+        XYZ {
+            x: s[0] * M,
+            y: s[1] * M,
+            z: s[2] * M,
+        }
     }
 }
 
@@ -136,7 +132,7 @@ impl Operation for Helmert7Params {
 mod tests {
     use approx::assert_relative_eq;
 
-    use crate::operation::Operation;
+    use crate::cs::cartesian::XYZ;
     use crate::quantities::scale::PPM;
     use crate::units::angle::RAD;
     use crate::units::length::M;
@@ -147,25 +143,41 @@ mod tests {
     #[test]
     fn geocentric_translation_fwd() {
         let t = GeocentricTranslation::new(84.87 * M, 96.49 * M, 116.95 * M);
-        let source_xyz = [3_771_793.97, 140_253.34, 5_124_304.35];
-        let mut xyz = [0.; 3];
-        let expected_xyz = [3_771_878.84, 140_349.83, 5_124_421.30];
-        t.apply_fwd(&source_xyz, &mut xyz).unwrap();
-        assert_relative_eq!(xyz[0], expected_xyz[0], epsilon = 1e-6);
-        assert_relative_eq!(xyz[1], expected_xyz[1], epsilon = 1e-6);
-        assert_relative_eq!(xyz[2], expected_xyz[2], epsilon = 1e-6);
+        let src = XYZ {
+            x: 3_771_793.97 * M,
+            y: 140_253.34 * M,
+            z: 5_124_304.35 * M,
+        };
+        let dst = t.src_to_dst(src);
+
+        let expected_dst = XYZ {
+            x: 3_771_878.84 * M,
+            y: 140_349.83 * M,
+            z: 5_124_421.30 * M,
+        };
+        assert_relative_eq!(dst.x.m(), expected_dst.x.m(), epsilon = 1e-6);
+        assert_relative_eq!(dst.y.m(), expected_dst.y.m(), epsilon = 1e-6);
+        assert_relative_eq!(dst.z.m(), expected_dst.z.m(), epsilon = 1e-6);
     }
 
     #[test]
     fn geocentric_translation_bwd() {
         let t = GeocentricTranslation::new(84.87 * M, 96.49 * M, 116.95 * M);
-        let xs = [3_771_793.97, 140_253.34, 5_124_304.35];
-        let mut xyz = [0.; 3];
-        let xt = [3_771_878.84, 140_349.83, 5_124_421.30];
-        t.apply_bwd(&xt, &mut xyz).unwrap();
-        assert_relative_eq!(xyz[0], xs[0], epsilon = 1e-6);
-        assert_relative_eq!(xyz[1], xs[1], epsilon = 1e-6);
-        assert_relative_eq!(xyz[2], xs[2], epsilon = 1e-6);
+        let dst = XYZ {
+            x: 3_771_878.84 * M,
+            y: 140_349.83 * M,
+            z: 5_124_421.30 * M,
+        };
+        let src = t.dst_to_src(dst);
+
+        let expected_src = XYZ {
+            x: 3_771_793.97 * M,
+            y: 140_253.34 * M,
+            z: 5_124_304.35 * M,
+        };
+        assert_relative_eq!(src.x.m(), expected_src.x.m(), epsilon = 1e-6);
+        assert_relative_eq!(src.y.m(), expected_src.y.m(), epsilon = 1e-6);
+        assert_relative_eq!(src.z.m(), expected_src.z.m(), epsilon = 1e-6);
     }
 
     #[test]
@@ -176,13 +188,21 @@ mod tests {
             [0.0 * M, 0.0 * M, 4.5 * M],
             PPM(0.219),
         );
-        let xs = [3_657_660.66, 255_768.55, 5_201_382.11];
-        let mut xyz = [0.; 3];
-        let xt = [3_657_660.78, 255_778.43, 5_201_387.75];
-        t.apply_fwd(&xs, &mut xyz).unwrap();
-        assert_relative_eq!(xyz[0], xt[0], epsilon = 1e-2);
-        assert_relative_eq!(xyz[1], xt[1], epsilon = 1e-2);
-        assert_relative_eq!(xyz[2], xt[2], epsilon = 1e-2);
+        let src = XYZ {
+            x: 3_657_660.66 * M,
+            y: 255_768.55 * M,
+            z: 5_201_382.11 * M,
+        };
+        let dst = t.src_to_dst(src);
+
+        let expected_dst = XYZ {
+            x: 3_657_660.78 * M,
+            y: 255_778.43 * M,
+            z: 5_201_387.75 * M,
+        };
+        assert_relative_eq!(dst.x.m(), expected_dst.x.m(), epsilon = 1e-2);
+        assert_relative_eq!(dst.y.m(), expected_dst.y.m(), epsilon = 1e-2);
+        assert_relative_eq!(dst.z.m(), expected_dst.z.m(), epsilon = 1e-2);
     }
 
     #[test]
@@ -193,12 +213,20 @@ mod tests {
             [0.0 * M, 0.0 * M, 4.5 * M],
             PPM(0.219),
         );
-        let xs = [3_657_660.66, 255_768.55, 5_201_382.11];
-        let mut xyz = [0.; 3];
-        let xt = [3_657_660.78, 255_778.43, 5_201_387.75];
-        t.apply_bwd(&xt, &mut xyz).unwrap();
-        assert_relative_eq!(xyz[0], xs[0], epsilon = 1e-2);
-        assert_relative_eq!(xyz[1], xs[1], epsilon = 1e-2);
-        assert_relative_eq!(xyz[2], xs[2], epsilon = 1e-2);
+        let dst = XYZ {
+            x: 3_657_660.78 * M,
+            y: 255_778.43 * M,
+            z: 5_201_387.75 * M,
+        };
+        let src = t.dst_to_src(dst);
+
+        let expected_src = XYZ {
+            x: 3_657_660.66 * M,
+            y: 255_768.55 * M,
+            z: 5_201_382.11 * M,
+        };
+        assert_relative_eq!(src.x.m(), expected_src.x.m(), epsilon = 1e-2);
+        assert_relative_eq!(src.y.m(), expected_src.y.m(), epsilon = 1e-2);
+        assert_relative_eq!(src.z.m(), expected_src.z.m(), epsilon = 1e-2);
     }
 }

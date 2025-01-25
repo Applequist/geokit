@@ -1,16 +1,18 @@
-use smol_str::SmolStr;
-use std::fmt::Debug;
-
 use crate::{
-    cs::{geodetic::Lat, r1::Length},
+    cs::geodetic::Lat,
     math::Float,
+    quantities::length::Length,
     units::{angle::RAD, length::M},
 };
+use derive_more::derive::Display;
+use smol_str::SmolStr;
+use std::fmt::Debug;
 
 /// An `Ellipsoid` is a mathematical surface defined by rotating an ellipse around
 /// it semi-minor axis.
 /// It is used in a [GeodeticDatum] as a model of the Earth surface.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Display)]
+#[display("(name = {}, a = {}, b = {}, inv_f = {})", name, a, b, invf)]
 pub struct Ellipsoid {
     /// The name of this ellipsoid.
     name: SmolStr,
@@ -195,8 +197,8 @@ impl PartialEq for Ellipsoid {
 /// Well known ellipsoid definitions.
 pub mod consts {
     use super::Ellipsoid;
-    use crate::cs::r1::Length;
     use crate::math::Float;
+    use crate::quantities::length::Length;
     use crate::units::length::M;
     macro_rules! def {
         ( ($name:literal, a = $a:expr, b = $b:expr ) ) => {
@@ -282,7 +284,6 @@ mod tests {
     use crate::cs::geodetic::Lat;
     use crate::geodesy::ellipsoid::consts;
     use crate::geodesy::Ellipsoid;
-    use crate::math::PI_2;
     use crate::units::length::M;
     use approx::assert_abs_diff_eq;
 

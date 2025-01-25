@@ -1,16 +1,16 @@
 # TODOs
 
-- Define a 'Float' type alias to 'f64' in 'crate::math'
-- Define a 'Real' type alias to 'Float' in 'crate::cs::r1'
-- Use 'Float' wherever we're using 'f64': 
-    - 'Real'
-    - 'Angle'
-- Use 'Real' to define coordinates types in 'cs::cartesian': 
+- [v] Define a 'Float' type alias to 'f64' in 'crate::math'
+- [v] Define a ~~'Real'~~ 'Length' type using a 'Float' in 'crate::cs::r1'
+- [v] Use 'Float' wherever we're using 'f64': 
     - 'Length'
-- Define type alias to 'Length' for 'Height' coordinates types in 'cs::geodetic'
-- Define type alias to 'Length' for coordinates types in 'cs::cartesian':
-    - X, Y, Z for geocentric coordinates
-    - Easting, Northing
+    - 'Angle'
+- [v] Use 'Length' to define coordinates types in 'cs::cartesian': 
+    - 'Length'
+- [v] Define type alias to 'Length' for 'Height' coordinates types in 'cs::geodetic'
+
+- [ ] Remove DatumTransformation from 'GeodeticDatum' 
+- [ ] Default TransformationProvider will supply the ToWGS84 transformation if available.
 
 
 

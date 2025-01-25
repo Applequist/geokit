@@ -1,8 +1,7 @@
 //! Provide a value type to work with [Azimuth].
 
 use crate::math::Float;
-
-use super::s1::Angle;
+use crate::quantities::angle::{Angle, Turn};
 use approx::AbsDiffEq;
 use derive_more::derive::Display;
 use std::ops::Add;
@@ -14,10 +13,13 @@ use std::ops::Add;
 /// There are 2 ways to create an [Azimuth] value:
 /// 1. By using [Azimuth::new], passing an [Angle] value,
 /// ```
+/// use geokit::units::angle::DEG;
+/// use geokit::cs::azimuth::Azimuth;
 /// let az = Azimuth::new(33. * DEG);
 /// ```
 /// 2. Or by specifying DMS values:
 /// ```
+/// use geokit::cs::azimuth::Azimuth;
 /// let az = Azimuth::dms(-12., 34., 56.123);
 /// ```
 /// In both cases, the angle value is wrapped into (-pi, pi] so that
@@ -70,35 +72,15 @@ impl Azimuth {
 
     /// Returns the smallest turn from this azimuth to the `other` azimuth.
     fn turn_to(self, other: Self) -> ToAz {
-        // convert from (-pi..pi] to [0 2pi) clockwise
-        let start = if self.0 < Angle::ZERO {
-            self.0 + Angle::TWO_PI
-        } else {
-            self.0
-        };
-
-        let end = if other.0 < Angle::ZERO {
-            other.0 + Angle::TWO_PI
-        } else {
-            other.0
-        };
-
-        let mut delta = end - start;
-        if delta > Angle::PI {
-            delta -= Angle::TWO_PI;
-        } else if delta < Angle::M_PI {
-            delta += Angle::TWO_PI;
-        }
-
-        if (delta.abs() - Angle::PI).abs().rad() < 1e-15 {
-            ToAz::Antipodal
-        } else {
-            // NOTE: Azimuth is positive CW hence the inversion
-            // of case
-            if delta < Angle::ZERO {
-                ToAz::Ccw(delta.abs())
-            } else {
-                ToAz::Cw(delta.abs())
+        let turn = self.0.turn_to(other.0);
+        match turn {
+            Turn::Half => ToAz::Antipodal,
+            Turn::Of(a) => {
+                if a < Angle::ZERO {
+                    ToAz::Ccw(a.abs())
+                } else {
+                    ToAz::Cw(a.abs())
+                }
             }
         }
     }
@@ -188,4 +170,7 @@ mod test {
         assert_abs_diff_eq!(nw.turn_to(se), ToAz::Antipodal, epsilon = 1e-15);
         assert_abs_diff_eq!(nw.turn_to(sw), ToAz::Ccw(140. * DEG), epsilon = 1e-15);
     }
+
+    #[test]
+    fn turn_to() {}
 }

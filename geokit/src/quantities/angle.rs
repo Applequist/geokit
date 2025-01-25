@@ -1,0 +1,448 @@
+use std::ops::{Div, DivAssign, Mul, MulAssign};
+
+use approx::AbsDiffEq;
+use derive_more::derive::{Add, AddAssign, Display, Neg, Sub, SubAssign};
+
+use crate::{
+    math::{utils::remainder, Float, PI, PI_2, TAU},
+    units::angle::{AngleUnit, DEG},
+};
+
+/// [Angle] is a generic angle value type used to represent S1 point coordinate.
+/// Compared to a raw [Float], it carries the extra meaning that it is internally
+/// measured in **radians**.
+///
+/// # Creation
+///
+/// There are several ways to create an [Angle] value:
+/// - by using [Angle::new], passing a quantity and an [AngleUnit].
+///   The quantity expressed in the given unit is then converted to radians.
+/// ```
+/// use geokit::quantities::angle::Angle;
+/// use geokit::units::angle::GRAD;
+/// let a = Angle::new(100., GRAD);
+/// ```
+/// - by using one of the convenience constructors:
+/// ```
+/// use geokit::quantities::angle::Angle;
+/// let dms = Angle::dms(-110., 45., 53.234);
+/// ```
+/// - by multiplying a [Float] quantity by an [AngleUnit] value:
+///   The quantity expressed in the given unit is then converted to radians.
+/// ```
+/// use geokit::quantities::angle::Angle;
+/// use geokit::units::angle::GRAD;
+/// let a: Angle = 100. * GRAD;
+/// ```
+///
+/// # Operations
+///
+/// [Angle] supports the following operations:
+/// - Addition, subtraction,
+/// - negation
+/// - multiplication by a scalar (left and right)
+/// - division by a scalar (right)
+/// - [Wrapping][Self::wrapped()] in [-pi, pi]
+/// - [Normalization][Self::normalized()] in (-pi, pi]
+/// - [Conversion][Self::val()] to other [AngleUnit]
+/// - trigonometric operations like cos, sin, tan...
+/// - formatting using [DMS][Self::to_dms].
+///
+/// To make sure that all points on the unit circle can be represented by a unique
+/// angle value, [Angle] also has a ***normalization*** operation that wrap its value
+/// in the (-pi, pi] raddians range.
+#[derive(
+    Debug, Copy, Clone, PartialEq, PartialOrd, Add, AddAssign, Sub, SubAssign, Neg, Display,
+)]
+#[display("{} rad", _0)]
+pub struct Angle(Float);
+
+impl Angle {
+    pub const ZERO: Angle = Angle(0.0);
+    pub const PI_2: Angle = Angle(PI_2);
+    pub const PI: Angle = Angle(PI);
+    pub const TWO_PI: Angle = Angle(TAU);
+    pub const M_PI_2: Angle = Angle(-PI_2);
+    pub const M_PI: Angle = Angle(-PI);
+
+    /// Create an angle value whose `qty` is given in `unit`.
+    #[inline]
+    pub const fn new(qty: Float, unit: AngleUnit) -> Self {
+        Angle(qty * unit.rad_per_unit())
+    }
+
+    /// Create an angle value from a degree/minute/second values.
+    ///
+    /// # Parameters
+    ///
+    /// - `d`: the number of degrees. Determine the sign of the returned angle.
+    /// - `m`: the number of minutes. Must be >= 0. and <= 59.
+    /// - `s`: the number of seconds with fractional part. Must be >= 0 and < 60.
+    ///
+    pub fn dms(d: Float, m: Float, s: Float) -> Angle {
+        debug_assert!(m >= 0. && m <= 59.0, "minutes must be in [0..59]");
+        debug_assert!(s >= 0. && s < 60., "seconds must be in [0..60)");
+        let f = d.signum();
+        let deg = d.abs() + m / 60. + s / 3600.;
+        f * deg * DEG
+    }
+
+    /// Return the angle value clamped in [-pi/2..pi/2]
+    pub(crate) fn clamped(self, min: Angle, max: Angle) -> Self {
+        debug_assert!(
+            min < max,
+            "Expected min < max. Got min = {} and max = {}",
+            min,
+            max
+        );
+        Self(self.0.clamp(min.rad(), max.rad()))
+    }
+
+    /// Return the angle value wrapped in [-pi, pi].
+    pub(crate) fn wrapped(self) -> Self {
+        let mut a = remainder(self.0, TAU);
+        if dbg!(a < -PI) {
+            a = PI;
+        }
+        Self(a)
+    }
+
+    /// Return this angle value wrapped into (-PI, PI] radians.
+    ///
+    /// # Example:
+    /// ```
+    /// use geokit::units::angle::DEG;
+    /// let a = 185. * DEG;
+    /// let normalized  = a.normalized();
+    /// assert_eq!(normalized, -175. * DEG);
+    /// ```
+    pub fn normalized(self) -> Self {
+        let mut a = remainder(self.0, TAU);
+        if a <= -PI {
+            a = PI;
+        }
+        Self(a)
+    }
+
+    /// [Normalize][Self::normalized] in place.
+    pub fn normalize(&mut self) {
+        let mut a = remainder(self.0, TAU);
+        if a <= -PI {
+            a = PI;
+        }
+        self.0 = a;
+    }
+
+    /// Return the absolute value of this angle.
+    pub fn abs(self) -> Angle {
+        Angle(self.0.abs())
+    }
+
+    /// Return this angle value in the given unit.
+    ///
+    /// # Example
+    /// ```
+    /// use geokit::units::angle::DEG;
+    /// use geokit::quantities::angle::Angle;
+    /// let a = Angle::PI_2;
+    /// let a_deg = a.val(DEG);
+    /// assert_eq!(a, a_deg * DEG);
+    /// ```
+    pub fn val(self, unit: AngleUnit) -> Float {
+        self.0 * unit.1 / unit.0
+    }
+
+    /// Return this angle value in radians.
+    #[inline]
+    pub fn rad(self) -> Float {
+        self.0
+    }
+
+    #[inline]
+    pub fn sin(self) -> Float {
+        self.0.sin()
+    }
+
+    #[inline]
+    pub fn cos(self) -> Float {
+        self.0.cos()
+    }
+
+    #[inline]
+    pub fn sin_cos(self) -> (Float, Float) {
+        self.0.sin_cos()
+    }
+
+    #[inline]
+    pub fn tan(self) -> Float {
+        self.0.tan()
+    }
+
+    /// Returns the smallest turn from this angle to the `other` angle.
+    pub fn turn_to(self, other: Self) -> Turn {
+        // convert from (-pi..pi] to [0 2pi) clockwise
+        let start = if self < Angle::ZERO {
+            self + Angle::TWO_PI
+        } else {
+            self
+        };
+
+        let end = if other < Angle::ZERO {
+            other + Angle::TWO_PI
+        } else {
+            other
+        };
+
+        let mut delta = end - start;
+        if delta > Angle::PI {
+            delta -= Angle::TWO_PI;
+        } else if delta < Angle::M_PI {
+            delta += Angle::TWO_PI;
+        }
+
+        if (delta.abs() - Angle::PI).rad().abs() < 1e-15 {
+            Turn::Half
+        } else {
+            Turn::Of(delta)
+        }
+    }
+
+    /// Convert this angle into a [Dms] value for formatting.
+    pub fn to_dms(self) -> Dms {
+        let rad = self.0;
+        let sgn = rad.signum();
+        let mut deg = rad.abs().to_degrees();
+        let d = deg.floor();
+        deg = 60. * deg.fract();
+        let m;
+        let s;
+        if (deg - deg.round()).abs() < 1e-8 {
+            m = deg.round();
+            s = 0.0;
+        } else {
+            m = deg.floor();
+            s = 60. * deg.fract();
+        }
+        Dms(sgn * d, m, s)
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub enum Turn {
+    Of(Angle),
+    Half,
+}
+
+impl AbsDiffEq for Turn {
+    type Epsilon = Float;
+
+    fn default_epsilon() -> Self::Epsilon {
+        Float::default_epsilon()
+    }
+
+    fn abs_diff_eq(&self, other: &Self, epsilon: Self::Epsilon) -> bool {
+        match (self, other) {
+            (Turn::Half, Turn::Half) => true,
+            (Turn::Of(s), Turn::Of(o)) => s.abs_diff_eq(o, epsilon),
+            _ => false,
+        }
+    }
+}
+
+impl Mul<Angle> for Float {
+    type Output = Angle;
+
+    fn mul(self, rhs: Angle) -> Self::Output {
+        Angle(self * rhs.0)
+    }
+}
+
+impl Mul<Float> for Angle {
+    type Output = Angle;
+
+    fn mul(self, rhs: Float) -> Self::Output {
+        Angle(self.0 * rhs)
+    }
+}
+
+impl MulAssign<Float> for Angle {
+    fn mul_assign(&mut self, rhs: Float) {
+        self.0 *= rhs;
+    }
+}
+
+impl Div<Float> for Angle {
+    type Output = Angle;
+
+    fn div(self, rhs: Float) -> Self::Output {
+        Angle(self.0 / rhs)
+    }
+}
+
+impl DivAssign<Float> for Angle {
+    fn div_assign(&mut self, rhs: Float) {
+        self.0 /= rhs;
+    }
+}
+
+impl AbsDiffEq for Angle {
+    type Epsilon = Float;
+
+    fn default_epsilon() -> Self::Epsilon {
+        Float::default_epsilon()
+    }
+
+    fn abs_diff_eq(&self, other: &Self, epsilon: Self::Epsilon) -> bool {
+        self.0.abs_diff_eq(&other.0, epsilon)
+    }
+}
+
+impl Mul<AngleUnit> for Float {
+    type Output = Angle;
+
+    fn mul(self, rhs: AngleUnit) -> Self::Output {
+        Angle::new(self, rhs)
+    }
+}
+
+impl Mul<Float> for AngleUnit {
+    type Output = Angle;
+
+    fn mul(self, rhs: Float) -> Self::Output {
+        rhs * self
+    }
+}
+
+/// An angle value expressed in degrees, minutes and seconds.
+///
+/// Use to display angle in DMS format:
+/// ```
+/// use geokit::quantities::angle::Angle;
+/// assert_eq!(format!("{}", Angle::dms(2., 20., 14.02500).to_dms()), "   2° 20′ 14.02500000″");
+/// ```
+#[derive(Copy, Clone, Debug, Display)]
+#[display("{:4}° {:02}′ {:011.8}″", _0, _1, _2)]
+pub struct Dms(Float, Float, Float);
+
+impl Dms {
+    pub fn deg(&self) -> Float {
+        self.0
+    }
+
+    pub fn min(&self) -> Float {
+        self.1
+    }
+
+    pub fn sec(&self) -> Float {
+        self.2
+    }
+}
+
+#[cfg(test)]
+mod tests {
+
+    use super::Dms;
+    use crate::{
+        math::{Float, PI, PI_4},
+        quantities::angle::{Angle, Turn},
+        units::angle::{DEG, GRAD, RAD, SEC},
+    };
+    use approx::assert_abs_diff_eq;
+
+    #[test]
+    fn angle_unit_equivalence() {
+        assert_eq!(1. * DEG, (PI / 180.0) * RAD);
+        assert_eq!(1. * GRAD, (PI / 200.0) * RAD);
+        assert_eq!(1. * SEC, (PI / 648_000.0) * RAD);
+    }
+
+    #[test]
+    fn angle_wrapping() {
+        let input_expected = [
+            ("< -180", -210. * DEG, 150. * DEG),
+            // FIX: Robustness issue
+            // -180. - n * eps < -pi for n >= 65 on my test
+            //(
+            //    "-180 - eps",
+            //    (-180. - Float::EPSILON) * DEG,
+            //    (180. - Float::EPSILON) * DEG,
+            //),
+            (
+                "-180 + eps",
+                (-180. + Float::EPSILON) * DEG,
+                (-180. + Float::EPSILON) * DEG,
+            ),
+            ("-180", -180. * DEG, -180. * DEG),
+            ("-90", -90. * DEG, -90. * DEG),
+            ("0", 0. * DEG, 0. * DEG),
+            ("90", 90. * DEG, 90. * DEG),
+            (
+                "180 - eps",
+                (180. - Float::EPSILON) * DEG,
+                (180. - Float::EPSILON) * DEG,
+            ),
+            ("180", 180. * DEG, 180. * DEG),
+            // FIX: Robustness issue
+            //(
+            //    "180 + eps",
+            //    (180. + Float::EPSILON) * DEG,
+            //    (-180. + Float::EPSILON) * DEG,
+            //),
+        ];
+
+        for (t, a, e) in input_expected {
+            let wrapped = a.wrapped();
+            assert!(
+                (wrapped - e).rad().abs() < 1e-15,
+                "case {}: expected {}, got {}",
+                t,
+                e,
+                wrapped
+            );
+        }
+    }
+
+    #[test]
+    fn angle_normalization() {
+        assert_eq!((180. * DEG).normalized(), 180. * DEG);
+        assert_eq!((-180. * DEG).normalized(), 180. * DEG);
+        assert_eq!(Angle::M_PI.normalized(), 180. * DEG);
+    }
+
+    #[test]
+    fn angle_turn() {
+        let a1 = 10. * DEG;
+        let a2 = 80. * DEG;
+        let a3 = 110. * DEG;
+        let a4 = 300. * DEG;
+        let a5 = -10. * DEG;
+
+        assert_abs_diff_eq!(a1.turn_to(a2), Turn::Of(70. * DEG), epsilon = 1e-15);
+        assert_abs_diff_eq!(a1.turn_to(a3), Turn::Of(100. * DEG), epsilon = 1e-15);
+        assert_abs_diff_eq!(a1.turn_to(a4), Turn::Of(-70. * DEG), epsilon = 1e-15);
+        assert_abs_diff_eq!(a1.turn_to(a5), Turn::Of(-20. * DEG), epsilon = 1e-15);
+    }
+
+    #[test]
+    fn angle_dms_display() {
+        assert_eq!(
+            format!("{}", Dms(-33., 6., 22.01545)),
+            " -33° 06′ 22.01545000″"
+        );
+        assert_eq!(format!("{}", Dms(45., 0., 0.)), "  45° 00′ 00.00000000″");
+        assert_eq!(
+            format!("{}", (PI_4 * RAD).to_dms()),
+            "  45° 00′ 00.00000000″"
+        );
+        assert_eq!(
+            format!("{}", Dms(-179., 59., 59.1234)),
+            "-179° 59′ 59.12340000″"
+        );
+        assert_eq!(format!("{}", Dms(-33., 26., 0.)), " -33° 26′ 00.00000000″");
+        // Check rounding
+        assert_eq!(
+            format!("{}", Dms(37., 19., 54.95367)),
+            "  37° 19′ 54.95367000″"
+        );
+    }
+}

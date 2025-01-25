@@ -165,7 +165,8 @@ impl<'e> RappIterativeGeodisicSolver<'e> {
         let (sin_beta1, cos_beta1) = beta1.sin_cos();
         let (sin_beta2, cos_beta2) = beta2.sin_cos();
 
-        let L = (lon2 - lon1).length().rad();
+        // WARN: longitude difference meaning is not clear!!!:w
+        let L = (lon2 - lon1).rad();
         let mut lambda = L;
         let (mut sin_lambda, mut cos_lambda);
         let mut sigma;

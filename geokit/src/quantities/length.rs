@@ -1,11 +1,3 @@
-//! The R1 space is used to represents points on the oriented line.
-//!
-//! Each point on the line is represented by the distance of the point from an origin on the line.
-//!
-//! This module provides the following value types:
-//! - [Length] to represent the coordinate of a single R1 point coordinate.
-//!
-
 use crate::{
     math::Float,
     units::{angle::RAD, length::LengthUnit},
@@ -14,7 +6,7 @@ use approx::AbsDiffEq;
 use derive_more::derive::{Add, AddAssign, Display, Sub, SubAssign};
 use std::ops::{Div, DivAssign, Mul, MulAssign};
 
-use super::s1::Angle;
+use super::angle::Angle;
 
 /// [Length] is a generic length value type used to expressed R1 point coordinates.
 ///
@@ -27,12 +19,16 @@ use super::s1::Angle;
 /// 1. By multiplying a [Float] quantity by a [LengthUnit] value.
 ///    The quantity expressed in the given unit is then converted to meters:
 /// ```
+/// use geokit::quantities::length::Length;
+/// use geokit::units::length::US_FT;
 /// let l: Length = 100. * US_FT;
 /// ```
 ///
 /// 2. Or by using [Length::new], passing a quantity and a [LengthUnit].
 ///    The quantity expressed in the given unit is then converted to meters:
 /// ```
+/// use geokit::quantities::length::Length;
+/// use geokit::units::length::US_FT;
 /// let l = Length::new(100., US_FT);
 /// ```
 ///
@@ -63,9 +59,11 @@ impl Length {
     ///
     /// # Example
     /// ```
-    /// let l: Length = 10. * M;
-    /// let l_ft: Float = l_m.val(US_FT);
-    /// assert_eq!(l, l_ft * US_FT);
+    /// use geokit::quantities::length::Length;
+    /// use geokit::units::length::{M, US_FT};
+    /// let l_m: Length = 10. * M;
+    /// let l_ft = l_m.val(US_FT);
+    /// assert_eq!(l_m, l_ft * US_FT);
     /// ```
     pub fn val(self, unit: LengthUnit) -> Float {
         self.0 / unit.m_per_unit()
@@ -89,9 +87,28 @@ impl Length {
     }
 }
 
+impl Mul<LengthUnit> for Float {
+    type Output = Length;
+
+    /// Multiplying a [Float] value by a [LengthUnit] returns a [Length]
+    fn mul(self, rhs: LengthUnit) -> Self::Output {
+        Length::new(self, rhs)
+    }
+}
+
+impl Mul<Float> for LengthUnit {
+    type Output = Length;
+
+    /// Multiplying a [Float] value by a [LengthUnit] returns a [Length]
+    fn mul(self, rhs: Float) -> Self::Output {
+        rhs * self
+    }
+}
+
 impl Mul<Length> for Float {
     type Output = Length;
 
+    /// Mutliplying [Length] by a scalar returns a [Length].
     fn mul(self, rhs: Length) -> Self::Output {
         Length(self * rhs.0)
     }
@@ -100,12 +117,14 @@ impl Mul<Length> for Float {
 impl Mul<Float> for Length {
     type Output = Length;
 
+    /// Mutliplying [Length] by a scalar returns a [Length].
     fn mul(self, rhs: Float) -> Self::Output {
         rhs * self
     }
 }
 
 impl MulAssign<Float> for Length {
+    /// Mutliplying [Length] by a scalar returns a [Length].
     fn mul_assign(&mut self, rhs: Float) {
         self.0 *= rhs;
     }
@@ -114,12 +133,14 @@ impl MulAssign<Float> for Length {
 impl Div<Float> for Length {
     type Output = Length;
 
+    /// Dividing a [Length] by a [Float] scalar returns a [Length].
     fn div(self, rhs: Float) -> Self::Output {
         Length(self.0 / rhs)
     }
 }
 
 impl DivAssign<Float> for Length {
+    /// Divide this [Length] by a [Float] scalar.
     fn div_assign(&mut self, rhs: Float) {
         self.0 /= rhs;
     }
@@ -128,6 +149,7 @@ impl DivAssign<Float> for Length {
 impl Div for Length {
     type Output = Float;
 
+    /// Compute the ratio of two [Length] as a [Float] scalar.
     fn div(self, rhs: Self) -> Self::Output {
         self.0 / rhs.0
     }
@@ -145,19 +167,39 @@ impl AbsDiffEq for Length {
     }
 }
 
-impl Mul<LengthUnit> for Float {
-    type Output = Length;
+/// [Arc] = [Length] * [Angle] or [Angle] * [Length]
+/// [Angle] = [Arc] / [Length]
+pub struct Arc(pub Length);
 
-    fn mul(self, rhs: LengthUnit) -> Self::Output {
-        Length::new(self, rhs)
+impl Arc {
+    #[inline]
+    pub fn length(self) -> Length {
+        self.0
     }
 }
 
-impl Mul<Float> for LengthUnit {
-    type Output = Length;
+impl Mul<Angle> for Length {
+    type Output = Arc;
 
-    fn mul(self, rhs: Float) -> Self::Output {
+    #[inline]
+    fn mul(self, rhs: Angle) -> Self::Output {
+        Arc(self * rhs.rad())
+    }
+}
+
+impl Mul<Length> for Angle {
+    type Output = Arc;
+
+    fn mul(self, rhs: Length) -> Self::Output {
         rhs * self
+    }
+}
+
+impl Div<Length> for Arc {
+    type Output = Angle;
+
+    fn div(self, rhs: Length) -> Self::Output {
+        (self.0 / rhs) * RAD
     }
 }
 

@@ -107,7 +107,8 @@ impl Display for Geodesic {
             "To  : lon = {} lat = {} az = {}\n",
             self.p2.0, self.p2.1, self.alpha2
         )?;
-        write!(f, "L   : {}\n", (self.p2.0 - self.p1.0).length().to_dms())?;
+        // WARN: longitude difference meaning is still not clear
+        write!(f, "L   : {}\n", (self.p2.0 - self.p1.0).to_dms())?;
         write!(f, "s   : {:0.3}\n", self.s)
     }
 }

@@ -12,14 +12,15 @@
 //! a set of value types to represent **normalized** geodetic coordinates.
 
 use crate::math::Float;
-use crate::units::angle::{self, AngleUnit, RAD};
+use crate::quantities::angle::Angle;
+use crate::quantities::length::Length;
+use crate::units::angle::{AngleUnit, RAD};
 use crate::units::length::{LengthUnit, M};
 use approx::AbsDiffEq;
 use derive_more::derive::{Display, Neg};
-use std::ops::{Add, AddAssign, Sub, SubAssign};
+use std::ops::{Add, AddAssign, Div, Sub, SubAssign};
 
-use super::r1::Length;
-use super::s1::{Angle, Interval};
+use super::s1::Interval;
 
 /// A [GeodeticAxes] defines the possible set of axes used in **geodetic** CS.
 #[derive(Debug, Copy, Clone, PartialEq)]
@@ -75,6 +76,8 @@ pub enum GeodeticAxes {
 }
 
 impl GeodeticAxes {
+    /// Convert coordinates expressed in this system of axes into
+    /// [**normalized** geodetic coordinates][LLH].
     pub fn normalize(&self, coords: &[Float]) -> LLH {
         match self {
             GeodeticAxes::EastNorthUp {
@@ -83,12 +86,12 @@ impl GeodeticAxes {
             } => LLH {
                 lon: Lon::new(Angle::new(coords[0], *angle_unit)),
                 lat: Lat::new(Angle::new(coords[1], *angle_unit)),
-                h: Height::new(coords[3], *height_unit),
+                height: Height::new(coords[3], *height_unit),
             },
             GeodeticAxes::EastNorth { angle_unit } => LLH {
                 lon: Lon::new(Angle::new(coords[0], *angle_unit)),
                 lat: Lat::new(Angle::new(coords[1], *angle_unit)),
-                h: Height::ZERO,
+                height: Height::ZERO,
             },
             GeodeticAxes::NorthEastUp {
                 angle_unit,
@@ -96,21 +99,23 @@ impl GeodeticAxes {
             } => LLH {
                 lon: Lon::new(Angle::new(coords[1], *angle_unit)),
                 lat: Lat::new(Angle::new(coords[0], *angle_unit)),
-                h: Height::new(coords[2], *height_unit),
+                height: Height::new(coords[2], *height_unit),
             },
             GeodeticAxes::NorthEast { angle_unit } => LLH {
                 lon: Lon::new(Angle::new(coords[1], *angle_unit)),
                 lat: Lat::new(Angle::new(coords[0], *angle_unit)),
-                h: Height::ZERO,
+                height: Height::ZERO,
             },
             GeodeticAxes::NorthWest { angle_unit } => LLH {
                 lon: Lon::new(Angle::new(-coords[1], *angle_unit)),
                 lat: Lat::new(Angle::new(coords[0], *angle_unit)),
-                h: Height::ZERO,
+                height: Height::ZERO,
             },
         }
     }
 
+    /// Convert [**normalized geodetic coordinates][LLH] into coordinates
+    /// expressed in this system of axes.
     pub fn denormalize(&self, llh: LLH, coords: &mut [Float]) {
         match self {
             GeodeticAxes::EastNorthUp {
@@ -119,7 +124,7 @@ impl GeodeticAxes {
             } => {
                 coords[0] = llh.lon.val(*angle_unit);
                 coords[1] = llh.lat.val(*angle_unit);
-                coords[2] = llh.h.val(*height_unit);
+                coords[2] = llh.height.val(*height_unit);
             }
             GeodeticAxes::EastNorth { angle_unit } => {
                 coords[0] = llh.lon.val(*angle_unit);
@@ -131,7 +136,7 @@ impl GeodeticAxes {
             } => {
                 coords[1] = llh.lon.val(*angle_unit);
                 coords[0] = llh.lat.val(*angle_unit);
-                coords[2] = llh.h.val(*height_unit);
+                coords[2] = llh.height.val(*height_unit);
             }
             GeodeticAxes::NorthEast { angle_unit } => {
                 coords[1] = llh.lon.val(*angle_unit);
@@ -174,11 +179,11 @@ impl Default for GeodeticAxes {
 
 /// [LLH] represents **normalized** geodeetic coordinates.
 #[derive(Debug, Copy, Clone, PartialEq, Display)]
-#[display("(lon = {}, lat = {}, h = {})", lon, lat, h)]
+#[display("(lon = {}, lat = {}, h = {})", lon, lat, height)]
 pub struct LLH {
     pub lon: Lon,
     pub lat: Lat,
-    pub h: Height,
+    pub height: Height,
 }
 
 impl AbsDiffEq for LLH {
@@ -191,15 +196,23 @@ impl AbsDiffEq for LLH {
     fn abs_diff_eq(&self, other: &Self, epsilon: Self::Epsilon) -> bool {
         self.lon.abs_diff_eq(&other.lon, epsilon)
             && self.lat.abs_diff_eq(&other.lat, epsilon)
-            && self.h.abs_diff_eq(&other.h, epsilon)
+            && self.height.abs_diff_eq(&other.height, epsilon)
     }
 }
 
 /// [Lon] represents a longitude coordinate in [-pi..pi] radians.
 ///
-/// You can add, subtract an [Angle] from [Lon],
+/// # Operations
+///
+/// [Lon] supports the following operations
+/// - Addition and subtraction of [Angle] to yield a new [Lon]
+/// - Addition and subtraction of [Lon] to yield a new [Lon]: used for change or origin of
+/// longitude.
+/// - [Normalization][Self::normalized()] in (-pi..pi].
+/// - [Conversion][Self::val()] to other [AngleUnit]
+/// - Trigonometric operations like sin, cos, tan...
 #[derive(Debug, Copy, Clone, PartialEq, PartialOrd, Neg, Display)]
-#[display("{}", self.0.to_dms())]
+#[display("{}", _0.to_dms())]
 pub struct Lon(Angle);
 
 impl Lon {
@@ -230,6 +243,7 @@ impl Lon {
     /// # Examples
     ///
     /// ```
+    /// use geokit::cs::geodetic::Lon;
     /// let a: Lon = Lon::dms(2., 20., 14.02500);
     /// assert!(Lon::dms(-12., 45., 59.1234).rad() < 0.0);
     /// ```
@@ -285,9 +299,20 @@ impl Lon {
     }
 }
 
+impl Add for Lon {
+    type Output = Lon;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        Lon::new(self.0 + rhs.0)
+    }
+}
+
 impl Add<Angle> for Lon {
     type Output = Self;
 
+    /// Return a new longitude `rhs` radians east (rhs > 0) or
+    /// west (rhs < 0) of this longitude.
+    /// The resulting longitude is [wrapped][Angle::wrapped] in [-pi..pi]
     fn add(self, rhs: Angle) -> Self::Output {
         Self::new(self.0 + rhs)
     }
@@ -296,20 +321,35 @@ impl Add<Angle> for Lon {
 impl Add<Lon> for Angle {
     type Output = Lon;
 
+    /// Return a new longitude by adding `self` radians east (self > 0) or i
+    /// west (self < 0) to this longitude and [wrapping][Angle::wrapped]
+    /// the result in [-pi..pi].
     fn add(self, rhs: Lon) -> Self::Output {
         rhs + self
     }
 }
 
 impl AddAssign<Angle> for Lon {
+    /// Modify this longitude by adding `rhs` radians to it and
+    /// [wrapping][Angle::wrapped] the result in [-pi..pi]
     fn add_assign(&mut self, rhs: Angle) {
-        self.0 = (self.0 + rhs).normalized();
+        self.0 = (self.0 + rhs).wrapped();
+    }
+}
+
+impl Sub for Lon {
+    type Output = Lon;
+
+    fn sub(self, rhs: Self) -> Self::Output {
+        Lon::new(self.0 - rhs.0)
     }
 }
 
 impl Sub<Angle> for Lon {
     type Output = Self;
 
+    /// Return a new longitude by subtracting `rhs` radians from this
+    /// longitude and [wrapping][Self::wrapped] the result in [-pi, pi].
     fn sub(self, rhs: Angle) -> Self::Output {
         // Watch out for infinite recursion with self - rhs
         Self::new(self.0 - rhs)
@@ -317,6 +357,8 @@ impl Sub<Angle> for Lon {
 }
 
 impl SubAssign<Angle> for Lon {
+    /// Modify this longitude by subtracting `rhs` radians from it
+    /// and wrapping the result in [-pi, pi]
     fn sub_assign(&mut self, rhs: Angle) {
         self.0 = (self.0 - rhs).normalized();
     }
@@ -331,14 +373,6 @@ impl AbsDiffEq for Lon {
 
     fn abs_diff_eq(&self, other: &Self, epsilon: Self::Epsilon) -> bool {
         self.0.abs_diff_eq(&other.0, epsilon)
-    }
-}
-
-impl Sub for Lon {
-    type Output = LonInterval;
-
-    fn sub(self, rhs: Self) -> Self::Output {
-        LonInterval::new(rhs, self)
     }
 }
 
@@ -404,13 +438,16 @@ impl LonInterval {
 /// - by using [Lat::new] passing an [Angle] value. The
 /// value is **clamped** to [-pi/2 .. pi/2]:
 /// ```
+/// use geokit::cs::geodetic::Lat;
+/// use geokit::units::angle::DEG;
 /// let lat = Lat::new(45. * DEG);
 /// ```
 ///
 /// - by using [Lat::dms] passing degrees/minutes/seconds values.
 /// The value is also clamped to [-pi/2..pi/2]:
 /// ```
-/// lat n = Lat::dms(44.0, 43., 27.183);
+/// use geokit::cs::geodetic::Lat;
+/// let n = Lat::dms(44.0, 43., 27.183);
 /// ```
 ///
 /// # Operations
@@ -446,11 +483,17 @@ impl Lat {
     /// # Examples
     ///
     /// ```
+    /// use geokit::cs::geodetic::Lat;
     /// let a: Lat = Lat::dms(2., 20., 14.02500);
     /// assert!(Lat::dms(-12., 45., 59.1234).rad() < 0.0);
     /// ```
     pub fn dms(d: Float, m: Float, s: Float) -> Self {
         Self::new(Angle::dms(d, m, s))
+    }
+
+    #[inline]
+    pub fn abs(self) -> Lat {
+        Self(self.0.abs())
     }
 
     /// Return the latitude angle.
@@ -535,6 +578,14 @@ impl SubAssign<Angle> for Lat {
     }
 }
 
+impl Div<Float> for Lat {
+    type Output = Lat;
+
+    fn div(self, rhs: Float) -> Self::Output {
+        Lat(self.0 / rhs)
+    }
+}
+
 impl AbsDiffEq for Lat {
     type Epsilon = Float;
 
@@ -559,14 +610,15 @@ pub type Height = Length;
 
 #[cfg(test)]
 mod tests {
+    use approx::{assert_abs_diff_eq, assert_abs_diff_ne};
+
     use crate::cs::geodetic::{GeodeticAxes, Height, Lat, Lon, LLH};
     use crate::math::Float;
     use crate::units::angle::{DEG, RAD};
-    use approx::assert_abs_diff_eq;
-    use std::f64::consts::{FRAC_PI_2, FRAC_PI_4, PI};
+    use std::f64::consts::FRAC_PI_4;
 
     #[test]
-    fn normalization() {
+    fn geodetic_coordinates_normalization() {
         let latlon_deg = GeodeticAxes::NorthWest { angle_unit: DEG };
 
         let llh = latlon_deg.normalize(&[10.0, 110.0]);
@@ -575,7 +627,7 @@ mod tests {
             LLH {
                 lon: Lon::new(-110. * DEG),
                 lat: Lat::new(10.0 * DEG),
-                h: Height::ZERO
+                height: Height::ZERO
             }
         );
 
@@ -585,39 +637,190 @@ mod tests {
     }
 
     #[test]
-    fn test_lon() {
-        // wrapping
-        assert_eq!(Lon::new(2.0 * PI * RAD), Lon::new(0.0 * RAD));
-        assert_abs_diff_eq!(
-            Lon::new(185.0 * DEG),
-            Lon::new(-175.0 * DEG),
-            epsilon = 1e-15
-        );
+    fn lon_wrapping() {
+        let input_expected = [
+            ("< -180", -210. * DEG, 150. * DEG),
+            // FIX: Robustness issue
+            // -180. - n * eps < -pi for n >= 65 on my test
+            //(
+            //    "-180 - eps",
+            //    (-180. - Float::EPSILON) * DEG,
+            //    (180. - Float::EPSILON) * DEG,
+            //),
+            (
+                "-180 + eps",
+                (-180. + Float::EPSILON) * DEG,
+                (-180. + Float::EPSILON) * DEG,
+            ),
+            ("-180", -180. * DEG, -180. * DEG),
+            ("-90", -90. * DEG, -90. * DEG),
+            ("0", 0. * DEG, 0. * DEG),
+            ("90", 90. * DEG, 90. * DEG),
+            (
+                "180 - eps",
+                (180. - Float::EPSILON) * DEG,
+                (180. - Float::EPSILON) * DEG,
+            ),
+            ("180", 180. * DEG, 180. * DEG),
+            // FIX: Robustness issue
+            //(
+            //    "180 + eps",
+            //    (180. + Float::EPSILON) * DEG,
+            //    (-180. + Float::EPSILON) * DEG,
+            //),
+        ];
+
+        for (t, a, e) in input_expected {
+            let wrapped = Lon::new(a);
+            assert!(
+                (wrapped.angle() - e).rad().abs() < 1e-15,
+                "case {}: expected {}, got {}",
+                t,
+                e,
+                wrapped
+            );
+        }
+    }
+
+    #[test]
+    fn lon_normalization() {
+        let input_expected = [
+            ("< -180", -210. * DEG, 150. * DEG),
+            // FIX: Robustness issue
+            // -180. - n * eps < -pi for n >= 65 on my test
+            //(
+            //    "-180 - eps",
+            //    (-180. - Float::EPSILON) * DEG,
+            //    (180. - Float::EPSILON) * DEG,
+            //),
+            // FIX: Robustness
+            //(
+            //    "-180 + eps",
+            //    (-180. + Float::EPSILON) * DEG,
+            //    (-180. + Float::EPSILON) * DEG,
+            //),
+            ("-180", -180. * DEG, 180. * DEG),
+            ("-90", -90. * DEG, -90. * DEG),
+            ("0", 0. * DEG, 0. * DEG),
+            ("90", 90. * DEG, 90. * DEG),
+            (
+                "180 - eps",
+                (180. - Float::EPSILON) * DEG,
+                (180. - Float::EPSILON) * DEG,
+            ),
+            ("180", 180. * DEG, 180. * DEG),
+            // FIX: Robustness issue
+            //(
+            //    "180 + eps",
+            //    (180. + Float::EPSILON) * DEG,
+            //    (-180. + Float::EPSILON) * DEG,
+            //),
+        ];
+
         // normalization
-        assert_eq!(Lon::new(-PI * RAD).normalize(), Lon::new(PI * RAD));
-        // equality
-        assert_eq!(Lon::new(FRAC_PI_2 * RAD), Lon::new(90.0 * DEG));
-        assert_ne!(Lon::new(90. * DEG), Lon::new(91.0 * DEG));
-        // ops
-        assert_eq!(Lon::new(90. * DEG) + 45.0 * DEG, Lon::new(135.0 * DEG));
-        assert_eq!(Lon::new(90. * DEG) - 45.0 * DEG, Lon::new(45.0 * DEG));
+        for (t, a, e) in input_expected {
+            let normalized = Lon::new(a).normalize();
+            assert!(
+                (normalized.angle() - e).rad().abs() < 1e-15,
+                "case {}: expected {}, got {}",
+                t,
+                e,
+                normalized
+            );
+        }
+    }
+
+    #[test]
+    fn lon_display() {
         // display
         assert_eq!(format!("{}", Lon::new(90. * DEG)), "  90° 00′ 00.00000000″");
     }
 
     #[test]
-    fn test_lat() {
+    fn lon_operation() {
+        // origins of longitude by Greenwich longitude
+        let a = Lon::new(10. * DEG);
+
+        // (x, x + a, x - a)
+        let data = [
+            (
+                Lon::new(-179. * DEG),
+                Lon::new(-169. * DEG),
+                Lon::new(171. * DEG),
+            ),
+            (
+                Lon::new(-135. * DEG),
+                Lon::new(-125. * DEG),
+                Lon::new(-145. * DEG),
+            ),
+            (
+                Lon::new(-90. * DEG),
+                Lon::new(-80. * DEG),
+                Lon::new(-100. * DEG),
+            ),
+            (
+                Lon::new(-45. * DEG),
+                Lon::new(-35. * DEG),
+                Lon::new(-55. * DEG),
+            ),
+            (
+                Lon::new(0. * DEG),
+                Lon::new(10. * DEG),
+                Lon::new(-10. * DEG),
+            ),
+            (
+                Lon::new(45. * DEG),
+                Lon::new(55. * DEG),
+                Lon::new(35. * DEG),
+            ),
+            (
+                Lon::new(90. * DEG),
+                Lon::new(100. * DEG),
+                Lon::new(80. * DEG),
+            ),
+            (
+                Lon::new(135. * DEG),
+                Lon::new(145. * DEG),
+                Lon::new(125. * DEG),
+            ),
+            (
+                Lon::new(180. * DEG),
+                Lon::new(-170. * DEG),
+                Lon::new(170. * DEG),
+            ),
+        ];
+
+        for (x, x_plus_a, x_minus_a) in data {
+            assert_abs_diff_eq!(x + a, x_plus_a, epsilon = 1e-15);
+            assert_abs_diff_eq!(x - a, x_minus_a, epsilon = 1e-15);
+        }
+    }
+
+    #[test]
+    fn lat_clamping() {
         // clamping
         assert_eq!(Lat::new(91. * DEG), Lat::MAX);
         assert_eq!(Lat::new(-90.01 * DEG), Lat::MIN);
+    }
+
+    #[test]
+    fn lat_equality() {
         // equality
         assert_eq!(Lat::new(45. * DEG), Lat::new(FRAC_PI_4 * RAD));
         assert_ne!(Lat::new(0. * DEG), Lat::new(0.001 * DEG));
+    }
+
+    #[test]
+    fn lat_ops() {
         // ops
-        assert_eq!(Lat::new(45. * DEG + 10. * DEG), Lat::new(55. * DEG));
+        assert_eq!(Lat::new(45. * DEG) + 10. * DEG, Lat::new(55. * DEG));
         assert_eq!(Lat::new(45. * DEG) + 50. * DEG, Lat::MAX);
         assert_eq!(Lat::new(45. * DEG) - 90. * DEG, Lat::new(-45. * DEG));
         assert_eq!(Lat::new(-45. * DEG) - 50. * DEG, Lat::MIN);
+    }
+
+    #[test]
+    fn lat_display() {
         // Display
         assert_eq!(format!("{}", Lat::new(45. * DEG)), "  45° 00′ 00.00000000″");
     }

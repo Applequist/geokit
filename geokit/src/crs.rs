@@ -6,16 +6,10 @@ use smol_str::SmolStr;
 
 use crate::cs::cartesian::{GeocentricAxes, ProjectedAxes};
 use crate::cs::geodetic::GeodeticAxes;
-use crate::operation::conversion::projection::ProjectionSpec;
+use crate::geodesy::GeodeticDatum;
+use crate::projections::ProjectionSpec;
 use crate::units::angle::RAD;
 use crate::units::length::M;
-use crate::{
-    geodesy::GeodeticDatum,
-    operation::{
-        conversion::{GeogToGeoc, Normalization},
-        Inv, Operation,
-    },
-};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Crs {
@@ -83,15 +77,6 @@ impl Crs {
         self.datum().id()
     }
 
-    /// Returns the id of the reference [GeodeticDatum] of a [Crs].
-    pub fn ref_datum_id(&self) -> &str {
-        match self {
-            Crs::Geocentric { datum, .. } => datum.ref_datum_id(),
-            Crs::Geographic { datum, .. } => datum.ref_datum_id(),
-            Crs::Projected { datum, .. } => datum.ref_datum_id(),
-        }
-    }
-
     /// Returns whether a [Crs] is normalized.
     /// A [Crs::Geocentric] CRS is normalized by default.
     /// A [Crs::Geographic] CRS is normalized if it is using the following
@@ -126,38 +111,38 @@ impl Crs {
         }
     }
 
-    /// Returns coordinates conversion to and from normalized geocentric coordinates in the
-    /// reference datum.
-    pub fn to_ref_geoc(&self) -> (Box<dyn Operation>, Box<dyn Operation>) {
-        match self {
-            Crs::Geocentric { datum, .. } => {
-                let op = datum.to_ref_datum();
-                (op.clone(), Inv(op).boxed())
-            }
-            Crs::Geographic { datum, axes, .. } => {
-                let op = datum.to_ref_datum();
-                let fwd = Normalization::from(*axes)
-                    .and_then(GeogToGeoc::new(datum))
-                    .and_then(op);
-                let bwd = Inv(fwd.clone());
-                (fwd.boxed(), bwd.boxed())
-            }
-            Crs::Projected {
-                datum,
-                axes,
-                projection,
-                ..
-            } => {
-                let op = datum.to_ref_datum();
-                let fwd = Normalization::from(*axes)
-                    .and_then(Inv(projection.projection(datum.ellipsoid())))
-                    .and_then(GeogToGeoc::new(datum))
-                    .and_then(op);
-                let bwd = Inv(fwd.clone());
-                (fwd.boxed(), bwd.boxed())
-            }
-        }
-    }
+    ///// Returns coordinates conversion to and from normalized geocentric coordinates in the
+    ///// reference datum.
+    //pub fn to_ref_geoc(&self) -> (Box<dyn Operation>, Box<dyn Operation>) {
+    //    match self {
+    //        Crs::Geocentric { datum, .. } => {
+    //            let op = datum.to_ref_datum();
+    //            (op.clone(), Inv(op).boxed())
+    //        }
+    //        Crs::Geographic { datum, axes, .. } => {
+    //            let op = datum.to_ref_datum();
+    //            let fwd = Normalization::from(*axes)
+    //                .and_then(GeogToGeoc::new(datum))
+    //                .and_then(op);
+    //            let bwd = Inv(fwd.clone());
+    //            (fwd.boxed(), bwd.boxed())
+    //        }
+    //        Crs::Projected {
+    //            datum,
+    //            axes,
+    //            projection,
+    //            ..
+    //        } => {
+    //            let op = datum.to_ref_datum();
+    //            let fwd = Normalization::from(*axes)
+    //                .and_then(Inv(projection.projection(datum.ellipsoid())))
+    //                .and_then(GeogToGeoc::new(datum))
+    //                .and_then(op);
+    //            let bwd = Inv(fwd.clone());
+    //            (fwd.boxed(), bwd.boxed())
+    //        }
+    //    }
+    //}
 }
 
 #[cfg(test)]
@@ -176,7 +161,6 @@ mod tests {
                 "WGS84",
                 ellipsoid::consts::WGS84,
                 prime_meridian::consts::GREENWICH,
-                None,
             ),
             axes: GeocentricAxes::XYZ,
         };
@@ -189,7 +173,6 @@ mod tests {
                 "WGS84",
                 ellipsoid::consts::WGS84,
                 prime_meridian::consts::GREENWICH,
-                None,
             ),
             axes: GeodeticAxes::EastNorthUp {
                 angle_unit: RAD,
@@ -211,7 +194,6 @@ mod tests {
                 "WGS84",
                 ellipsoid::consts::WGS84,
                 prime_meridian::consts::GREENWICH,
-                None,
             ),
             axes: GeocentricAxes::XYZ,
         };
@@ -225,7 +207,6 @@ mod tests {
                 "WGS84",
                 ellipsoid::consts::WGS84,
                 prime_meridian::consts::GREENWICH,
-                None,
             ),
             axes: GeocentricAxes::XYZ,
         };
@@ -237,7 +218,6 @@ mod tests {
                 "WGS 84.1",
                 ellipsoid::consts::GRS80,
                 prime_meridian::consts::GREENWICH,
-                None,
             ),
             axes: GeocentricAxes::XYZ,
         };
@@ -249,7 +229,6 @@ mod tests {
                 "WGS84",
                 ellipsoid::consts::WGS84,
                 prime_meridian::consts::GREENWICH,
-                None,
             ),
             axes: GeodeticAxes::EastNorthUp {
                 angle_unit: RAD,
@@ -263,7 +242,6 @@ mod tests {
                 "WGS84",
                 ellipsoid::consts::WGS84,
                 prime_meridian::consts::GREENWICH,
-                None,
             ),
             axes: GeodeticAxes::EastNorthUp {
                 angle_unit: RAD,
@@ -281,7 +259,6 @@ mod tests {
                 "WGS84.1",
                 ellipsoid::consts::WGS84,
                 prime_meridian::consts::GREENWICH,
-                None,
             ),
             axes: GeodeticAxes::EastNorthUp {
                 angle_unit: RAD,
@@ -299,7 +276,6 @@ mod tests {
                 "WGS84",
                 ellipsoid::consts::WGS84,
                 prime_meridian::consts::GREENWICH,
-                None,
             ),
             axes: GeodeticAxes::NorthEastUp {
                 angle_unit: RAD,
@@ -317,7 +293,6 @@ mod tests {
                 "WGS84",
                 ellipsoid::consts::WGS84,
                 prime_meridian::consts::GREENWICH,
-                None,
             ),
             axes: GeodeticAxes::NorthEastUp {
                 angle_unit: RAD,
@@ -335,7 +310,6 @@ mod tests {
                 "WGS84",
                 ellipsoid::consts::WGS84,
                 prime_meridian::consts::GREENWICH,
-                None,
             ),
             axes: GeodeticAxes::NorthEastUp {
                 angle_unit: RAD,

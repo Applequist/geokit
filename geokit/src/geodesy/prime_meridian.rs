@@ -6,7 +6,7 @@ use smol_str::SmolStr;
 /// It is defined by its longitude with respect to the Greenwich meridian,
 /// expressed **in radians** and positive eastward.
 #[derive(Debug, Clone, Display)]
-#[display("{}: {}", self.name, self.lon)]
+#[display("(name = {}, lon = {})", name, lon)]
 pub struct PrimeMeridian {
     name: SmolStr,
     lon: Lon,
@@ -54,7 +54,7 @@ impl PartialEq for PrimeMeridian {
 pub mod consts {
     use super::PrimeMeridian;
     use crate::cs::geodetic::Lon;
-    use crate::cs::s1::Angle;
+    use crate::quantities::angle::Angle;
     use crate::units::angle::DEG;
 
     macro_rules! prime_meridians {
@@ -62,7 +62,7 @@ pub mod consts {
 
             $(
                 pub const $name: PrimeMeridian = PrimeMeridian::new_static(
-                    $id, 
+                    $id,
                     Lon::const_new(Angle::new($lon, DEG))
                 );
             )+
@@ -127,6 +127,9 @@ mod tests {
 
     #[test]
     fn pm_display() {
-        assert_eq!(format!("{}", PARIS), "Paris:    2° 20′ 14.02500000″");
+        assert_eq!(
+            format!("{}", PARIS),
+            "(name = Paris, lon =    2° 20′ 14.02500000″)"
+        );
     }
 }

@@ -126,7 +126,8 @@ impl<'e> VincentyGeodesicSolver<'e> {
         let (sin_beta2, cos_beta2) = beta2.sin_cos();
 
         // Eq (13) 1st approximation
-        let L = (lon2 - lon1).length().rad();
+        // TODO: check the need for wrapping
+        let L = (lon2 - lon1).rad();
         let mut lambda = L;
         let (mut sin_lambda, mut cos_lambda) = lambda.sin_cos();
         let mut cos_alpha_sq;

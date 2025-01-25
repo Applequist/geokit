@@ -167,7 +167,8 @@ impl<'e> KarneyGeodesicSolver<'e> {
         let (sin_beta1, cos_beta1) = beta1.sin_cos();
         let (sin_beta2, cos_beta2) = beta2.sin_cos();
 
-        let lambda12_0 = (p2.0 - p1.0).length();
+        // TODO: wrapping required?
+        let lambda12_0 = (p2.0 - p1.0);
         println!("lambda12_0 = {}", lambda12_0.val(DEG));
 
         // Get initial value of alpha1

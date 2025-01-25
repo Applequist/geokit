@@ -1,21 +1,26 @@
+use crate::cs::cartesian::ENH;
+use crate::cs::geodetic::{Lat, Lon, LLH};
+use crate::geodesy::Ellipsoid;
 use crate::math::polynomial::Polynomial;
 use crate::math::{Float, PI_2, PI_4};
-use crate::{
-    geodesy::Ellipsoid,
-    operation::{self, Operation},
-};
+use crate::quantities::angle::Angle;
+use crate::quantities::length::{Arc, Length};
+use crate::units::angle::{DEG, RAD};
+use crate::units::length::M;
+
+use super::ProjectionError;
 
 /// The [Mercator] map projection.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub(crate) struct Mercator {
-    a: Float,
+    a: Length,
     e: Float,
     e2: Float,
-    lon0: Float,
-    lat0: Float,
+    lon0: Lon,
+    lat0: Lat,
     k0: Float,
-    false_easting: Float,
-    false_northing: Float,
+    false_easting: Length,
+    false_northing: Length,
 }
 
 impl Mercator {
@@ -26,17 +31,17 @@ impl Mercator {
     /// Know as **EPSG:9804**.
     pub(crate) fn new_1_sp(
         ellipsoid: &Ellipsoid,
-        lon0: Float,
+        lon0: Lon,
         k0: Float,
-        false_easting: Float,
-        false_northing: Float,
+        false_easting: Length,
+        false_northing: Length,
     ) -> Self {
         Self {
-            a: ellipsoid.a().m(),
+            a: ellipsoid.a(),
             e: ellipsoid.e(),
             e2: ellipsoid.e_sq(),
             lon0,
-            lat0: 0.0,
+            lat0: Lat::ZERO,
             k0,
             false_easting,
             false_northing,
@@ -50,14 +55,14 @@ impl Mercator {
     /// Known as EPSG:9805
     pub(crate) fn new_2_sp(
         ellipsoid: &Ellipsoid,
-        lon0: Float,
-        lat0: Float,
-        false_easting: Float,
-        false_northing: Float,
+        lon0: Lon,
+        lat0: Lat,
+        false_easting: Length,
+        false_northing: Length,
     ) -> Self {
-        let (sin_lat1, cos_lat1) = lat0.abs().sin_cos();
+        let (sin_lat1, cos_lat1) = lat0.angle().abs().sin_cos();
         Self {
-            a: ellipsoid.a().m(),
+            a: ellipsoid.a(),
             e: ellipsoid.e(),
             e2: ellipsoid.e_sq(),
             lon0,
@@ -67,37 +72,22 @@ impl Mercator {
             false_northing,
         }
     }
-}
 
-/// Eval a polynom
-// pub fn eval_polynom(coef: &[Float], x: Float) -> Float {
-//     coef.iter().rev().fold(0.0, |acc, coef_i| x * acc + coef_i)
-// }
-
-impl Operation for Mercator {
-    fn in_dim(&self) -> usize {
-        3
-    }
-
-    fn out_dim(&self) -> usize {
-        3
-    }
-
-    fn apply_fwd(&self, input: &[Float], output: &mut [Float]) -> operation::Result<()> {
-        let sin_lat = input[1].sin();
+    fn proj(&self, input: LLH) -> Result<ENH, ProjectionError> {
+        let sin_lat = input.lat.sin();
         let e_sin_lat = self.e * sin_lat;
-        let lat1 = PI_4 + input[1] / 2.0;
+        let lat1 = input.lat / 2.0 + PI_4 * RAD;
         let r = ((1.0 - e_sin_lat) / (1.0 + e_sin_lat)).powf(self.e / 2.0);
 
-        output[0] = self.false_easting + self.a * self.k0 * (input[0] - self.lon0);
-        output[1] = self.false_northing + self.a * self.k0 * (lat1.tan() * r).ln();
-        output[2] = input[2];
-
-        Ok(())
+        Ok(ENH {
+            easting: self.false_easting + self.a * self.k0 * (input.lon - self.lon0.angle()).rad(),
+            northing: self.false_northing + self.a * self.k0 * (lat1.tan() * r).ln(),
+            height: input.height,
+        })
     }
 
-    fn apply_bwd(&self, input: &[Float], output: &mut [Float]) -> operation::Result<()> {
-        let t = ((self.false_northing - input[1]) / (self.a * self.k0)).exp();
+    fn unproj(&self, input: ENH) -> Result<LLH, ProjectionError> {
+        let t = ((self.false_northing - input.northing) / (self.a * self.k0)).exp();
         let xi = PI_2 - 2.0 * t.atan();
         let sin_2xi = (2.0 * xi).sin();
         let sin_4xi = (4.0 * xi).sin();
@@ -106,17 +96,19 @@ impl Operation for Mercator {
 
         let e2 = self.e * self.e;
 
-        output[0] = self.lon0 + (input[0] - self.false_easting) / (self.a * self.k0);
-        output[1] = xi
+        let x = xi
             + Polynomial::new([0.0, 0.5, 5.0 / 24.0, 1.0 / 12.0, 13.0 / 360.0]).eval_at(e2)
                 * sin_2xi
             + Polynomial::new([0.0, 0.0, 7.0 / 48.0, 29.0 / 240.0, 811.0 / 11520.0]).eval_at(e2)
                 * sin_4xi
             + Polynomial::new([0.0, 0.0, 0.0, 7.0 / 120.0, 81.0 / 1120.0]).eval_at(e2) * sin_6xi
             + Polynomial::new([0.0, 0.0, 0.0, 0.0, 4279.0 / 161280.0]).eval_at(e2) * sin_8xi;
-        output[2] = input[2];
 
-        Ok(())
+        Ok(LLH {
+            lon: self.lon0 + Arc(input.easting - self.false_easting) / (self.a * self.k0),
+            lat: Lat::new(x * RAD),
+            height: input.height,
+        })
     }
 }
 
@@ -125,38 +117,38 @@ impl Operation for Mercator {
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub(crate) struct TransverseMercator {
     e: Float,
-    lon0: Float,
+    lon0: Lon,
     k0: Float,
-    false_easting: Float,
-    false_northing: Float,
-    upper_b: Float,
+    false_easting: Length,
+    false_northing: Length,
+    upper_b: Length,
     h: [Float; 4],
     h_p: [Float; 4],
-    m0: Float,
+    m0: Length,
 }
 
 impl TransverseMercator {
     const UTM_ZONE_WIDTH_DEG: Float = 6.0;
     const UTM_ZONE_COUNT: Float = 360.0 / Self::UTM_ZONE_WIDTH_DEG;
     const UTM_ZONE_1_WEST_LIMIT_DEG: Float = -177.0;
-    const UTM_LAT0: Float = 0.0;
+    const UTM_LAT0: Lat = Lat::ZERO;
     const UTM_K0: Float = 0.9996;
-    const UTM_FE: Float = 500_000.0;
-    const UTM_FN_NORTH: Float = 0.0;
-    const UTM_FN_SOUTH: Float = 10_000_000.0;
+    const UTM_FE: Length = Length::new(500_000.0, M);
+    const UTM_FN_NORTH: Length = Length::ZERO;
+    const UTM_FN_SOUTH: Length = Length::new(10_000_000.0, M);
 
-    fn utm_zone(lon: Float) -> u8 {
-        let lon_deg = lon.to_degrees();
+    fn utm_zone(lon: Lon) -> u8 {
+        let lon_deg = lon.val(DEG);
         let delta_lon =
             ((lon_deg - Self::UTM_ZONE_1_WEST_LIMIT_DEG) / Self::UTM_ZONE_WIDTH_DEG).floor();
         let z = delta_lon - (delta_lon / Self::UTM_ZONE_COUNT).floor() * Self::UTM_ZONE_COUNT;
         z as u8
     }
 
-    fn utm_lon0(zone: u8) -> Float {
+    fn utm_lon0(zone: u8) -> Lon {
         let lon0_deg = Self::UTM_ZONE_1_WEST_LIMIT_DEG + (zone as Float) * Self::UTM_ZONE_WIDTH_DEG
             - Self::UTM_ZONE_WIDTH_DEG / 2.0;
-        lon0_deg.to_radians()
+        Lon::new(lon0_deg * DEG)
     }
 
     pub(crate) fn new_utm_north(ellipsoid: &Ellipsoid, zone: u8) -> Self {
@@ -183,16 +175,16 @@ impl TransverseMercator {
 
     pub(crate) fn new(
         ellipsoid: &Ellipsoid,
-        lon0: Float,
-        lat0: Float,
+        lon0: Lon,
+        lat0: Lat,
         k0: Float,
-        false_easting: Float,
-        false_northing: Float,
+        false_easting: Length,
+        false_northing: Length,
     ) -> Self {
         let e = ellipsoid.e();
         let f = 1.0 / ellipsoid.invf();
         let n = f / (2.0 - f);
-        let upper_b = ellipsoid.a().m() / (1.0 + n)
+        let upper_b = ellipsoid.a() / (1.0 + n)
             * Polynomial::new([1.0, 0.0, 0.25, 0.0, 1.0 / 64.0]).eval_at(n);
         let h = [
             Polynomial::new([0.0, 0.5, -2.0 / 3.0, 5.0 / 16.0, 41.0 / 180.0]).eval_at(n),
@@ -223,7 +215,7 @@ impl TransverseMercator {
         }
     }
 
-    fn q(e: Float, lat: Float) -> Float {
+    fn q(e: Float, lat: Lat) -> Float {
         lat.tan().asinh() - e * (e * lat.sin()).atanh()
     }
 
@@ -231,15 +223,15 @@ impl TransverseMercator {
         q.sinh().atan()
     }
 
-    fn eta_0(beta: Float, lon: Float, lon0: Float) -> Float {
-        (beta.cos() * (lon - lon0).sin()).atanh()
+    fn eta_0(beta: Float, lon: Lon, lon0: Lon) -> Float {
+        (beta.cos() * (lon - lon0.angle()).sin()).atanh()
     }
 
-    fn m0(lat0: Float, upper_b: Float, e: Float, h: [Float; 4]) -> Float {
-        if lat0 == 0.0 {
-            0.0
-        } else if lat0.abs() == PI_2 {
-            upper_b * lat0
+    fn m0(lat0: Lat, upper_b: Length, e: Float, h: [Float; 4]) -> Length {
+        if lat0 == Lat::ZERO {
+            0.0 * M
+        } else if lat0.abs() == Lat::MAX {
+            upper_b * lat0.rad()
         } else {
             let q0 = Self::q(e, lat0);
             let beta0 = Self::beta(q0);
@@ -255,21 +247,11 @@ impl TransverseMercator {
             upper_b * xi_o
         }
     }
-}
 
-impl Operation for TransverseMercator {
-    fn in_dim(&self) -> usize {
-        3
-    }
-
-    fn out_dim(&self) -> usize {
-        3
-    }
-
-    fn apply_fwd(&self, input: &[Float], output: &mut [Float]) -> operation::Result<()> {
-        let q = Self::q(self.e, input[1]);
+    fn proj(&self, input: LLH) -> Result<ENH, ProjectionError> {
+        let q = Self::q(self.e, input.lat);
         let beta = Self::beta(q);
-        let eta_0 = Self::eta_0(beta, input[0], self.lon0);
+        let eta_0 = Self::eta_0(beta, input.lon, self.lon0);
         let xi_0 = (beta.sin() * eta_0.cosh()).asin();
         let xis = [
             xi_0,
@@ -287,16 +269,17 @@ impl Operation for TransverseMercator {
         ];
         let eta = eta_0 + etas.into_iter().sum::<Float>();
 
-        output[0] = self.false_easting + self.k0 * self.upper_b * eta;
-        output[1] = self.false_northing + self.k0 * (self.upper_b * xi - self.m0);
-        output[2] = input[2];
-
-        Ok(())
+        Ok(ENH {
+            easting: self.false_easting + self.k0 * self.upper_b * eta,
+            northing: self.false_northing + self.k0 * (self.upper_b * xi - self.m0),
+            height: input.height,
+        })
     }
 
-    fn apply_bwd(&self, input: &[Float], output: &mut [Float]) -> operation::Result<()> {
-        let eta_p = (input[0] - self.false_easting) / (self.upper_b * self.k0);
-        let xi_p = (input[1] - self.false_northing + self.k0 * self.m0) / (self.upper_b * self.k0);
+    fn unproj(&self, input: ENH) -> Result<LLH, ProjectionError> {
+        let eta_p = (input.easting - self.false_easting) / (self.upper_b * self.k0);
+        let xi_p =
+            (input.northing - self.false_northing + self.k0 * self.m0) / (self.upper_b * self.k0);
 
         let xi_ps = [
             self.h_p[0] * (2.0 * xi_p).sin() * (2.0 * eta_p).cosh(),
@@ -330,11 +313,11 @@ impl Operation for TransverseMercator {
             }
         }
 
-        output[0] = self.lon0 + (eta_p0.tanh() / beta_p.cos()).asin();
-        output[1] = q_pp.sinh().atan();
-        output[2] = input[2];
-
-        Ok(())
+        Ok(LLH {
+            lon: self.lon0 + (eta_p0.tanh() / beta_p.cos()).asin() * RAD,
+            lat: Lat::new(q_pp.sinh().atan() * RAD),
+            height: input.height,
+        })
     }
 }
 
@@ -343,86 +326,99 @@ impl Operation for TransverseMercator {
 /// Strictly speaking the name is misleading as it is **NOT** a Mercator projection.
 #[derive(Debug, Clone, PartialEq)]
 pub struct WebMercator {
-    a: Float,
+    a: Length,
     /// longitude of *natural origin* in radians.
-    lon0: Float,
+    lon0: Lon,
     /// latitude of *natural origin* in radians.
-    lat0: Float,
+    lat0: Lat,
     /// False easting in meters.
-    false_easting: Float,
+    false_easting: Length,
     /// False norhting in meters.
-    false_northing: Float,
+    false_northing: Length,
 }
 
 impl WebMercator {
     /// Creates a new [WebMercator] projection instance.
     pub(crate) fn new(
         ellipsoid: &Ellipsoid,
-        lon0: Float,
-        lat0: Float,
-        false_easting: Float,
-        false_northing: Float,
+        lon0: Lon,
+        lat0: Lat,
+        false_easting: Length,
+        false_northing: Length,
     ) -> Self {
         Self {
-            a: ellipsoid.a().m(),
+            a: ellipsoid.a(),
             lon0,
             lat0,
             false_easting,
             false_northing,
         }
     }
-}
 
-impl Operation for WebMercator {
-    fn in_dim(&self) -> usize {
-        3
+    fn proj(&self, input: LLH) -> Result<ENH, ProjectionError> {
+        Ok(ENH {
+            easting: self.false_easting + (self.a * (input.lon - self.lon0).angle()).length(),
+            northing: self.false_northing + self.a * (input.lat / 2.0 + PI_4 * RAD).tan().ln(),
+            height: input.height,
+        })
     }
 
-    fn out_dim(&self) -> usize {
-        3
-    }
+    fn unproj(&self, input: ENH) -> Result<LLH, ProjectionError> {
+        let d = (self.false_northing - input.northing) / self.a;
 
-    fn apply_fwd(&self, input: &[Float], output: &mut [Float]) -> operation::Result<()> {
-        output[0] = self.false_easting + self.a * (input[0] - self.lon0);
-        output[1] = self.false_northing + self.a * (input[1] / 2.0 + PI_4).tan().ln();
-        output[2] = input[2];
-        Ok(())
-    }
-
-    fn apply_bwd(&self, input: &[Float], output: &mut [Float]) -> operation::Result<()> {
-        let d = (self.false_northing - input[1]) / self.a;
-        output[0] = self.lon0 + (input[0] - self.false_easting) / self.a;
-        output[1] = PI_2 - 2.0 * d.exp().atan();
-        output[2] = input[2];
-        Ok(())
+        Ok(LLH {
+            lon: self.lon0 + Arc(input.easting - self.false_easting) / self.a,
+            lat: Lat::new(Angle::PI_2 - 2.0 * d.exp().atan() * RAD),
+            height: input.height,
+        })
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use approx::assert_abs_diff_eq;
-
-    use crate::math::Float;
-    use crate::units::angle::DEG;
-    use crate::{geodesy::ellipsoid, operation::Operation};
-
     use super::Mercator;
     use super::TransverseMercator;
     use super::WebMercator;
+    use crate::cs::cartesian::ENH;
+    use crate::cs::geodetic::Lat;
+    use crate::cs::geodetic::Lon;
+    use crate::cs::geodetic::LLH;
+    use crate::geodesy::ellipsoid;
+    use crate::quantities::angle::Angle;
+    use crate::quantities::length::Length;
+    use crate::units::angle::DEG;
+    use crate::units::angle::RAD;
+    use crate::units::length::M;
+    use approx::assert_abs_diff_eq;
 
     #[test]
     fn web_mercator() {
-        let proj = WebMercator::new(&ellipsoid::consts::WGS84, 0.0, 0.0, 0.0, 0.0);
-        let mut output = [0.0; 3];
-        proj.apply_fwd(&[-1.751147016, 0.42554246, 0.0], &mut output)
+        let proj = WebMercator::new(
+            &ellipsoid::consts::WGS84,
+            Lon::ZERO,
+            Lat::ZERO,
+            0.0 * M,
+            0.0 * M,
+        );
+        let enh = proj
+            .proj(LLH {
+                lon: Lon::new(-1.751147016 * RAD),
+                lat: Lat::new(0.42554246 * RAD),
+                height: Length::ZERO,
+            })
             .unwrap();
-        assert_abs_diff_eq!(output[0], -11_169_055.58, epsilon = 1e-2);
-        assert_abs_diff_eq!(output[1], 2_800_000.0, epsilon = 1e-2);
+        assert_abs_diff_eq!(enh.easting.m(), -11_169_055.58, epsilon = 1e-2);
+        assert_abs_diff_eq!(enh.northing.m(), 2_800_000.0, epsilon = 1e-2);
 
-        proj.apply_bwd(&[-11_169_055.58, 2_810_000.0, 0.0], &mut output)
+        let llh = proj
+            .unproj(ENH {
+                easting: -11_169_055.58 * M,
+                northing: 2_810_000.0 * M,
+                height: Length::ZERO,
+            })
             .unwrap();
-        assert_abs_diff_eq!(output[0], -1.751147016, epsilon = 1e-9);
-        assert_abs_diff_eq!(output[1], 0.426970023, epsilon = 1e-9);
+        assert_abs_diff_eq!(llh.lon.rad(), -1.751147016, epsilon = 1e-9);
+        assert_abs_diff_eq!(llh.lat.rad(), 0.426970023, epsilon = 1e-9);
     }
 
     #[test]
@@ -430,24 +426,30 @@ mod tests {
         // From EPSG Guidance Note 7 Part 2 3.5.1 Mercator
         let proj = Mercator::new_1_sp(
             &ellipsoid::consts::BESSEL,
-            110.0 * DEG.rad_per_unit(),
+            Lon::new(110.0 * DEG),
             0.997,
-            3_900_000.0,
-            900_000.0,
+            3_900_000.0 * M,
+            900_000.0 * M,
         );
-        let mut output = [0.0; 3];
-        proj.apply_fwd(
-            &[120.0 * DEG.rad_per_unit(), -3.0 * DEG.rad_per_unit(), 0.0],
-            &mut output,
-        )
-        .unwrap();
-        assert_abs_diff_eq!(output[0], 5009726.58, epsilon = 2e-2);
-        assert_abs_diff_eq!(output[1], 569150.82, epsilon = 2e-2);
-
-        proj.apply_bwd(&[5009726.58, 569150.82, 0.0], &mut output)
+        let enh = proj
+            .proj(LLH {
+                lon: Lon::new(120.0 * DEG),
+                lat: Lat::new(-3.0 * DEG),
+                height: 0.0 * M,
+            })
             .unwrap();
-        assert_abs_diff_eq!(output[0].to_degrees(), 120.0, epsilon = 3e-8);
-        assert_abs_diff_eq!(output[1].to_degrees(), -3.0, epsilon = 3e-8);
+        assert_abs_diff_eq!(enh.easting.m(), 5009726.58, epsilon = 2e-2);
+        assert_abs_diff_eq!(enh.northing.m(), 569150.82, epsilon = 2e-2);
+
+        let llh = proj
+            .unproj(ENH {
+                easting: 5009726.58 * M,
+                northing: 569150.82 * M,
+                height: 0.0 * M,
+            })
+            .unwrap();
+        assert_abs_diff_eq!(llh.lon.val(DEG), 120.0, epsilon = 3e-8);
+        assert_abs_diff_eq!(llh.lat.val(DEG), -3.0, epsilon = 3e-8);
     }
 
     #[test]
@@ -455,24 +457,30 @@ mod tests {
         // From EPSG Guidance Note 7 Part 2 3.5.1 Mercator
         let proj = Mercator::new_2_sp(
             &ellipsoid::consts::KRASS,
-            51.0 * DEG.rad_per_unit(),
-            42.0 * DEG.rad_per_unit(),
-            0.0,
-            0.0,
+            Lon::new(51.0 * DEG),
+            Lat::new(42.0 * DEG),
+            0.0 * M,
+            0.0 * M,
         );
-        let mut output = [0.0; 3];
-        proj.apply_fwd(
-            &[53.0 * DEG.rad_per_unit(), 53.0 * DEG.rad_per_unit(), 0.0],
-            &mut output,
-        )
-        .unwrap();
-        assert_abs_diff_eq!(165704.29, output[0], epsilon = 4e-3);
-        assert_abs_diff_eq!(5171848.07, output[1], epsilon = 3e-3);
-
-        proj.apply_bwd(&[165704.29, 5171848.07, 0.0], &mut output)
+        let enh = proj
+            .proj(LLH {
+                lon: Lon::new(53.0 * DEG),
+                lat: Lat::new(53.0 * DEG),
+                height: 0.0 * M,
+            })
             .unwrap();
-        assert_abs_diff_eq!(output[0].to_degrees(), 53.0, epsilon = 5e-8);
-        assert_abs_diff_eq!(output[1].to_degrees(), 53.0, epsilon = 4e-8);
+        assert_abs_diff_eq!(enh.easting.m(), 165704.29, epsilon = 4e-3);
+        assert_abs_diff_eq!(enh.northing.m(), 5171848.07, epsilon = 3e-3);
+
+        let llh = proj
+            .unproj(ENH {
+                easting: 165704.29 * M,
+                northing: 5171848.07 * M,
+                height: 0.0 * M,
+            })
+            .unwrap();
+        assert_abs_diff_eq!(llh.lon.val(DEG), 53.0, epsilon = 5e-8);
+        assert_abs_diff_eq!(llh.lat.val(DEG), 53.0, epsilon = 4e-8);
     }
 
     #[test]
@@ -480,76 +488,115 @@ mod tests {
         // From EPSG Guidance Note 7 part 2
         let proj = TransverseMercator::new(
             &ellipsoid::consts::AIRY,
-            -2.0 * DEG.rad_per_unit(), // 2 W
-            49.0 * DEG.rad_per_unit(), // 49 N
+            Lon::new(-2.0 * DEG), // 2 W
+            Lat::new(49.0 * DEG), // 49 N
             0.9996012717,
-            400_000.0,
-            -100_000.0,
+            400_000.0 * M,
+            -100_000.0 * M,
         );
 
         let enh = proj
-            .fwd_new(&[0.5 * DEG.rad_per_unit(), 50.5 * DEG.rad_per_unit(), 0.0])
+            .proj(LLH {
+                lon: Lon::new(0.5 * DEG),
+                lat: Lat::new(50.5 * DEG),
+                height: 0.0 * M,
+            })
             .unwrap();
-        assert_abs_diff_eq!(enh[0], 577_274.99, epsilon = 1e-2);
-        assert_abs_diff_eq!(enh[1], 69_740.5, epsilon = 1e-2);
+        assert_abs_diff_eq!(enh.easting.m(), 577_274.99, epsilon = 1e-2);
+        assert_abs_diff_eq!(enh.northing.m(), 69_740.5, epsilon = 1e-2);
 
-        let llh = proj.bwd_new(&[577_274.99, 69_740.50, 0.0]).unwrap();
-        assert_abs_diff_eq!(llh[0], 0.5 * DEG.rad_per_unit(), epsilon = 2e-9);
-        assert_abs_diff_eq!(llh[1], 50.5 * DEG.rad_per_unit(), epsilon = 2e-9);
+        let llh = proj
+            .unproj(ENH {
+                easting: 577_274.99 * M,
+                northing: 69_740.50 * M,
+                height: 0.0 * M,
+            })
+            .unwrap();
+        assert_abs_diff_eq!(llh.lon.val(DEG), 0.5, epsilon = 1e-7);
+        assert_abs_diff_eq!(llh.lat.val(DEG), 50.5, epsilon = 7e-8);
     }
 
     #[test]
     fn transverse_mercator_bound() {
-        let proj = TransverseMercator::new(&ellipsoid::consts::WGS84, 0.0, 0.0, 0.9996, 0.0, 0.0);
+        let proj = TransverseMercator::new(
+            &ellipsoid::consts::WGS84,
+            Lon::ZERO,
+            Lat::ZERO,
+            0.9996,
+            0.0 * M,
+            0.0 * M,
+        );
 
-        let north_pole = proj.fwd_new(&[0., 90.0 * DEG.rad_per_unit(), 0.0]).unwrap();
-        println!("north_pole = {north_pole:?}");
-        let east_north = proj
-            .fwd_new(&[90. * DEG.rad_per_unit(), 10.0 * DEG.rad_per_unit(), 0.0])
-            .unwrap();
-        println!("90E 10N = {east_north:?}");
-        let west_north = proj
-            .fwd_new(&[-90. * DEG.rad_per_unit(), 10. * DEG.rad_per_unit(), 0.0])
-            .unwrap();
-        println!("90W 10N = {west_north:?}");
-
-        let south_pole = proj
-            .fwd_new(&[0., -90.0 * DEG.rad_per_unit(), 0.0])
-            .unwrap();
-        println!("south_pole = {south_pole:?}");
-
-        let med_90: Vec<f64> = (-9..=9)
-            .flat_map(|i| {
-                vec![
-                    90.0 * DEG.rad_per_unit(),
-                    (i as Float * 10.0).to_radians(),
-                    0.0,
-                ]
+        let north_pole_enh = proj
+            .proj(LLH {
+                lon: Lon::ZERO,
+                lat: Lat::MAX,
+                height: 0.0 * M,
             })
-            .collect();
-        let _proj_med_90 = proj.fwd_new(&med_90).unwrap();
+            .unwrap();
+        println!("north_pole = {north_pole_enh:?}");
+        let east_enh = proj
+            .proj(LLH {
+                lon: Lon::new(90. * DEG),
+                lat: Lat::new(10.0 * DEG),
+                height: 0.0 * M,
+            })
+            .unwrap();
+        println!("90E 10N = {east_enh:?}");
+        let west_enh = proj
+            .proj(LLH {
+                lon: Lon::new(-90. * DEG),
+                lat: Lat::new(10. * DEG),
+                height: 0.0 * M,
+            })
+            .unwrap();
+        println!("90W 10N = {west_enh:?}");
+
+        let south_pole_enh = proj
+            .proj(LLH {
+                lon: Lon::ZERO,
+                lat: Lat::new(-90.0 * DEG),
+                height: 0.0 * M,
+            })
+            .unwrap();
+        println!("south_pole = {south_pole_enh:?}");
     }
 
     #[test]
     fn transverse_mercator_roundtrip() {
-        let proj = TransverseMercator::new(&ellipsoid::consts::WGS84, 0.0, 0.0, 0.9996, 0.0, 0.0);
+        let proj = TransverseMercator::new(
+            &ellipsoid::consts::WGS84,
+            Lon::ZERO,
+            Lat::ZERO,
+            0.9996,
+            0.0 * M,
+            0.0 * M,
+        );
 
-        let north_pole = vec![10. * DEG.rad_per_unit(), 90.0 * DEG.rad_per_unit(), 0.0];
-        let north_pole_enh = proj.fwd_new(&north_pole).unwrap();
+        let north_pole = LLH {
+            lon: Lon::new(10. * DEG),
+            lat: Lat::new(90.0 * DEG),
+            height: 0.0 * M,
+        };
+        let north_pole_enh = proj.proj(north_pole).unwrap();
         println!("north_pole (enh) = {north_pole_enh:?}");
 
-        let north_pole_llh: Vec<Float> = proj.bwd_new(&north_pole_enh).unwrap();
+        let north_pole_llh = proj.unproj(north_pole_enh).unwrap();
         println!("north_pole (llh)= {north_pole_llh:?}");
 
-        assert_abs_diff_eq!(&north_pole_llh[..], &north_pole[..], epsilon = 1e-9);
+        assert_abs_diff_eq!(&north_pole_llh, &north_pole, epsilon = 1e-9);
 
-        let south_pole = vec![-10. * DEG.rad_per_unit(), -90.0 * DEG.rad_per_unit(), 0.0];
-        let south_pole_enh = proj.fwd_new(&south_pole).unwrap();
+        let south_pole = LLH {
+            lon: Lon::new(-10. * DEG),
+            lat: Lat::new(-90.0 * DEG),
+            height: 0.0 * M,
+        };
+        let south_pole_enh = proj.proj(south_pole).unwrap();
         println!("south_pole (enh) = {south_pole_enh:?}");
 
-        let south_pole_llh: Vec<Float> = proj.bwd_new(&south_pole_enh).unwrap();
+        let south_pole_llh = proj.unproj(south_pole_enh).unwrap();
         println!("south_pole (llh)= {south_pole_llh:?}");
 
-        assert_abs_diff_eq!(&south_pole_llh[..], &south_pole[..], epsilon = 1e-9);
+        assert_abs_diff_eq!(&south_pole_llh, &south_pole, epsilon = 1e-9);
     }
 }

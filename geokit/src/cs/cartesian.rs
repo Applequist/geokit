@@ -13,12 +13,13 @@
 
 use crate::{
     math::Float,
+    quantities::length::Length,
     units::length::{LengthUnit, M},
 };
 use approx::AbsDiffEq;
 use derive_more::derive::Display;
 
-use super::{geodetic::Height, r1::Length};
+use super::geodetic::Height;
 
 /// [GeocentricAxes] defines the possible set of axes used in **geocentric** 3D cartesion CS.
 /// Geocentric CS uses [meter][crate::units::length::M] unit by default for all axes.
@@ -103,14 +104,14 @@ impl ProjectedAxes {
                 horiz_unit,
                 height_unit,
             } => ENH {
-                e: Length::new(coords[0], *horiz_unit),
-                n: Length::new(coords[1], *horiz_unit),
-                h: Length::new(coords[2], *height_unit),
+                easting: Length::new(coords[0], *horiz_unit),
+                northing: Length::new(coords[1], *horiz_unit),
+                height: Length::new(coords[2], *height_unit),
             },
             ProjectedAxes::EastNorth { horiz_unit } => ENH {
-                e: Length::new(coords[0], *horiz_unit),
-                n: Length::new(coords[1], *horiz_unit),
-                h: Length::ZERO,
+                easting: Length::new(coords[0], *horiz_unit),
+                northing: Length::new(coords[1], *horiz_unit),
+                height: Length::ZERO,
             },
         }
     }
@@ -121,13 +122,13 @@ impl ProjectedAxes {
                 horiz_unit,
                 height_unit,
             } => {
-                coords[0] = enh.e.val(*horiz_unit);
-                coords[1] = enh.n.val(*horiz_unit);
-                coords[2] = enh.h.val(*height_unit);
+                coords[0] = enh.easting.val(*horiz_unit);
+                coords[1] = enh.northing.val(*horiz_unit);
+                coords[2] = enh.height.val(*height_unit);
             }
             ProjectedAxes::EastNorth { horiz_unit } => {
-                coords[0] = enh.e.val(*horiz_unit);
-                coords[1] = enh.n.val(*horiz_unit);
+                coords[0] = enh.easting.val(*horiz_unit);
+                coords[1] = enh.northing.val(*horiz_unit);
             }
         }
     }
@@ -145,9 +146,9 @@ impl ProjectedAxes {
 
 /// [ENH] represents **normalized** Projected coordinates.
 #[derive(Debug, Copy, Clone, PartialEq, Display)]
-#[display("(e = {}, n = {}, h = {})", e, n, h)]
+#[display("(e = {}, n = {}, h = {})", easting, northing, height)]
 pub struct ENH {
-    pub e: Length,
-    pub n: Length,
-    pub h: Height,
+    pub easting: Length,
+    pub northing: Length,
+    pub height: Height,
 }

@@ -1,6 +1,5 @@
+use crate::{math::Float, quantities::angle::Angle, units::angle::RAD};
 use num::Zero;
-
-use crate::{cs::s1::Angle, math::Float, units::angle::RAD};
 use std::ops::{Add, Div, Mul, Sub};
 
 #[derive(Debug, Copy, Clone, PartialEq)]
@@ -144,8 +143,8 @@ impl Div<Float> for Complex {
 #[cfg(test)]
 mod tests {
 
-    use crate::cs::s1::Angle;
     use crate::math::complex::Complex;
+    use crate::quantities::angle::Angle;
 
     #[test]
     fn test_eq() {

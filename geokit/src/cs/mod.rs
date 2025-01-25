@@ -3,10 +3,6 @@
 //! - value types used as coordinates in these systems.
 
 pub mod azimuth;
-
 pub mod cartesian;
-
 pub mod geodetic;
-
-pub mod r1;
 pub mod s1;

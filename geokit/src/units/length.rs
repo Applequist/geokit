@@ -1,16 +1,19 @@
+use crate::math::Float;
+
 /// A Length unit as a to-meter length converter.
 /// A length expressed in this unit is converted to meters as follow:
 /// ```
+/// use geokit::units::length::LengthUnit;
 /// let ft = LengthUnit(0.304_8, 1.0);
-/// let l_ft = 1 * ft;
-/// let l_m = l_ft * ft.0 / ft.1;
+/// let l_ft = 1. * ft;
+/// let l_m = l_ft * ft.m_per_unit();
 /// ```
 #[derive(Debug, Copy, Clone, PartialEq)]
-pub struct LengthUnit(pub f64, pub f64);
+pub struct LengthUnit(pub Float, pub Float);
 
 impl LengthUnit {
     #[inline]
-    pub const fn m_per_unit(&self) -> f64 {
+    pub const fn m_per_unit(&self) -> Float {
         self.0 / self.1
     }
 }
