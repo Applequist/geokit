@@ -300,6 +300,21 @@ impl Lon {
 impl Add for Lon {
     type Output = Lon;
 
+    /// Add two longitudes.
+    /// This is useful to change reference of longitude.
+    ///
+    /// # Example
+    ///
+    /// To compute the longitude wrt Greenwich prime meridian
+    /// from a longitude `lon` wrt a prime meridian of Greenwich longitude `lon_pm`:
+    /// ```
+    /// use geokit::units::angle::DEG;
+    /// use approx::assert_abs_diff_eq;
+    /// let lon_pm = -30. * DEG; // Greenwich longitude of new prime meridian
+    /// let lon = 10. * DEG; // longitude wrt prime meridian a Greenwich longitude `lon_pm`
+    /// let converted_lon = lon + lon_pm; // Greenwich longitude
+    /// assert_abs_diff_eq!(converted_lon, -20. * DEG, epsilon = 1e-15);
+    /// ```
     fn add(self, rhs: Self) -> Self::Output {
         Lon::new(self.0 + rhs.0)
     }
@@ -338,7 +353,22 @@ impl AddAssign<Angle> for Lon {
 impl Sub for Lon {
     type Output = Lon;
 
+    /// Subtract two longitudes.
+    /// This is useful to change reference of longitude.
+    ///
+    /// # Example
+    ///
+    /// To compute the longitude wrt a prime meridian of Greenwich longitude `lon_pm`
+    /// from a Greenwich longitude `lon`:
+    /// ```
+    /// use geokit::units::angle::DEG;
+    /// let lon = 10. * DEG; // Greenwich longitude
+    /// let lon_pm = -30. * DEG; // Greenwich longitude of new prime meridian
+    /// let converted_lon = lon - lon_pm;
+    /// assert_eq!(converted_lon, 40. * DEG);
+    /// ```
     fn sub(self, rhs: Self) -> Self::Output {
+        // equiv. to Lon(rhs.0.diff_to(self.0))
         Lon::new(self.0 - rhs.0)
     }
 }
