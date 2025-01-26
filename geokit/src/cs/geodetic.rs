@@ -376,59 +376,6 @@ impl AbsDiffEq for Lon {
     }
 }
 
-/// A **closed** longitude interval represented by its lower and upper bounds (inclusive).
-/// Note that the lower may be greater that the higher bound, in this case the interval contains
-/// the point on the ante-meridian.
-/// The lower and higher bound representations may also be inverted in special cases to allow the
-/// empty and the full intervals as well:
-/// - the empty interval is represented as the inverted interval `[pi..-pi]`
-/// - the full interval is represented as the `[-pi..pi]`
-/// - other intervals are represented as:
-///     - `[lo..hi]` for lo != -pi
-///     - `[pi..hi]` for lo == -pi and hi != pi,
-///     - `[lo..hi]` otherwise
-#[derive(Debug, Copy, Clone, PartialEq, Display)]
-pub struct LonInterval(Interval);
-
-impl LonInterval {
-    /// Return an empty interval.
-    pub fn empty() -> Self {
-        Self(Interval::empty())
-    }
-
-    pub fn singleton(lon: Lon) -> Self {
-        Self(Interval::singleton(lon.angle()))
-    }
-
-    /// Return a full interval.
-    pub fn full() -> Self {
-        Self(Interval::full())
-    }
-
-    /// Create a new interval.
-    pub fn new(lo: Lon, hi: Lon) -> Self {
-        Self(Interval::new(lo.angle(), hi.angle()))
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.0.is_empty()
-    }
-
-    pub fn is_full(&self) -> bool {
-        self.0.is_full()
-    }
-
-    fn contains_antemeridian(&self) -> bool {
-        self.0.is_inverted()
-    }
-
-    /// Return the **positive** length of this interval.
-    /// The length is 0 if the interval is empty or a singleton.
-    pub fn length(&self) -> Angle {
-        self.0.length()
-    }
-}
-
 /// [Lat] represents a latitude coordinate (geodetic or other auxiliary ones)
 /// in [-pi/2..pi/2] radians.
 ///
@@ -602,6 +549,7 @@ impl AbsDiffEq for Lat {
 pub type Height = Length;
 
 // TODO: Add the following:
+// - a LonInterval
 // - a LatInterval.
 // - a Height similar to Length
 // - a LonLat and LonLatHeight
@@ -610,11 +558,10 @@ pub type Height = Length;
 
 #[cfg(test)]
 mod tests {
-    use approx::{assert_abs_diff_eq, assert_abs_diff_ne};
-
     use crate::cs::geodetic::{GeodeticAxes, Height, Lat, Lon, LLH};
     use crate::math::Float;
     use crate::units::angle::{DEG, RAD};
+    use approx::assert_abs_diff_eq;
     use std::f64::consts::FRAC_PI_4;
 
     #[test]

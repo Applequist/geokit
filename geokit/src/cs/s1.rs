@@ -87,6 +87,7 @@ impl Interval {
 
     /// Return the **positive** length of this interval.
     /// The length is 0 if the interval is empty or a singleton.
+    /// FIX: Both singleton and empty interval have zero length
     pub fn length(&self) -> Angle {
         let mut length = self.hi - self.lo;
         if length < Angle::ZERO {
@@ -112,7 +113,6 @@ mod tests {
         inverted: bool,
         length: Angle,
     ) {
-        dbg!(tag);
         assert_eq!(ab.is_empty(), empty, "Expected {} empty", ab);
         assert_eq!(ab.is_full(), full, "Expected {} full", ab);
         assert_eq!(ab.is_inverted(), inverted, "Expected {} inverted", ab);

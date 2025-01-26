@@ -1,7 +1,7 @@
 //! Provide a value type to work with [Azimuth].
 
 use crate::math::Float;
-use crate::quantities::angle::{Angle, Turn};
+use crate::quantities::angle::Angle;
 use approx::AbsDiffEq;
 use derive_more::derive::Display;
 use std::ops::Add;
@@ -72,15 +72,14 @@ impl Azimuth {
 
     /// Returns the smallest turn from this azimuth to the `other` azimuth.
     fn turn_to(self, other: Self) -> ToAz {
-        let turn = self.0.turn_to(other.0);
-        match turn {
-            Turn::Half => ToAz::Antipodal,
-            Turn::Of(a) => {
-                if a < Angle::ZERO {
-                    ToAz::Ccw(a.abs())
-                } else {
-                    ToAz::Cw(a.abs())
-                }
+        let turn = self.0.diff_to(other.0);
+        if (turn.abs() - Angle::PI).abs().rad() < Float::EPSILON {
+            ToAz::Antipodal
+        } else {
+            if turn < Angle::ZERO {
+                ToAz::Ccw(turn.abs())
+            } else {
+                ToAz::Cw(turn.abs())
             }
         }
     }

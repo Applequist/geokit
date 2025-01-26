@@ -1,12 +1,10 @@
-use std::ops::{Div, DivAssign, Mul, MulAssign};
-
-use approx::AbsDiffEq;
-use derive_more::derive::{Add, AddAssign, Display, Neg, Sub, SubAssign};
-
 use crate::{
     math::{utils::remainder, Float, PI, PI_2, TAU},
     units::angle::{AngleUnit, DEG},
 };
+use approx::AbsDiffEq;
+use derive_more::derive::{Add, AddAssign, Display, Neg, Sub, SubAssign};
+use std::ops::{Div, DivAssign, Mul, MulAssign};
 
 /// [Angle] is a generic angle value type used to represent S1 point coordinate.
 /// Compared to a raw [Float], it carries the extra meaning that it is internally
@@ -178,33 +176,9 @@ impl Angle {
         self.0.tan()
     }
 
-    /// Returns the smallest turn from this angle to the `other` angle.
-    pub fn turn_to(self, other: Self) -> Turn {
-        // convert from (-pi..pi] to [0 2pi) clockwise
-        let start = if self < Angle::ZERO {
-            self + Angle::TWO_PI
-        } else {
-            self
-        };
-
-        let end = if other < Angle::ZERO {
-            other + Angle::TWO_PI
-        } else {
-            other
-        };
-
-        let mut delta = end - start;
-        if delta > Angle::PI {
-            delta -= Angle::TWO_PI;
-        } else if delta < Angle::M_PI {
-            delta += Angle::TWO_PI;
-        }
-
-        if (delta.abs() - Angle::PI).rad().abs() < 1e-15 {
-            Turn::Half
-        } else {
-            Turn::Of(delta)
-        }
+    /// Returns the smallest *signed* angle from this angle to the `other` angle.
+    pub fn diff_to(self, other: Self) -> Angle {
+        (other - self).wrapped()
     }
 
     /// Convert this angle into a [Dms] value for formatting.
@@ -224,28 +198,6 @@ impl Angle {
             s = 60. * deg.fract();
         }
         Dms(sgn * d, m, s)
-    }
-}
-
-#[derive(Debug, Copy, Clone, PartialEq)]
-pub enum Turn {
-    Of(Angle),
-    Half,
-}
-
-impl AbsDiffEq for Turn {
-    type Epsilon = Float;
-
-    fn default_epsilon() -> Self::Epsilon {
-        Float::default_epsilon()
-    }
-
-    fn abs_diff_eq(&self, other: &Self, epsilon: Self::Epsilon) -> bool {
-        match (self, other) {
-            (Turn::Half, Turn::Half) => true,
-            (Turn::Of(s), Turn::Of(o)) => s.abs_diff_eq(o, epsilon),
-            _ => false,
-        }
     }
 }
 
@@ -344,7 +296,7 @@ mod tests {
     use super::Dms;
     use crate::{
         math::{Float, PI, PI_4},
-        quantities::angle::{Angle, Turn},
+        quantities::angle::Angle,
         units::angle::{DEG, GRAD, RAD, SEC},
     };
     use approx::assert_abs_diff_eq;
@@ -410,17 +362,21 @@ mod tests {
     }
 
     #[test]
-    fn angle_turn() {
+    fn angle_diff_to() {
         let a1 = 10. * DEG;
         let a2 = 80. * DEG;
         let a3 = 110. * DEG;
         let a4 = 300. * DEG;
         let a5 = -10. * DEG;
+        let a6 = -90. * DEG;
+        let a7 = 90. * DEG;
 
-        assert_abs_diff_eq!(a1.turn_to(a2), Turn::Of(70. * DEG), epsilon = 1e-15);
-        assert_abs_diff_eq!(a1.turn_to(a3), Turn::Of(100. * DEG), epsilon = 1e-15);
-        assert_abs_diff_eq!(a1.turn_to(a4), Turn::Of(-70. * DEG), epsilon = 1e-15);
-        assert_abs_diff_eq!(a1.turn_to(a5), Turn::Of(-20. * DEG), epsilon = 1e-15);
+        assert_abs_diff_eq!(a1.diff_to(a2), 70. * DEG, epsilon = 1e-15);
+        assert_abs_diff_eq!(a1.diff_to(a3), 100. * DEG, epsilon = 1e-15);
+        assert_abs_diff_eq!(a1.diff_to(a4), -70. * DEG, epsilon = 1e-15);
+        assert_abs_diff_eq!(a1.diff_to(a5), -20. * DEG, epsilon = 1e-15);
+        assert_abs_diff_eq!(a7.diff_to(a6), -180. * DEG, epsilon = 1e-15);
+        assert_abs_diff_eq!(a6.diff_to(a7), 180. * DEG, epsilon = 1e-15);
     }
 
     #[test]
