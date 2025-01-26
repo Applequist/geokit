@@ -23,7 +23,7 @@ use super::geodetic::Height;
 
 /// [GeocentricAxes] defines the possible set of axes used in **geocentric** 3D cartesion CS.
 /// Geocentric CS uses [meter][crate::units::length::M] unit by default for all axes.
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Display)]
 pub enum GeocentricAxes {
     /// Coordinates are x, y, and z in meters.
     XYZ,

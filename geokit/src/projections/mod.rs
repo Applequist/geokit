@@ -1,3 +1,4 @@
+use cyl::{Mercator, TransverseMercator, WebMercator};
 use derive_more::derive::Display;
 use thiserror::Error;
 
@@ -6,10 +7,21 @@ use crate::{
         cartesian::ENH,
         geodetic::{Lat, Lon, LLH},
     },
+    geodesy::Ellipsoid,
     math::Float,
     quantities::length::Length,
 };
-//use cyl::{Mercator, TransverseMercator, WebMercator};
+
+#[derive(Error, Debug, Display)]
+pub enum ProjectionError {
+    LLHOutOfBounds,
+    ENHOutOfBounds,
+}
+
+pub trait Projection {
+    fn proj(&self, llh: LLH) -> Result<ENH, ProjectionError>;
+    fn unproj(&self, enh: ENH) -> Result<LLH, ProjectionError>;
+}
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum ProjectionSpec {
@@ -46,78 +58,64 @@ pub enum ProjectionSpec {
     },
 }
 
-#[derive(Error, Debug, Display)]
-pub enum ProjectionError {
-    InputOutOfBounds,
-    OutputOutOfBounds,
-}
-
-pub trait Projection {
-    fn proj(&self, llh: LLH) -> Result<ENH, ProjectionError>;
-    fn unproj(&self, enh: ENH) -> Result<LLH, ProjectionError>;
-}
-
 /// TODO: Move that into transformation somewhere!!!
-//impl ProjectionSpec {
-//    pub fn projection(&self, ellipsoid: &Ellipsoid) -> Box<dyn Operation> {
-//        match *self {
-//            Self::Mercator1SP {
-//                lon0,
-//                k0,
-//                false_easting,
-//                false_northing,
-//            } => Mercator::new_1_sp(
-//                ellipsoid,
-//                lon0.rad(),
-//                k0,
-//                false_easting.m(),
-//                false_northing.m(),
-//            )
-//            .boxed(),
-//            Self::Mercator2SP {
-//                lon0,
-//                lat0,
-//                false_easting,
-//                false_northing,
-//            } => Mercator::new_2_sp(
-//                ellipsoid,
-//                lon0.rad(),
-//                lat0.rad(),
-//                false_easting.m(),
-//                false_northing.m(),
-//            )
-//            .boxed(),
-//            Self::UTMNorth { zone } => TransverseMercator::new_utm_north(ellipsoid, zone).boxed(),
-//            Self::UTMSouth { zone } => TransverseMercator::new_utm_south(ellipsoid, zone).boxed(),
-//            Self::TransverseMercator {
-//                lon0,
-//                lat0,
-//                k0,
-//                false_easting,
-//                false_northing,
-//            } => TransverseMercator::new(
-//                ellipsoid,
-//                lon0.rad(),
-//                lat0.rad(),
-//                k0,
-//                false_easting.m(),
-//                false_northing.m(),
-//            )
-//            .boxed(),
-//            Self::WebMercator {
-//                lon0,
-//                lat0,
-//                false_easting,
-//                false_northing,
-//            } => WebMercator::new(
-//                ellipsoid,
-//                lon0.rad(),
-//                lat0.rad(),
-//                false_easting.m(),
-//                false_northing.m(),
-//            )
-//            .boxed(),
-//        }
-//    }
-// }
+impl ProjectionSpec {
+    pub fn projection(&self, ellipsoid: &Ellipsoid) -> Box<dyn Projection> {
+        match *self {
+            Self::Mercator1SP {
+                lon0,
+                k0,
+                false_easting,
+                false_northing,
+            } => Box::new(Mercator::new_1_sp(
+                ellipsoid,
+                lon0,
+                k0,
+                false_easting,
+                false_northing,
+            )),
+            Self::Mercator2SP {
+                lon0,
+                lat0,
+                false_easting,
+                false_northing,
+            } => Box::new(Mercator::new_2_sp(
+                ellipsoid,
+                lon0,
+                lat0,
+                false_easting,
+                false_northing,
+            )),
+            Self::UTMNorth { zone } => Box::new(TransverseMercator::new_utm_north(ellipsoid, zone)),
+            Self::UTMSouth { zone } => Box::new(TransverseMercator::new_utm_south(ellipsoid, zone)),
+            Self::TransverseMercator {
+                lon0,
+                lat0,
+                k0,
+                false_easting,
+                false_northing,
+            } => Box::new(TransverseMercator::new(
+                ellipsoid,
+                lon0,
+                lat0,
+                k0,
+                false_easting,
+                false_northing,
+            )),
+            Self::WebMercator {
+                lon0,
+                lat0,
+                false_easting,
+                false_northing,
+            } => Box::new(WebMercator::new(
+                ellipsoid,
+                lon0,
+                lat0,
+                false_easting,
+                false_northing,
+            )),
+        }
+    }
+}
+
 pub mod cyl;

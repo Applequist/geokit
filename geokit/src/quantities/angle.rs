@@ -99,7 +99,7 @@ impl Angle {
     /// Return the angle value wrapped in [-pi, pi].
     pub(crate) fn wrapped(self) -> Self {
         let mut a = remainder(self.0, TAU);
-        if dbg!(a < -PI) {
+        if a < -PI {
             a = PI;
         }
         Self(a)

@@ -1,13 +1,15 @@
-use geokit::crs::Crs::{Geographic, Projected};
+use geokit::crs::{GeographicCrs, ProjectedCrs};
 use geokit::cs::cartesian::ProjectedAxes;
 use geokit::cs::geodetic::{GeodeticAxes, Lat, Lon};
 use geokit::geodesy::{ellipsoid, prime_meridian, GeodeticDatum};
 use geokit::projections::ProjectionSpec;
+use geokit::transformations::xyz::XYZIdentity;
+use geokit::transformations::{CrsTransformation, CrsXYZTransformation};
 use geokit::units::angle::DEG;
 use geokit::units::length::M;
 
 fn main() {
-    let src = Geographic {
+    let src = GeographicCrs {
         id: "GRS80 (Geographic 3D)".into(),
         datum: GeodeticDatum::new(
             "n/a",
@@ -21,7 +23,7 @@ fn main() {
     };
     println!("Source CRS: {:#?}", src);
 
-    let dst = Projected {
+    let dst = ProjectedCrs {
         id: "GRS80 + UTM 0".into(),
         datum: GeodeticDatum::new(
             "n/a",
@@ -39,15 +41,13 @@ fn main() {
     };
     println!("Destination CRS: {:#?}", dst);
 
-    //let provider = DefaultTransformationProvider;
-    //let (src_to_dst, dst_to_src) = provider.transformation(&src, &dst).unwrap();
-    //
-    //let src_pt = vec![-10.0, -90.0, 0.0];
-    //let dst_pt = src_to_dst.fwd_new(&src_pt).unwrap();
-    //println!("{src_pt:?} --- src_to_dst ---> {dst_pt:?}");
-    //
-    //let dst_src_pt = dst_to_src.fwd_new(&dst_pt).unwrap();
-    //println!("{dst_pt:?} --- dst_to_src ---> {dst_src_pt:?}");
-    // let src_dst_bwd_pt = src_to_dst.bwd_new(&dst_pt).unwrap();
-    // println!("{dst_pt:?} --- src_to_dst.bwd ---> {src_dst_bwd_pt:?}");
+    let tx = CrsXYZTransformation::new(src, dst, XYZIdentity, XYZIdentity);
+
+    let mut src_pt = [-10.0, -90.0, 0.0];
+    let mut dst_pt = [0.0; 2];
+    tx.src_to_dst(&src_pt, &mut dst_pt).unwrap();
+    println!("{src_pt:?} --- src_to_dst ---> {dst_pt:?}");
+
+    tx.dst_to_src(&dst_pt, &mut src_pt).unwrap();
+    println!("{dst_pt:?} --- dst_to_src ---> {src_pt:?}");
 }

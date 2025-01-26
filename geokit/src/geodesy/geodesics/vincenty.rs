@@ -2,9 +2,9 @@
 
 use crate::cs::azimuth::Azimuth;
 use crate::cs::geodetic::{Lat, Lon};
-use crate::cs::s1::Angle;
 use crate::geodesy::geodesics::{Geodesic, GeodesicSolver};
 use crate::geodesy::Ellipsoid;
+use crate::quantities::angle::Angle;
 use crate::units::angle::RAD;
 use crate::units::length::M;
 

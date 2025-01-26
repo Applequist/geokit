@@ -1,4 +1,4 @@
-use geokit::crs::Crs;
+use geokit::crs::{GeocentricCrs, GeographicCrs, ProjectedCrs};
 use geokit::cs::cartesian::{GeocentricAxes, ProjectedAxes};
 use geokit::cs::geodetic::{GeodeticAxes, Lat, Lon};
 use geokit::geodesy::{ellipsoid, prime_meridian, Ellipsoid, GeodeticDatum, PrimeMeridian};
@@ -7,7 +7,7 @@ use geokit::units::angle::DEG;
 use geokit::units::length::M;
 
 fn main() {
-    let geoc = Crs::Geocentric {
+    let geoc = GeocentricCrs {
         id: "Geocentric CRS Example".into(),
         datum: GeodeticDatum::new(
             "WGS84",
@@ -17,9 +17,9 @@ fn main() {
         axes: GeocentricAxes::XYZ,
     };
 
-    println!("CRS: {:#?}", geoc);
+    println!("{:#?}", geoc);
 
-    let geog = Crs::Geographic {
+    let geog = GeographicCrs {
         id: "Geographic 3D Crs Example".into(),
         datum: GeodeticDatum::new(
             "GGRS87",
@@ -31,9 +31,9 @@ fn main() {
             height_unit: M,
         },
     };
-    println!("CRS: {:#?}", geog);
+    println!("{:#?}", geog);
 
-    let proj = Crs::Projected {
+    let proj = ProjectedCrs {
         id: "GRS80 + UTM 0".into(),
         datum: GeodeticDatum::new(
             "n/a",
@@ -49,5 +49,5 @@ fn main() {
             false_northing: 0.0 * M,
         },
     };
-    println!("Destination CRS: {:#?}", proj);
+    println!("{:#?}", proj);
 }

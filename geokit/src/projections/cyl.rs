@@ -1,3 +1,4 @@
+use super::{Projection, ProjectionError};
 use crate::cs::cartesian::ENH;
 use crate::cs::geodetic::{Lat, Lon, LLH};
 use crate::geodesy::Ellipsoid;
@@ -7,8 +8,6 @@ use crate::quantities::angle::Angle;
 use crate::quantities::length::{Arc, Length};
 use crate::units::angle::{DEG, RAD};
 use crate::units::length::M;
-
-use super::ProjectionError;
 
 /// The [Mercator] map projection.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -72,7 +71,9 @@ impl Mercator {
             false_northing,
         }
     }
+}
 
+impl Projection for Mercator {
     fn proj(&self, input: LLH) -> Result<ENH, ProjectionError> {
         let sin_lat = input.lat.sin();
         let e_sin_lat = self.e * sin_lat;
@@ -247,7 +248,9 @@ impl TransverseMercator {
             upper_b * xi_o
         }
     }
+}
 
+impl Projection for TransverseMercator {
     fn proj(&self, input: LLH) -> Result<ENH, ProjectionError> {
         let q = Self::q(self.e, input.lat);
         let beta = Self::beta(q);
@@ -354,7 +357,9 @@ impl WebMercator {
             false_northing,
         }
     }
+}
 
+impl Projection for WebMercator {
     fn proj(&self, input: LLH) -> Result<ENH, ProjectionError> {
         Ok(ENH {
             easting: self.false_easting + (self.a * (input.lon - self.lon0).angle()).length(),
@@ -377,14 +382,15 @@ impl WebMercator {
 #[cfg(test)]
 mod tests {
     use super::Mercator;
+    use super::Projection;
     use super::TransverseMercator;
     use super::WebMercator;
+
     use crate::cs::cartesian::ENH;
     use crate::cs::geodetic::Lat;
     use crate::cs::geodetic::Lon;
     use crate::cs::geodetic::LLH;
     use crate::geodesy::ellipsoid;
-    use crate::quantities::angle::Angle;
     use crate::quantities::length::Length;
     use crate::units::angle::DEG;
     use crate::units::angle::RAD;

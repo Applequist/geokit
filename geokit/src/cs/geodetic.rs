@@ -20,8 +20,6 @@ use approx::AbsDiffEq;
 use derive_more::derive::{Display, Neg};
 use std::ops::{Add, AddAssign, Div, Sub, SubAssign};
 
-use super::s1::Interval;
-
 /// A [GeodeticAxes] defines the possible set of axes used in **geodetic** CS.
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum GeodeticAxes {
@@ -86,7 +84,7 @@ impl GeodeticAxes {
             } => LLH {
                 lon: Lon::new(Angle::new(coords[0], *angle_unit)),
                 lat: Lat::new(Angle::new(coords[1], *angle_unit)),
-                height: Height::new(coords[3], *height_unit),
+                height: Height::new(coords[2], *height_unit),
             },
             GeodeticAxes::EastNorth { angle_unit } => LLH {
                 lon: Lon::new(Angle::new(coords[0], *angle_unit)),
@@ -134,17 +132,17 @@ impl GeodeticAxes {
                 angle_unit,
                 height_unit,
             } => {
-                coords[1] = llh.lon.val(*angle_unit);
                 coords[0] = llh.lat.val(*angle_unit);
+                coords[1] = llh.lon.val(*angle_unit);
                 coords[2] = llh.height.val(*height_unit);
             }
             GeodeticAxes::NorthEast { angle_unit } => {
-                coords[1] = llh.lon.val(*angle_unit);
                 coords[0] = llh.lat.val(*angle_unit);
+                coords[1] = llh.lon.val(*angle_unit);
             }
             GeodeticAxes::NorthWest { angle_unit } => {
-                coords[1] = -llh.lon.val(*angle_unit);
                 coords[0] = llh.lat.val(*angle_unit);
+                coords[1] = -llh.lon.val(*angle_unit);
             }
         }
     }

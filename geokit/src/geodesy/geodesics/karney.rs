@@ -1,11 +1,11 @@
 use crate::cs::azimuth::Azimuth;
 use crate::cs::geodetic::{Lat, Lon};
-use crate::cs::s1::Angle;
 use crate::geodesy::geodesics::{Geodesic, GeodesicSolver};
 use crate::geodesy::Ellipsoid;
 use crate::math::complex::Complex;
 use crate::math::polynomial::Polynomial;
 use crate::math::{Float, PI};
+use crate::quantities::angle::Angle;
 use crate::units::angle::{DEG, RAD};
 use crate::units::length::M;
 
@@ -168,7 +168,7 @@ impl<'e> KarneyGeodesicSolver<'e> {
         let (sin_beta2, cos_beta2) = beta2.sin_cos();
 
         // TODO: wrapping required?
-        let lambda12_0 = (p2.0 - p1.0);
+        let lambda12_0 = p1.0.angle().diff_to(p2.0.angle());
         println!("lambda12_0 = {}", lambda12_0.val(DEG));
 
         // Get initial value of alpha1
