@@ -4,8 +4,7 @@ use crate::cs::azimuth::Azimuth;
 use crate::cs::geodetic::{Lat, Lon};
 use crate::geodesy::geodesics::{Geodesic, GeodesicSolver};
 use crate::geodesy::Ellipsoid;
-use crate::quantities::angle::Angle;
-use crate::quantities::length::Length;
+use crate::quantities::length::{Arc, Length};
 use crate::units::angle::RAD;
 use crate::units::length::M;
 
@@ -17,6 +16,7 @@ pub struct VincentyGeodesicSolver<'e> {
 impl<'e> VincentyGeodesicSolver<'e> {
     const MAX_ITERATIONS: usize = 30;
 
+    /// Create a new solver for the given ellipsoid.
     pub fn new(ellipsoid: &'e Ellipsoid) -> Self {
         Self { ellipsoid }
     }
@@ -46,7 +46,7 @@ impl<'e> VincentyGeodesicSolver<'e> {
         let A = 1. + (u_sq / 16384.) * (4096. + u_sq * (-768. + u_sq * (320. - 175. * u_sq)));
         let B = (u_sq / 1024.) * (256. + u_sq * (-128. + u_sq * (74. - 47. * u_sq)));
 
-        let sigma_0 = Angle::new(s12.m() / (self.ellipsoid.b() * A).m(), RAD);
+        let sigma_0 = Arc(s12) / (self.ellipsoid.b() * A);
         let mut sigma = sigma_0;
         let (mut sin_sigma, mut cos_sigma) = sigma.sin_cos();
         let mut cos_2_sigma_m = (2. * sigma1 + sigma).cos();
@@ -108,7 +108,7 @@ impl<'e> VincentyGeodesicSolver<'e> {
         let alpha2 = sin_alpha.atan2(-sin_beta1 * sin_sigma + cos_beta1 * cos_sigma * cos_alpha1);
 
         Ok(Geodesic {
-            p1: (lon1, lat1),
+            p1,
             alpha1,
             p2: (lon1 + L, Lat::new(lat2 * RAD)),
             alpha2: Azimuth::new(alpha2 * RAD),
@@ -126,7 +126,6 @@ impl<'e> VincentyGeodesicSolver<'e> {
         let (sin_beta2, cos_beta2) = beta2.sin_cos();
 
         // Eq (13) 1st approximation
-        // TODO: check the need for wrapping
         let L = (lon2 - lon1).rad();
         let mut lambda = L;
         let (mut sin_lambda, mut cos_lambda) = lambda.sin_cos();
@@ -344,13 +343,13 @@ mod tests {
             println!("{}", computed);
             println!();
 
-            let diff_lon_dms = (computed.p2.0.angle() - input.geodesic.p2.0.angle()).to_dms();
+            let diff_lon_dms = (computed.p2.0 - input.geodesic.p2.0).angle().to_dms();
             println!("error on lon (res - exp) = {}", diff_lon_dms);
 
-            let diff_lat_dms = (computed.p2.1.angle() - input.geodesic.p2.1.angle()).to_dms();
+            let diff_lat_dms = (computed.p2.1 - input.geodesic.p2.1).to_dms();
             println!("error on lat (res - exp) = {}", diff_lat_dms);
 
-            let diff_az_dms = (computed.alpha2.angle() - input.geodesic.alpha2.angle()).to_dms();
+            let diff_az_dms = (computed.alpha2 - input.geodesic.alpha2).to_dms();
             println!("error on az (res - exp) = {}", diff_az_dms);
 
             assert_abs_diff_eq!(computed.p2.0, input.geodesic.p2.0, epsilon = 1e-10);

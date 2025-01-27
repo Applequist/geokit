@@ -4,7 +4,7 @@ use crate::math::Float;
 use crate::quantities::angle::Angle;
 use approx::AbsDiffEq;
 use derive_more::derive::Display;
-use std::ops::Add;
+use std::ops::{Add, Sub};
 
 /// An [Azimuth] value represents a direction **in (-pi..pi] radians**, positive **clockwise** from North.
 ///
@@ -28,6 +28,8 @@ use std::ops::Add;
 /// # Operations
 ///
 /// [Azimuth] supports the following operations:
+/// - Subtraction: return the oriented angle between twa azimuth (same orientation
+/// as [Azimuth], eg positive clockwise.
 /// - Addition and subtraction of [Angle] values. Return an [Azimuth]
 #[derive(Debug, Copy, Clone, PartialEq, Display)]
 #[display("{}", self.0.to_dms())]
@@ -69,20 +71,6 @@ impl Azimuth {
     pub fn rad(self) -> Float {
         self.0.rad()
     }
-
-    /// Returns the smallest turn from this azimuth to the `other` azimuth.
-    fn turn_to(self, other: Self) -> ToAz {
-        let turn = self.0.diff_to(other.0);
-        if (turn.abs() - Angle::PI).abs().rad() < Float::EPSILON {
-            ToAz::Antipodal
-        } else {
-            if turn < Angle::ZERO {
-                ToAz::Ccw(turn.abs())
-            } else {
-                ToAz::Cw(turn.abs())
-            }
-        }
-    }
 }
 
 impl Add<Angle> for Azimuth {
@@ -101,6 +89,14 @@ impl Add<Azimuth> for Angle {
     }
 }
 
+impl Sub for Azimuth {
+    type Output = Angle;
+
+    fn sub(self, rhs: Self) -> Self::Output {
+        rhs.0.diff_to(self.0).normalized()
+    }
+}
+
 impl AbsDiffEq for Azimuth {
     type Epsilon = Float;
 
@@ -113,38 +109,12 @@ impl AbsDiffEq for Azimuth {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Display)]
-pub enum ToAz {
-    Cw(Angle),
-    Ccw(Angle),
-    Antipodal,
-}
-
-impl AbsDiffEq for ToAz {
-    type Epsilon = Float;
-
-    fn default_epsilon() -> Self::Epsilon {
-        Float::default_epsilon()
-    }
-
-    fn abs_diff_eq(&self, other: &Self, epsilon: Self::Epsilon) -> bool {
-        match (self, other) {
-            (ToAz::Antipodal, ToAz::Antipodal) => true,
-            (ToAz::Cw(l), ToAz::Cw(r)) => l.abs_diff_eq(r, epsilon),
-            (ToAz::Ccw(l), ToAz::Ccw(r)) => l.abs_diff_eq(r, epsilon),
-            _ => false,
-        }
-    }
-}
-
 #[cfg(test)]
 mod test {
 
-    use approx::assert_abs_diff_eq;
-
-    use crate::{cs::azimuth::ToAz, units::angle::DEG};
-
     use super::Azimuth;
+    use crate::units::angle::DEG;
+    use approx::assert_abs_diff_eq;
 
     #[test]
     fn subtraction() {
@@ -153,21 +123,21 @@ mod test {
         let sw = Azimuth::new(-170. * DEG);
         let nw = Azimuth::new(-30. * DEG);
 
-        assert_abs_diff_eq!(ne.turn_to(se), ToAz::Cw(140. * DEG), epsilon = 1e-15);
-        assert_abs_diff_eq!(ne.turn_to(sw), ToAz::Antipodal, epsilon = 1e-15);
-        assert_abs_diff_eq!(ne.turn_to(nw), ToAz::Ccw(40. * DEG));
+        assert_abs_diff_eq!(se - ne, 140. * DEG, epsilon = 1e-15);
+        assert_abs_diff_eq!(sw - ne, 180. * DEG, epsilon = 1e-15);
+        assert_abs_diff_eq!(nw - ne, -40. * DEG, epsilon = 1e-15);
 
-        assert_abs_diff_eq!(se.turn_to(sw), ToAz::Cw(40. * DEG), epsilon = 1e-15);
-        assert_abs_diff_eq!(se.turn_to(nw), ToAz::Antipodal, epsilon = 1e-15);
-        assert_abs_diff_eq!(se.turn_to(ne), ToAz::Ccw(140. * DEG), epsilon = 1e-15);
+        assert_abs_diff_eq!(sw - se, 40. * DEG, epsilon = 1e-15);
+        assert_abs_diff_eq!(nw - se, 180. * DEG, epsilon = 1e-15);
+        assert_abs_diff_eq!(ne - se, -140. * DEG, epsilon = 1e-15);
 
-        assert_abs_diff_eq!(sw.turn_to(nw), ToAz::Cw(140. * DEG), epsilon = 1e-15);
-        assert_abs_diff_eq!(sw.turn_to(ne), ToAz::Antipodal, epsilon = 1e-15);
-        assert_abs_diff_eq!(sw.turn_to(se), ToAz::Ccw(40. * DEG), epsilon = 1e-15);
+        assert_abs_diff_eq!(nw - sw, 140. * DEG, epsilon = 1e-15);
+        assert_abs_diff_eq!(ne - sw, 180. * DEG, epsilon = 1e-15);
+        assert_abs_diff_eq!(se - sw, -40. * DEG, epsilon = 1e-15);
 
-        assert_abs_diff_eq!(nw.turn_to(ne), ToAz::Cw(40. * DEG), epsilon = 1e-15);
-        assert_abs_diff_eq!(nw.turn_to(se), ToAz::Antipodal, epsilon = 1e-15);
-        assert_abs_diff_eq!(nw.turn_to(sw), ToAz::Ccw(140. * DEG), epsilon = 1e-15);
+        assert_abs_diff_eq!(ne - nw, 40. * DEG, epsilon = 1e-15);
+        assert_abs_diff_eq!(se - nw, 180. * DEG, epsilon = 1e-15);
+        assert_abs_diff_eq!(sw - nw, -140. * DEG, epsilon = 1e-15);
     }
 
     #[test]
