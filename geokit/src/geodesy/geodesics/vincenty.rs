@@ -5,11 +5,11 @@ use crate::cs::geodetic::{Lat, Lon};
 use crate::geodesy::geodesics::{Geodesic, GeodesicSolver};
 use crate::geodesy::Ellipsoid;
 use crate::quantities::angle::Angle;
+use crate::quantities::length::Length;
 use crate::units::angle::RAD;
 use crate::units::length::M;
 
-use super::CurveLength;
-
+/// [GeodesicSolver] implementation based on Vincenty's equations.
 pub struct VincentyGeodesicSolver<'e> {
     ellipsoid: &'e Ellipsoid,
 }
@@ -25,7 +25,7 @@ impl<'e> VincentyGeodesicSolver<'e> {
         &self,
         p1: (Lon, Lat),
         alpha1: Azimuth,
-        s12: CurveLength,
+        s12: Length,
     ) -> Result<Geodesic, &'static str> {
         let f = self.ellipsoid.f();
         let (lon1, lat1) = p1;
@@ -187,7 +187,7 @@ impl<'e> VincentyGeodesicSolver<'e> {
 
         let s = if cos_alpha_sq == 0.0 {
             // A = 1. B = 0. -> delta_sigma = 0 s = b * A(=1) * sigma
-            CurveLength::new(self.ellipsoid.b().m() * sigma, M)
+            Length::new(self.ellipsoid.b().m() * sigma, M)
         } else {
             let u_sq = cos_alpha_sq * self.ellipsoid.e_prime_sq();
             // Eq (3)
@@ -207,7 +207,7 @@ impl<'e> VincentyGeodesicSolver<'e> {
                                 * (-3. + 4. * cos_2_sigma_m.powi(2))));
 
             // Eq (19)
-            CurveLength::new(self.ellipsoid.b().m() * A * (sigma - delta_sigma), M)
+            Length::new(self.ellipsoid.b().m() * A * (sigma - delta_sigma), M)
         };
 
         // Eq (20)
@@ -232,7 +232,7 @@ impl<'e> GeodesicSolver for VincentyGeodesicSolver<'e> {
         &self,
         p1: (Lon, Lat),
         alpha1: Azimuth,
-        s12: CurveLength,
+        s12: Length,
     ) -> Result<Geodesic, &'static str> {
         self.direct(p1, alpha1, s12)
     }
@@ -252,7 +252,8 @@ mod tests {
         vincenty_lines,
     };
     use crate::geodesy::geodesics::vincenty::VincentyGeodesicSolver;
-    use crate::geodesy::geodesics::{CurveLength, GeodesicSolver};
+    use crate::geodesy::geodesics::GeodesicSolver;
+    use crate::quantities::length::Length;
     use crate::units::angle::{DEG, RAD};
     use crate::units::length::M;
     use approx::assert_abs_diff_eq;
@@ -366,7 +367,7 @@ mod tests {
             .solve_direct(
                 (Lon::ZERO, Lat::ZERO),
                 Azimuth::new(90.0 * DEG),
-                CurveLength::new(20_000.0, M),
+                Length::new(20_000.0, M),
             )
             .unwrap();
         assert_abs_diff_eq!(computed.p2.0, Lon::new(0.17966306 * DEG), epsilon = 1e-8);
@@ -381,7 +382,7 @@ mod tests {
             .solve_direct(
                 (Lon::new(170.0 * DEG), Lat::ZERO),
                 Azimuth::new(90.0 * DEG),
-                CurveLength::new(2_000_000.0, M),
+                Length::new(2_000_000.0, M),
             )
             .unwrap();
         assert_abs_diff_eq!(
@@ -406,7 +407,7 @@ mod tests {
             .solve_direct(
                 (Lon::ZERO, Lat::new(-10. * DEG)),
                 Azimuth::NORTH,
-                CurveLength::new(2_000_000.0, M),
+                Length::new(2_000_000.0, M),
             )
             .unwrap();
         assert_abs_diff_eq!(computed.p2.0, Lon::ZERO, epsilon = 1e-10);
@@ -417,7 +418,7 @@ mod tests {
             .solve_direct(
                 (Lon::ZERO, Lat::new(80. * DEG)),
                 Azimuth::NORTH,
-                CurveLength::new(2_000_000.0, M),
+                Length::new(2_000_000.0, M),
             )
             .unwrap();
         assert_abs_diff_eq!(computed.p2.0, Lon::new(PI * RAD), epsilon = 1e-10);

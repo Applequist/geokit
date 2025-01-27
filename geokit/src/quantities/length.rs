@@ -8,10 +8,8 @@ use std::ops::{Div, DivAssign, Mul, MulAssign};
 
 use super::angle::Angle;
 
-/// [Length] is a generic length value type used to expressed R1 point coordinates.
-///
-/// Compared to a raw [Float] value, it carries the extra meaning that it is internally
-/// measured in **meters**.
+/// [Length] is a generic length value type.
+/// The internal representation is a [Float] value in meters.
 ///
 /// # Creation
 ///
@@ -167,6 +165,9 @@ impl AbsDiffEq for Length {
     }
 }
 
+/// [Arc] represents the length of an arc of circle.
+/// It is convenient to represent the following type of operations
+/// used in geometric computations:
 /// [Arc] = [Length] * [Angle] or [Angle] * [Length]
 /// [Angle] = [Arc] / [Length]
 pub struct Arc(pub Length);

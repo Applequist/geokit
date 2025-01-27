@@ -6,10 +6,11 @@ use crate::math::complex::Complex;
 use crate::math::polynomial::Polynomial;
 use crate::math::{Float, PI};
 use crate::quantities::angle::Angle;
+use crate::quantities::length::Length;
 use crate::units::angle::{DEG, RAD};
 use crate::units::length::M;
 
-use super::CurveLength;
+//use super::CurveLength;
 
 /// Solve direct and inverse geodesic problems on an ellipsoid using algorithms
 /// for Karney - Algorithms for Geodesics.
@@ -80,7 +81,7 @@ impl<'e> KarneyGeodesicSolver<'e> {
         }
     }
 
-    pub fn direct(&self, p1: (Lon, Lat), alpha1: Azimuth, s12: CurveLength) -> Geodesic {
+    pub fn direct(&self, p1: (Lon, Lat), alpha1: Azimuth, s12: Length) -> Geodesic {
         let (lon1, lat1) = p1;
         let beta1 = self.ellipsoid.reduced_latitude(lat1);
         let (sin_beta1, cos_beta1) = beta1.sin_cos();
@@ -109,7 +110,7 @@ impl<'e> KarneyGeodesicSolver<'e> {
         // Eq (17)
         let a1 = Self::a1(epsilon);
         // Eq (15) geodesic arc length from point on the geodesic at equator to p1 in meters
-        let s1 = CurveLength::new(
+        let s1 = Length::new(
             self.ellipsoid.b().m() * Self::i1(a1, epsilon, sigma1.rad()),
             M,
         );
@@ -391,7 +392,7 @@ impl<'e> GeodesicSolver for KarneyGeodesicSolver<'e> {
         &self,
         p1: (Lon, Lat),
         alpha1: Azimuth,
-        s12: CurveLength,
+        s12: Length,
     ) -> Result<Geodesic, &'static str> {
         Ok(self.direct(p1, alpha1, s12))
     }
@@ -411,7 +412,8 @@ mod tests {
         antipodal_lines, standard_lines, vincenty_direct_deltas, vincenty_inverse_deltas,
         vincenty_lines,
     };
-    use crate::geodesy::geodesics::{CurveLength, GeodesicSolver};
+    use crate::geodesy::geodesics::GeodesicSolver;
+    use crate::quantities::length::Length;
     use crate::units::angle::{DEG, RAD};
     use crate::units::length::M;
     use approx::assert_abs_diff_eq;
@@ -425,7 +427,7 @@ mod tests {
             .solve_direct(
                 (Lon::new(0. * DEG), Lat::new(40. * DEG)),
                 Azimuth::new(30. * DEG),
-                CurveLength::new(10_000_000., M),
+                Length::new(10_000_000., M),
             )
             .unwrap();
         assert_abs_diff_eq!(
@@ -554,7 +556,7 @@ mod tests {
             .solve_direct(
                 (Lon::new(0.0 * RAD), Lat::new(0.0 * RAD)),
                 Azimuth::new(90.0 * DEG),
-                CurveLength::new(20_000.0, M),
+                Length::new(20_000.0, M),
             )
             .unwrap();
         assert_abs_diff_eq!(
@@ -569,7 +571,7 @@ mod tests {
             .solve_direct(
                 (Lon::new(170.0 * DEG), Lat::new(0.0 * DEG)),
                 Azimuth::new(90.0 * DEG),
-                CurveLength::new(2_000_000.0, M),
+                Length::new(2_000_000.0, M),
             )
             .unwrap();
         assert_abs_diff_eq!(
@@ -594,7 +596,7 @@ mod tests {
             .solve_direct(
                 (Lon::new(0. * DEG), Lat::new(-10. * DEG)),
                 Azimuth::new(0. * DEG),
-                CurveLength::new(2_000_000.0, M),
+                Length::new(2_000_000.0, M),
             )
             .unwrap();
         assert_abs_diff_eq!(computed.p2.0, Lon::new(0.0 * RAD), epsilon = 1e-10);
@@ -605,7 +607,7 @@ mod tests {
             .solve_direct(
                 (Lon::new(0. * DEG), Lat::new(80. * DEG)),
                 Azimuth::new(0. * DEG),
-                CurveLength::new(2_000_000.0, M),
+                Length::new(2_000_000.0, M),
             )
             .unwrap();
         assert_abs_diff_eq!(computed.p2.0, Lon::new(PI * RAD), epsilon = 1e-10);
@@ -772,11 +774,7 @@ mod tests {
             .unwrap();
         assert_abs_diff_eq!(computed.alpha1.rad(), FRAC_PI_2, epsilon = 1e-10);
         assert_abs_diff_eq!(computed.alpha2.rad(), FRAC_PI_2, epsilon = 1e-10);
-        assert_abs_diff_eq!(
-            computed.s,
-            CurveLength::new(2_226_389.816, M),
-            epsilon = 1e-3
-        );
+        assert_abs_diff_eq!(computed.s, Length::new(2_226_389.816, M), epsilon = 1e-3);
 
         let computed = solver
             .solve_inverse(
@@ -786,11 +784,7 @@ mod tests {
             .unwrap();
         assert_abs_diff_eq!(computed.alpha1.rad(), -FRAC_PI_2, epsilon = 1e-10);
         assert_abs_diff_eq!(computed.alpha2.rad(), -FRAC_PI_2, epsilon = 1e-10);
-        assert_abs_diff_eq!(
-            computed.s,
-            CurveLength::new(2_226_389.816, M),
-            epsilon = 1e-3
-        );
+        assert_abs_diff_eq!(computed.s, Length::new(2_226_389.816, M), epsilon = 1e-3);
 
         let computed = solver
             .solve_inverse(
@@ -800,11 +794,7 @@ mod tests {
             .unwrap();
         assert_abs_diff_eq!(computed.alpha1.rad(), FRAC_PI_2, epsilon = 1e-10);
         assert_abs_diff_eq!(computed.alpha2.rad(), FRAC_PI_2, epsilon = 1e-10);
-        assert_abs_diff_eq!(
-            computed.s,
-            CurveLength::new(2_226_389.816, M),
-            epsilon = 1e-3
-        );
+        assert_abs_diff_eq!(computed.s, Length::new(2_226_389.816, M), epsilon = 1e-3);
     }
 
     #[test]
@@ -819,11 +809,7 @@ mod tests {
             .unwrap();
         assert_abs_diff_eq!(computed.alpha1.rad(), 0., epsilon = 1e-10);
         assert_abs_diff_eq!(computed.alpha2.rad(), 0., epsilon = 1e-10);
-        assert_abs_diff_eq!(
-            computed.s,
-            CurveLength::new(2_211_709.666, M),
-            epsilon = 1e-3
-        );
+        assert_abs_diff_eq!(computed.s, Length::new(2_211_709.666, M), epsilon = 1e-3);
 
         let computed = solver
             .solve_inverse(
@@ -833,11 +819,7 @@ mod tests {
             .unwrap();
         assert_abs_diff_eq!(computed.alpha1.rad(), PI, epsilon = 1e-10);
         assert_abs_diff_eq!(computed.alpha2.rad(), PI, epsilon = 1e-10);
-        assert_abs_diff_eq!(
-            computed.s,
-            CurveLength::new(2_211_709.666, M),
-            epsilon = 1e-3
-        );
+        assert_abs_diff_eq!(computed.s, Length::new(2_211_709.666, M), epsilon = 1e-3);
 
         let computed = solver
             .solve_inverse(
@@ -847,10 +829,6 @@ mod tests {
             .unwrap();
         assert_abs_diff_eq!(computed.alpha1.rad(), 0., epsilon = 1e-10);
         assert_abs_diff_eq!(computed.alpha2.rad(), PI, epsilon = 1e-10);
-        assert_abs_diff_eq!(
-            computed.s,
-            CurveLength::new(2_233_651.715, M),
-            epsilon = 1e-3
-        );
+        assert_abs_diff_eq!(computed.s, Length::new(2_233_651.715, M), epsilon = 1e-3);
     }
 }

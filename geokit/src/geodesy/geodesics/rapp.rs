@@ -5,11 +5,10 @@ use crate::cs::geodetic::{Lat, Lon};
 use crate::geodesy::geodesics::{Geodesic, GeodesicSolver};
 use crate::geodesy::Ellipsoid;
 use crate::math::polynomial::Polynomial;
+use crate::quantities::length::Length;
 use crate::units::angle::RAD;
 use crate::units::length::M;
 use std::f64::consts::PI;
-
-use super::CurveLength;
 
 pub struct RappIterativeGeodisicSolver<'e> {
     ellipsoid: &'e Ellipsoid,
@@ -54,7 +53,7 @@ impl<'e> RappIterativeGeodisicSolver<'e> {
         &self,
         p1: (Lon, Lat),
         alpha1: Azimuth,
-        s12: CurveLength,
+        s12: Length,
     ) -> Result<Geodesic, &'static str> {
         let (lon1, lat1) = p1;
         let beta1 = self.ellipsoid.reduced_latitude(lat1);
@@ -165,7 +164,6 @@ impl<'e> RappIterativeGeodisicSolver<'e> {
         let (sin_beta1, cos_beta1) = beta1.sin_cos();
         let (sin_beta2, cos_beta2) = beta2.sin_cos();
 
-        // WARN: longitude difference meaning is not clear!!!:w
         let L = (lon2 - lon1).rad();
         let mut lambda = L;
         let (mut sin_lambda, mut cos_lambda);
@@ -234,7 +232,7 @@ impl<'e> RappIterativeGeodisicSolver<'e> {
         // If the geodesic (p1, p2) is an equatorial line b0 = 1 and bj = 0 j > 1, and s expression
         // is simplified.
         let s = if cos_alpha_sq == 0.0 {
-            CurveLength::new((self.ellipsoid.b() * sigma).m(), M)
+            Length::new((self.ellipsoid.b() * sigma).m(), M)
         } else {
             let u_sq = self.ellipsoid.e_prime_sq() * cos_alpha_sq;
             let b0 = 1.
@@ -253,7 +251,7 @@ impl<'e> RappIterativeGeodisicSolver<'e> {
                     + b6 * sin_3_sigma * cos_6_sigma_m
                     + b8 * sin_4_sigma * cos_8_sigma_m))
                 .m();
-            CurveLength::new(s_m, M)
+            Length::new(s_m, M)
         };
         let sin_alpha1 = sin_alpha / cos_beta1;
         let sin_alpha2 = sin_alpha / cos_beta2;
@@ -317,7 +315,7 @@ impl<'e> GeodesicSolver for RappIterativeGeodisicSolver<'e> {
         &self,
         p1: (Lon, Lat),
         alpha1: Azimuth,
-        s12: CurveLength,
+        s12: Length,
     ) -> Result<Geodesic, &'static str> {
         self.direct(p1, alpha1, s12)
     }
@@ -337,7 +335,7 @@ mod tests {
         antipodal_lines, standard_lines, vincenty_direct_deltas, vincenty_inverse_deltas,
         vincenty_lines,
     };
-    use crate::geodesy::geodesics::{CurveLength, GeodesicSolver};
+    use crate::geodesy::geodesics::{GeodesicSolver, Length};
     use crate::units::angle::{DEG, RAD};
     use crate::units::length::M;
     use approx::assert_abs_diff_eq;
@@ -452,7 +450,7 @@ mod tests {
             .solve_direct(
                 (Lon::new(0.0 * DEG), Lat::new(0.0 * DEG)),
                 Azimuth::new(90.0 * DEG),
-                CurveLength::new(20_000.0, M),
+                Length::new(20_000.0, M),
             )
             .unwrap();
         assert_abs_diff_eq!(computed.p2.0, Lon::new(0.17966306 * DEG), epsilon = 1e-8);
@@ -467,7 +465,7 @@ mod tests {
             .solve_direct(
                 (Lon::new(170.0 * DEG), Lat::new(0.0 * DEG)),
                 Azimuth::new(90.0 * DEG),
-                CurveLength::new(2_000_000.0, M),
+                Length::new(2_000_000.0, M),
             )
             .unwrap();
         assert_abs_diff_eq!(
@@ -492,7 +490,7 @@ mod tests {
             .solve_direct(
                 (Lon::new(0. * DEG), Lat::new(-10. * DEG)),
                 Azimuth::new(0. * DEG),
-                CurveLength::new(2_000_000.0, M),
+                Length::new(2_000_000.0, M),
             )
             .unwrap();
         assert_abs_diff_eq!(computed.p2.0, Lon::new(0.0 * RAD), epsilon = 1e-10);
@@ -503,7 +501,7 @@ mod tests {
             .solve_direct(
                 (Lon::new(0. * DEG), Lat::new(80. * DEG)),
                 Azimuth::new(0. * DEG),
-                CurveLength::new(2_000_000.0, M),
+                Length::new(2_000_000.0, M),
             )
             .unwrap();
         assert_abs_diff_eq!(computed.p2.0, Lon::new(PI * RAD), epsilon = 1e-10);
