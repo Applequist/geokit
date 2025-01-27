@@ -1,3 +1,5 @@
+#![allow(non_snake_case)]
+
 use crate::{
     cs::{
         cartesian::ENH,
@@ -13,9 +15,11 @@ use crate::{
     },
 };
 
-/// The [TransverseMercator] projection.
+/// The [TransverseMercator] projection (EPSG:9807).
 ///
-/// Known as EPSG:9807.
+/// This implementation is based on the JHS formulae as recommended in
+/// EPSG Guidance 7 part 2 of November 2019.
+///
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub(crate) struct TransverseMercator {
     e: Float,
@@ -23,10 +27,10 @@ pub(crate) struct TransverseMercator {
     k0: Float,
     false_easting: Length,
     false_northing: Length,
-    upper_b: Length,
+    B: Length,
     h: [Float; 4],
     h_p: [Float; 4],
-    m0: Length,
+    M0: Length,
 }
 
 impl TransverseMercator {
@@ -63,7 +67,7 @@ impl TransverseMercator {
         let e = ellipsoid.e();
         let f = 1.0 / ellipsoid.invf();
         let n = f / (2.0 - f);
-        let upper_b = ellipsoid.a() / (1.0 + n)
+        let B = ellipsoid.a() / (1.0 + n)
             * Polynomial::new([1.0, 0.0, 0.25, 0.0, 1.0 / 64.0]).eval_at(n);
         let h = [
             Polynomial::new([0.0, 0.5, -2.0 / 3.0, 5.0 / 16.0, 41.0 / 180.0]).eval_at(n),
@@ -79,7 +83,7 @@ impl TransverseMercator {
             Polynomial::new([0.0, 0.0, 0.0, 0.0, 4397.0 / 161280.0]).eval_at(n),
         ];
 
-        let m0 = m0(lat0, upper_b, e, h);
+        let M0 = M0(lat0, B, e, h);
 
         Self {
             e,
@@ -87,28 +91,33 @@ impl TransverseMercator {
             k0,
             false_easting,
             false_northing,
-            upper_b,
+            B,
             h,
             h_p,
-            m0,
+            M0,
         }
     }
 }
 
 impl Projection for TransverseMercator {
     fn proj(&self, input: LLH) -> Result<ENH, ProjectionError> {
-        let q = q(self.e, input.lat);
-        let beta = beta(q);
-        let eta_0 = eta_0(beta, input.lon, self.lon0);
+        let Q = Q(self.e, input.lat);
+        let beta = beta(Q);
+        let eta_0 = {
+            let lon = input.lon;
+            let lon0 = self.lon0;
+            (beta.cos() * (lon - lon0).sin()).atanh()
+        };
         let xi_0 = (beta.sin() * eta_0.cosh()).asin();
+
         let xis = [
-            xi_0,
             self.h[0] * (2.0 * xi_0).sin() * (2.0 * eta_0).cosh(),
             self.h[1] * (4.0 * xi_0).sin() * (4.0 * eta_0).cosh(),
             self.h[2] * (6.0 * xi_0).sin() * (6.0 * eta_0).cosh(),
             self.h[3] * (8.0 * xi_0).sin() * (8.0 * eta_0).cosh(),
         ];
-        let xi = xis.into_iter().sum::<Float>();
+        let xi = xi_0 + xis.into_iter().sum::<Float>();
+
         let etas = [
             self.h[0] * (2.0 * xi_0).cos() * (2.0 * eta_0).sinh(),
             self.h[1] * (4.0 * xi_0).cos() * (4.0 * eta_0).sinh(),
@@ -118,16 +127,15 @@ impl Projection for TransverseMercator {
         let eta = eta_0 + etas.into_iter().sum::<Float>();
 
         Ok(ENH {
-            easting: self.false_easting + self.k0 * self.upper_b * eta,
-            northing: self.false_northing + self.k0 * (self.upper_b * xi - self.m0),
+            easting: self.false_easting + self.k0 * self.B * eta,
+            northing: self.false_northing + self.k0 * (self.B * xi - self.M0),
             height: input.height,
         })
     }
 
     fn unproj(&self, input: ENH) -> Result<LLH, ProjectionError> {
-        let eta_p = (input.easting - self.false_easting) / (self.upper_b * self.k0);
-        let xi_p =
-            (input.northing - self.false_northing + self.k0 * self.m0) / (self.upper_b * self.k0);
+        let eta_p = (input.easting - self.false_easting) / (self.B * self.k0);
+        let xi_p = (input.northing - self.false_northing + self.k0 * self.M0) / (self.B * self.k0);
 
         let xi_ps = [
             self.h_p[0] * (2.0 * xi_p).sin() * (2.0 * eta_p).cosh(),
@@ -146,24 +154,24 @@ impl Projection for TransverseMercator {
         let eta_p0 = eta_p - eta_ps.into_iter().sum::<Float>();
 
         let beta_p = (xi_p0.sin() / eta_p0.cosh()).asin();
-        let q_p = beta_p.tan().asinh();
+        let Q_p = beta_p.tan().asinh();
 
-        fn iter_fn(e: Float, q_p: Float, q_pp: Float) -> Float {
-            q_p + (e * (e * q_pp.tanh()).atanh())
+        fn iter_fn(e: Float, Q_p: Float, Q_pp: Float) -> Float {
+            Q_p + (e * (e * Q_pp.tanh()).atanh())
         }
 
-        let mut q_pp = iter_fn(self.e, q_p, q_p);
+        let mut Q_pp = iter_fn(self.e, Q_p, Q_p);
         loop {
-            let old_q_pp = q_pp;
-            q_pp = iter_fn(self.e, q_p, q_pp);
-            if (q_pp - old_q_pp).abs() < 1e-10 {
+            let old_Q_pp = Q_pp;
+            Q_pp = iter_fn(self.e, Q_p, Q_pp);
+            if (Q_pp - old_Q_pp).abs() < 1e-12 {
                 break;
             }
         }
 
         Ok(LLH {
             lon: self.lon0 + (eta_p0.tanh() / beta_p.cos()).asin() * RAD,
-            lat: Lat::new(q_pp.sinh().atan() * RAD),
+            lat: Lat::new(Q_pp.sinh().atan() * RAD),
             height: input.height,
         })
     }
@@ -203,26 +211,22 @@ fn utm_lon0(zone: UTMZone) -> Lon {
 // Helper functions for the projection
 //
 
-fn q(e: Float, lat: Lat) -> Float {
+fn Q(e: Float, lat: Lat) -> Float {
     lat.tan().asinh() - e * (e * lat.sin()).atanh()
 }
 
-fn beta(q: Float) -> Float {
-    q.sinh().atan()
+fn beta(Q: Float) -> Float {
+    Q.sinh().atan()
 }
 
-fn eta_0(beta: Float, lon: Lon, lon0: Lon) -> Float {
-    (beta.cos() * (lon - lon0.angle()).sin()).atanh()
-}
-
-fn m0(lat0: Lat, upper_b: Length, e: Float, h: [Float; 4]) -> Length {
+fn M0(lat0: Lat, B: Length, e: Float, h: [Float; 4]) -> Length {
     if lat0 == Lat::ZERO {
         0.0 * M
     } else if lat0.abs() == Lat::MAX {
-        upper_b * lat0.rad()
+        B * lat0.rad()
     } else {
-        let q0 = q(e, lat0);
-        let beta0 = beta(q0);
+        let Q0 = Q(e, lat0);
+        let beta0 = beta(Q0);
         let xi_o0 = beta0; // From note: simplified beta0.sin().asin() to beta0;
         let xi_os = [
             xi_o0,
@@ -232,14 +236,13 @@ fn m0(lat0: Lat, upper_b: Length, e: Float, h: [Float; 4]) -> Length {
             h[3] * (8.0 * xi_o0).sin(),
         ];
         let xi_o = xi_os.into_iter().sum::<Float>();
-        upper_b * xi_o
+        B * xi_o
     }
 }
 
 #[cfg(test)]
 mod test {
-    use approx::assert_abs_diff_eq;
-
+    use super::TransverseMercator;
     use crate::{
         cs::{
             cartesian::ENH,
@@ -249,8 +252,7 @@ mod test {
         projections::Projection,
         units::{angle::DEG, length::M},
     };
-
-    use super::TransverseMercator;
+    use approx::assert_abs_diff_eq;
 
     #[test]
     fn transverse_mercator() {
@@ -266,8 +268,8 @@ mod test {
 
         let enh = proj
             .proj(LLH {
-                lon: Lon::new(0.5 * DEG),
-                lat: Lat::new(50.5 * DEG),
+                lon: Lon::dms(0., 30., 0.),  //  0d 30' E
+                lat: Lat::dms(50., 30., 0.), // 50d 30' N
                 height: 0.0 * M,
             })
             .unwrap();

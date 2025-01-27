@@ -1,3 +1,5 @@
+#![allow(non_snake_case)]
+
 use crate::cs::cartesian::ENH;
 use crate::cs::geodetic::{Lat, Lon, LLH};
 use crate::geodesy::Ellipsoid;
@@ -10,17 +12,12 @@ use crate::units::angle::RAD;
 /// The [Mercator] map projection is a conformal projection of the ellipsoid on
 /// a cylindrical surface whose axis is aligned with ellipsoid pole axis.
 ///
-/// In the '1SP' case, the cylinder is tangent to the ellipsoid on the equator.
-/// In the '2SP' case, the cylinder *cut* through the ellipsoid at the 2 standard
-/// parallels.
-///
 /// Meridians are transformed into equally straight spaced lines.
 /// Parallels are transformed into unequally spaced straight lines, closest to each other
 /// near the equator and cut the transformed meridians at right angles.
 ///
-/// # Sources
-///
-/// The formulae for this implementation are taken from 'EPSG guidance Note number 7, part 2 - November 2005'
+/// This implementation provides the two variants A (1SP) and B (2SP) defined in the EPSG guidance
+/// 7 part 2 of November 2019.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub(crate) struct Mercator {
     a: Length,
@@ -126,12 +123,12 @@ impl Projection for Mercator {
         let sin_lat = input.lat.sin();
         let e_sin_lat = self.e * sin_lat;
         let lat1 = input.lat / 2.0 + PI_4 * RAD;
-        let r = ((1.0 - e_sin_lat) / (1.0 + e_sin_lat)).powf(self.e / 2.0);
+        let R = ((1.0 - e_sin_lat) / (1.0 + e_sin_lat)).powf(self.e / 2.0);
 
         Ok(ENH {
             easting: self.false_easting
                 + ((self.a * self.k0) * (input.lon - self.lon0).angle()).length(),
-            northing: self.false_northing + self.a * self.k0 * (lat1.tan() * r).ln(),
+            northing: self.false_northing + self.a * self.k0 * (lat1.tan() * R).ln(),
             height: input.height,
         })
     }
