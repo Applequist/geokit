@@ -1,7 +1,3 @@
-use cyl::{Mercator, TransverseMercator, WebMercator};
-use derive_more::derive::Display;
-use thiserror::Error;
-
 use crate::{
     cs::{
         cartesian::ENH,
@@ -11,6 +7,9 @@ use crate::{
     math::Float,
     quantities::length::Length,
 };
+use cyl::{mercator::Mercator, transverse_mercator::TransverseMercator, web_mercator::WebMercator};
+use derive_more::derive::Display;
+use thiserror::Error;
 
 #[derive(Error, Debug, Display)]
 pub enum ProjectionError {
@@ -58,7 +57,8 @@ pub enum ProjectionSpec {
     },
 }
 
-/// TODO: Move that into transformation somewhere!!!
+mod cyl;
+
 impl ProjectionSpec {
     pub fn projection(&self, ellipsoid: &Ellipsoid) -> Box<dyn Projection> {
         match *self {
@@ -117,5 +117,3 @@ impl ProjectionSpec {
         }
     }
 }
-
-pub mod cyl;

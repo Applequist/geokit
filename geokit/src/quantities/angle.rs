@@ -6,9 +6,8 @@ use approx::AbsDiffEq;
 use derive_more::derive::{Add, AddAssign, Display, Neg, Sub, SubAssign};
 use std::ops::{Div, DivAssign, Mul, MulAssign};
 
-/// [Angle] is a generic angle value type used to represent S1 point coordinate.
-/// Compared to a raw [Float], it carries the extra meaning that it is internally
-/// measured in **radians**.
+/// [Angle] represents a 1-dimensional angle value.
+/// The internal representation is a [Float] value in radians.
 ///
 /// # Creation
 ///
