@@ -175,7 +175,10 @@ impl Default for GeodeticAxes {
     }
 }
 
-/// [LLH] represents **normalized** geodeetic coordinates.
+/// [LLH] represents **normalized** geodeetic coordinates:
+/// - longitude in radians, positive east,
+/// - latitude in radians, positive north,
+/// - ellipsoidal height in meters, positive upward.
 #[derive(Debug, Copy, Clone, PartialEq, Display)]
 #[display("(lon = {}, lat = {}, h = {})", lon, lat, height)]
 pub struct LLH {

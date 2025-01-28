@@ -30,6 +30,10 @@ pub enum GeocentricAxes {
 }
 
 /// [XYZ] represents **normalized** geocentric coordinates.
+/// - x in meters. **The X-axis is the intersection of the equatirial
+/// plane and the Greenwich meridian plane, positive toward the Greenwich meridian.
+/// - y in meters, positive east
+/// - z in meters, positive north
 #[derive(Debug, Copy, Clone, PartialEq, Display)]
 #[display("({}, {}, {})", x, y, z)]
 pub struct XYZ {

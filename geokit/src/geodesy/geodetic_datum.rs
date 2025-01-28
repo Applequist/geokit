@@ -6,11 +6,10 @@ use derive_more::derive::Display;
 use smol_str::SmolStr;
 use std::fmt::Debug;
 
-/// A `datum` is the information required to fix a coordinate system to an object.
+/// A `datum` is the information required to attach a coordinate system to an object.
 /// A [GeodeticDatum] is a `datum` describing the relationship of an ellipsoidal model of the Earth
 /// with the real Earth.
 /// It is defined by an id, an [Ellipsoid] and a [PrimeMeridian].
-/// It can also come with an optional transformation to a reference datum, usually `WGS84`.
 ///
 /// # Equality
 ///
@@ -65,10 +64,11 @@ impl GeodeticDatum {
     }
 
     /// Convert [normalized geodetic coordinates][LLH] into [normalized geocentric coordinates][XYZ].
+    /// NOTE: As mentioned in the EPSG guidance note 7 part 2, paragraph 4.1.1, this transformation
+    /// first changes the longitude origin from this datum's prime meridian to the Greenwich
+    /// meridian.
     pub fn llh_to_xyz(&self, llh: LLH) -> XYZ {
-        // NOTE: As mentioned in the EPSG guidance note 7 part 2, paragraph 4.1.1, this transformation
-        // first transform to/from non-greenwich base geographic coordinates into greenwich-base ones
-        // before/after transformation to/from geocentric coordinates.
+        // change of longitude origin from this datum's prime meridian to the Greenwich meridian.
         let lon = llh.lon + self.prime_meridian.lon().angle();
 
         let v = self.ellipsoid.prime_vertical_radius(llh.lat);
@@ -82,6 +82,10 @@ impl GeodeticDatum {
         }
     }
 
+    /// Convert [normalized geocentric coordinates][XYZ] into [normalized geodetic coordinates][LLH].
+    /// NOTE: As mentioned in the EPSG guidance note 7 part 2, paragraph 4.1.1, this transformation
+    /// changes the calculated longitude origin (Greenwich meridian) to this Datum's prime
+    /// meridian.
     pub fn xyz_to_llh(&self, xyz: XYZ) -> LLH {
         let x = xyz.x;
         let y = xyz.y;
@@ -91,7 +95,9 @@ impl GeodeticDatum {
         let b2 = self.ellipsoid.b_sq();
         let e2 = self.ellipsoid.e_sq();
 
-        let lon = y.atan2(x);
+        let greenwich_lon = Lon::new(y.atan2(x));
+        // Change longitude origin from Greenwich meridian to this datum's prime meridian
+        let lon = greenwich_lon - self.prime_meridian().lon();
 
         let p = x.hypot(y);
         let mut lat = z.atan2(p * (1.0 - e2));
@@ -114,10 +120,7 @@ impl GeodeticDatum {
         }
 
         LLH {
-            // NOTE: As mentioned in the EPSG guidance note 7 part 2, paragraph 4.1.1, this transformation
-            // first transform to/from non-greenwich base geographic coordinates into greenwich-base ones
-            // before/after transformation to/from geocentric coordinates.
-            lon: Lon::new(lon) - self.prime_meridian.lon().angle(),
+            lon,
             lat: Lat::new(lat),
             height: h,
         }
