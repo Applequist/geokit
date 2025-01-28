@@ -13,7 +13,7 @@ use crate::{
     units::angle::RAD,
 };
 
-/// [WebMercator](epsg:1024) also known as 'Pseudo-Mercator' is a projection method
+/// [WebMercator] also known as 'Pseudo-Mercator' (EPSG:1024) is a projection method
 /// used by some popular web mapping and visualisation applications.
 /// Strictly speaking the name is misleading as it is **NOT** a Mercator projection.
 #[derive(Debug, Clone, PartialEq)]

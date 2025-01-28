@@ -34,7 +34,7 @@ impl<'e> VincentyGeodesicSolver<'e> {
         let sin_beta1 = tan_beta1 * cos_beta1;
 
         // Eq (1): indeterminate for equatorial lines !!!
-        let (sin_alpha1, cos_alpha1) = alpha1.rad().sin_cos();
+        let (sin_alpha1, cos_alpha1) = alpha1.sin_cos();
         let sigma1 = tan_beta1.atan2(cos_alpha1) * RAD;
 
         // Eq (2)
@@ -85,7 +85,7 @@ impl<'e> VincentyGeodesicSolver<'e> {
                 * (sin_alpha.powi(2)
                     + (sin_beta1 * sin_sigma - cos_beta1 * cos_sigma * cos_alpha1).powi(2))
                 .sqrt(),
-        );
+        ) * RAD;
 
         // Eq (9)
         let lambda = (sin_sigma * sin_alpha1)
@@ -105,13 +105,14 @@ impl<'e> VincentyGeodesicSolver<'e> {
                     * RAD);
         let L = lambda - lambda_minus_L;
 
-        let alpha2 = sin_alpha.atan2(-sin_beta1 * sin_sigma + cos_beta1 * cos_sigma * cos_alpha1);
+        let alpha2 =
+            sin_alpha.atan2(-sin_beta1 * sin_sigma + cos_beta1 * cos_sigma * cos_alpha1) * RAD;
 
         Ok(Geodesic {
             p1,
             alpha1,
-            p2: (lon1 + L, Lat::new(lat2 * RAD)),
-            alpha2: Azimuth::new(alpha2 * RAD),
+            p2: (lon1 + L, Lat::new(lat2)),
+            alpha2: Azimuth::new(alpha2),
             s: s12,
         })
     }

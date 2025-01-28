@@ -71,6 +71,26 @@ impl Azimuth {
     pub fn rad(self) -> Float {
         self.0.rad()
     }
+
+    #[inline]
+    pub fn sin(self) -> Float {
+        self.0.sin()
+    }
+
+    #[inline]
+    pub fn cos(self) -> Float {
+        self.0.cos()
+    }
+
+    #[inline]
+    pub fn sin_cos(self) -> (Float, Float) {
+        self.0.sin_cos()
+    }
+
+    #[inline]
+    pub fn tan(self) -> Float {
+        self.0.tan()
+    }
 }
 
 impl Add<Angle> for Azimuth {
