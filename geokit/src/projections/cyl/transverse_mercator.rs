@@ -5,7 +5,7 @@ use crate::{
         cartesian::ENH,
         geodetic::{Lat, Lon, LLH},
     },
-    geodesy::Ellipsoid,
+    geodesy::{ellipsoid, Ellipsoid},
     math::{polynomial::Polynomial, Float},
     projections::{Projection, ProjectionError},
     quantities::length::Length,
@@ -65,22 +65,21 @@ impl TransverseMercator {
         false_northing: Length,
     ) -> Self {
         let e = ellipsoid.e();
-        let f = 1.0 / ellipsoid.invf();
-        let n = f / (2.0 - f);
+        let n = ellipsoid.n();
         let B = ellipsoid.a() / (1.0 + n)
-            * Polynomial::new([1.0, 0.0, 0.25, 0.0, 1.0 / 64.0]).eval_at(n);
+            * Polynomial::new([1.0, 0.0, 0.25, 0.0, 1.0 / 64.0]).fast_eval_at(n);
         let h = [
-            Polynomial::new([0.0, 0.5, -2.0 / 3.0, 5.0 / 16.0, 41.0 / 180.0]).eval_at(n),
-            Polynomial::new([0.0, 0.0, 13.0 / 48.0, -3.0 / 5.0, 557.0 / 1440.0]).eval_at(n),
-            Polynomial::new([0.0, 0.0, 0.0, 61.0 / 240.0, -103.0 / 140.0]).eval_at(n),
-            Polynomial::new([0.0, 0.0, 0.0, 0.0, 49561.0 / 161280.0]).eval_at(n),
+            Polynomial::new([0.0, 0.5, -2.0 / 3.0, 5.0 / 16.0, 41.0 / 180.0]).fast_eval_at(n),
+            Polynomial::new([0.0, 0.0, 13.0 / 48.0, -3.0 / 5.0, 557.0 / 1440.0]).fast_eval_at(n),
+            Polynomial::new([0.0, 0.0, 0.0, 61.0 / 240.0, -103.0 / 140.0]).fast_eval_at(n),
+            Polynomial::new([0.0, 0.0, 0.0, 0.0, 49561.0 / 161280.0]).fast_eval_at(n),
         ];
 
         let h_p = [
-            Polynomial::new([0.0, 0.5, -2.0 / 3.0, 37.0 / 96.0, -1.0 / 360.0]).eval_at(n),
-            Polynomial::new([0.0, 0.0, 1.0 / 48.0, 1.0 / 15.0, -437.0 / 1440.0]).eval_at(n),
-            Polynomial::new([0.0, 0.0, 0.0, 17.0 / 480.0, -37.0 / 840.0]).eval_at(n),
-            Polynomial::new([0.0, 0.0, 0.0, 0.0, 4397.0 / 161280.0]).eval_at(n),
+            Polynomial::new([0.0, 0.5, -2.0 / 3.0, 37.0 / 96.0, -1.0 / 360.0]).fast_eval_at(n),
+            Polynomial::new([0.0, 0.0, 1.0 / 48.0, 1.0 / 15.0, -437.0 / 1440.0]).fast_eval_at(n),
+            Polynomial::new([0.0, 0.0, 0.0, 17.0 / 480.0, -37.0 / 840.0]).fast_eval_at(n),
+            Polynomial::new([0.0, 0.0, 0.0, 0.0, 4397.0 / 161280.0]).fast_eval_at(n),
         ];
 
         let M0 = M0(lat0, B, e, h);

@@ -99,10 +99,10 @@ impl Mercator {
     ) -> Self {
         let e2 = ellipsoid.e_sq();
         let c_sin_nxi = [
-            Polynomial::new([0.0, 0.5, 5.0 / 24.0, 1.0 / 12.0, 13.0 / 360.0]).eval_at(e2),
-            Polynomial::new([0.0, 0.0, 7.0 / 48.0, 29.0 / 240.0, 811.0 / 11520.0]).eval_at(e2),
-            Polynomial::new([0.0, 0.0, 0.0, 7.0 / 120.0, 81.0 / 1120.0]).eval_at(e2),
-            Polynomial::new([0.0, 0.0, 0.0, 0.0, 4279.0 / 161280.0]).eval_at(e2),
+            Polynomial::new([0.0, 0.5, 5.0 / 24.0, 1.0 / 12.0, 13.0 / 360.0]).fast_eval_at(e2),
+            Polynomial::new([0.0, 0.0, 7.0 / 48.0, 29.0 / 240.0, 811.0 / 11520.0]).fast_eval_at(e2),
+            Polynomial::new([0.0, 0.0, 0.0, 7.0 / 120.0, 81.0 / 1120.0]).fast_eval_at(e2),
+            Polynomial::new([0.0, 0.0, 0.0, 0.0, 4279.0 / 161280.0]).fast_eval_at(e2),
         ];
         Self {
             a: ellipsoid.a(),
