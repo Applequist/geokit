@@ -222,14 +222,14 @@ mod tests {
         ]
     }
 
-    // From Rapp - Geometric Geodesy 1.71 Standard Test Lines
+    /// From Rapp - Geometric Geodesy 1.71 Standard Test Lines Tables 1.1 and 1.2
     pub fn standard_lines() -> Vec<LineData> {
         vec![
             // Line 1
             LineData {
                 ellipsoid: consts::INTL,
                 geodesic: Geodesic {
-                    p1: (Lon::new(0. * DEG), Lat::dms(37., 19., 54.95367)),
+                    p1: (Lon::ZERO, Lat::dms(37., 19., 54.95367)),
                     alpha1: Azimuth::dms(95., 27., 59.630888),
                     p2: (Lon::dms(41., 28., 35.50729), Lat::dms(26., 7., 42.83946)),
                     alpha2: Azimuth::dms(118., 5., 58.961608),
@@ -240,7 +240,7 @@ mod tests {
             LineData {
                 ellipsoid: consts::INTL,
                 geodesic: Geodesic {
-                    p1: (Lon::new(0. * DEG), Lat::dms(35., 16., 11.24862)),
+                    p1: (Lon::ZERO, Lat::dms(35., 16., 11.24862)),
                     alpha1: Azimuth::dms(15., 44., 23.748498),
                     p2: (Lon::dms(137., 47., 28.31435), Lat::dms(67., 22., 14.77638)),
                     alpha2: Azimuth::dms(144., 55., 39.921473),
@@ -251,7 +251,7 @@ mod tests {
             LineData {
                 ellipsoid: consts::INTL,
                 geodesic: Geodesic {
-                    p1: (Lon::new(0. * DEG), Lat::dms(1., 0., 0.)),
+                    p1: (Lon::ZERO, Lat::dms(1., 0., 0.)),
                     alpha1: Azimuth::dms(88., 59., 59.998970),
                     p2: (Lon::dms(179., 17., 48.02997), Lat::dms(-0., 59., 53.83076)),
                     alpha2: Azimuth::dms(91., 0., 6.118357),
@@ -262,7 +262,7 @@ mod tests {
             LineData {
                 ellipsoid: consts::INTL,
                 geodesic: Geodesic {
-                    p1: (Lon::new(0. * DEG), Lat::dms(1., 0., 0.)),
+                    p1: (Lon::ZERO, Lat::dms(1., 0., 0.)),
                     alpha1: Azimuth::dms(4., 59., 59.999953),
                     p2: (Lon::dms(179., 46., 17.84244), Lat::dms(1., 1., 15.18952)),
                     alpha2: Azimuth::dms(174., 59., 59.884804),
@@ -273,7 +273,7 @@ mod tests {
             LineData {
                 ellipsoid: consts::INTL,
                 geodesic: Geodesic {
-                    p1: (Lon::new(0. * DEG), Lat::dms(41., 41., 45.88000)),
+                    p1: (Lon::ZERO, Lat::dms(41., 41., 45.88000)),
                     alpha1: Azimuth::dms(52., 40., 39.390667),
                     p2: (Lon::dms(0., 0., 0.56000), Lat::dms(41., 41., 46.20000)),
                     alpha2: Azimuth::dms(52., 40., 39.763168),
@@ -284,7 +284,7 @@ mod tests {
             LineData {
                 ellipsoid: consts::INTL,
                 geodesic: Geodesic {
-                    p1: (Lon::new(0. * DEG), Lat::dms(30., 0., 0.)),
+                    p1: (Lon::ZERO, Lat::dms(30., 0., 0.)),
                     alpha1: Azimuth::dms(45., 0., 0.000004),
                     p2: (Lon::dms(116., 19., 16.68843), Lat::dms(37., 53., 32.46584)),
                     alpha2: Azimuth::dms(129., 8., 12.326010),
@@ -295,7 +295,7 @@ mod tests {
             LineData {
                 ellipsoid: consts::INTL,
                 geodesic: Geodesic {
-                    p1: (Lon::new(0. * DEG), Lat::dms(37., 0., 0.)),
+                    p1: (Lon::ZERO, Lat::dms(37., 0., 0.)),
                     alpha1: Azimuth::dms(195., 0., 0.),
                     p2: (Lon::dms(-2., 37., 39.52918), Lat::dms(28., 15., 36.69535)),
                     alpha2: Azimuth::dms(193., 34., 43.74060),
@@ -305,16 +305,16 @@ mod tests {
         ]
     }
 
-    // From Rapp - Geometric Geodesy Table 1.3
+    /// From Rapp - Geometric Geodesy Table 1.3
     pub fn antipodal_lines() -> Vec<LineData> {
         vec![
             // Line A
             LineData {
                 ellipsoid: consts::INTL,
                 geodesic: Geodesic {
-                    p1: (Lon::new(0.0 * DEG), Lat::dms(41., 41., 45.88)),
+                    p1: (Lon::ZERO, Lat::dms(41., 41., 45.88)),
                     alpha1: Azimuth::dms(179., 58., 49.16255),
-                    p2: (Lon::dms(179., 59., 59.99985), Lat::dms(-41., 41., 46.20)),
+                    p2: (Lon::dms(179., 59., 59.44), Lat::dms(-41., 41., 46.20)),
                     alpha2: Azimuth::dms(0., 1., 10.8376),
                     s: Length::new(20_004_566.7228, M),
                 },
@@ -323,9 +323,9 @@ mod tests {
             LineData {
                 ellipsoid: consts::INTL,
                 geodesic: Geodesic {
-                    p1: (Lon::new(0. * DEG), Lat::new(0. * DEG)),
+                    p1: (Lon::ZERO, Lat::ZERO),
                     alpha1: Azimuth::dms(29., 59., 59.9999),
-                    p2: (Lon::new(180. * DEG), Lat::new(0. * DEG)),
+                    p2: (Lon::dms(179., 41., 49.78063), Lat::ZERO),
                     alpha2: Azimuth::new(150. * DEG),
                     s: Length::new(19_996_147.4168, M),
                 },
@@ -334,9 +334,9 @@ mod tests {
             LineData {
                 ellipsoid: consts::INTL,
                 geodesic: Geodesic {
-                    p1: (Lon::new(0. * DEG), Lat::new(30. * DEG)),
+                    p1: (Lon::ZERO, Lat::new(30. * DEG)),
                     alpha1: Azimuth::dms(39., 24., 51.8058),
-                    p2: (Lon::new(180. * DEG), Lat::new(-30. * DEG)),
+                    p2: (Lon::dms(179., 40., 0.), Lat::new(-30. * DEG)),
                     alpha2: Azimuth::dms(140., 35., 8.1942),
                     s: Length::new(19_994_364.6069, M),
                 },
@@ -345,9 +345,9 @@ mod tests {
             LineData {
                 ellipsoid: consts::INTL,
                 geodesic: Geodesic {
-                    p1: (Lon::new(0. * DEG), Lat::new(60. * DEG)),
-                    alpha1: Azimuth::dms(2., 11., 51.0700),
-                    p2: (Lon::dms(17., 58., 53.03674), Lat::dms(-59., 59., 0.)),
+                    p1: (Lon::ZERO, Lat::new(60. * DEG)),
+                    alpha1: Azimuth::dms(29., 11., 51.0700),
+                    p2: (Lon::dms(179., 50., 0.), Lat::dms(-59., 59., 0.)),
                     alpha2: Azimuth::dms(150., 49., 6.8680),
                     s: Length::new(20_000_433.9629, M),
                 },
@@ -356,9 +356,9 @@ mod tests {
             LineData {
                 ellipsoid: consts::INTL,
                 geodesic: Geodesic {
-                    p1: (Lon::new(0. * DEG), Lat::new(30. * DEG)),
+                    p1: (Lon::ZERO, Lat::new(30. * DEG)),
                     alpha1: Azimuth::dms(16., 2., 28.3389),
-                    p2: (Lon::dms(179., 56., 41.64754), Lat::dms(-29., 50., 0.)),
+                    p2: (Lon::dms(179., 48., 0.), Lat::dms(-29., 50., 0.)),
                     alpha2: Azimuth::dms(163., 59., 10.3369),
                     s: Length::new(19_983_420.1536, M),
                 },
@@ -367,9 +367,9 @@ mod tests {
             LineData {
                 ellipsoid: consts::INTL,
                 geodesic: Geodesic {
-                    p1: (Lon::new(0. * DEG), Lat::new(30. * DEG)),
+                    p1: (Lon::ZERO, Lat::new(30. * DEG)),
                     alpha1: Azimuth::dms(18., 38., 12.5568),
-                    p2: (Lon::dms(179., 58., 3.57082), Lat::dms(-29., 55., 0.)),
+                    p2: (Lon::dms(179., 48., 0.), Lat::dms(-29., 55., 0.)),
                     alpha2: Azimuth::dms(161., 22., 45.4373),
                     s: Length::new(19_992_241.7634, M),
                 },
