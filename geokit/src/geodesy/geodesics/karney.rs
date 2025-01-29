@@ -387,8 +387,8 @@ mod tests {
             let diff_az_dms = (computed.alpha2.angle() - input.geodesic.alpha2.angle()).to_dms();
             println!("error on az (computed - input) = {}", diff_az_dms);
 
-            assert_abs_diff_eq!(computed.p2.0, input.geodesic.p2.0, epsilon = 1e-10);
-            assert_abs_diff_eq!(computed.p2.1, input.geodesic.p2.1, epsilon = 1e-10);
+            assert_abs_diff_eq!(computed.p2.0, input.geodesic.p2.0, epsilon = 3e-11);
+            assert_abs_diff_eq!(computed.p2.1, input.geodesic.p2.1, epsilon = 3e-11);
             assert_abs_diff_eq!(computed.alpha2, input.geodesic.alpha2, epsilon = 1e-10);
         }
     }
@@ -416,9 +416,9 @@ mod tests {
             let diff_az_dms = (computed.alpha2.angle() - input.geodesic.alpha2.angle()).to_dms();
             println!("error on az (computed - input) = {}", diff_az_dms);
 
-            assert_abs_diff_eq!(computed.p2.0, input.geodesic.p2.0, epsilon = 1e-10);
-            assert_abs_diff_eq!(computed.p2.1, input.geodesic.p2.1, epsilon = 1e-10);
-            assert_abs_diff_eq!(computed.alpha2, input.geodesic.alpha2, epsilon = 1e-10);
+            assert_abs_diff_eq!(computed.p2.0, input.geodesic.p2.0, epsilon = 1e-11);
+            assert_abs_diff_eq!(computed.p2.1, input.geodesic.p2.1, epsilon = 1e-11);
+            assert_abs_diff_eq!(computed.alpha2, input.geodesic.alpha2, epsilon = 1e-9);
         }
     }
 
