@@ -1,7 +1,7 @@
 //! Provide a value type to work with [Azimuth].
 
-use crate::math::Float;
 use crate::quantities::angle::Angle;
+use crate::{math::Float, units::angle::AngleUnit};
 use approx::AbsDiffEq;
 use derive_more::derive::Display;
 use std::ops::{Add, Sub};
@@ -64,6 +64,11 @@ impl Azimuth {
     #[inline]
     pub fn angle(self) -> Angle {
         self.0
+    }
+
+    #[inline]
+    pub fn val(self, unit: AngleUnit) -> Float {
+        self.0.val(unit)
     }
 
     /// Return this azimuth as a raw angle value (-pi..pi] radians.
