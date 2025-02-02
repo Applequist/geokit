@@ -293,8 +293,8 @@ mod tests {
         antipodal_lines, check_direct, check_inverse, geographiclib_lines, standard_lines,
         DirectError, InverseError, LineData,
     };
-    use crate::geodesy::geodesics::{Geodesic, GeodesicSolver};
-    use crate::math::{Float, PI, PI_2};
+    use crate::geodesy::geodesics::GeodesicSolver;
+    use crate::math::{PI, PI_2};
     use crate::quantities::length::Length;
     use crate::units::angle::{DEG, RAD};
     use crate::units::length::M;
