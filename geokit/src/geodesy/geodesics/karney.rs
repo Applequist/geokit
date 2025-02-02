@@ -6,6 +6,7 @@ use crate::geodesy::geodesics::{Geodesic, GeodesicSolver};
 use crate::geodesy::Ellipsoid;
 use crate::math::complex::Complex;
 use crate::math::polynomial::Polynomial;
+use crate::math::utils::sin_sum;
 use crate::math::Float;
 use crate::quantities::angle::Angle;
 use crate::quantities::length::{Arc, Length};
@@ -17,14 +18,15 @@ use crate::units::angle::RAD;
 pub struct KarneyGeodesicSolver<'e> {
     ellipsoid: &'e Ellipsoid,
     A3: Polynomial<6>,
-    C3L: [Polynomial<6>; 5],
+    C3L: [Polynomial<6>; 6],
 }
 
 impl<'e> KarneyGeodesicSolver<'e> {
     // Used to compute A1 Eq(17)
     const PA1: Polynomial<7> = Polynomial::new([1., 0., 1. / 4., 0., 1. / 64., 0., 1. / 256.]);
     // Used to comput I1 Eq(17)
-    const C1L: [Polynomial<7>; 6] = [
+    const C1L: [Polynomial<7>; 7] = [
+        Polynomial::new([0.; 7]), // c10
         Polynomial::new([0., -0.5, 0., 3. / 16., 0., -1. / 32.0, 0.]),
         Polynomial::new([0., 0., -1. / 16., 0., 1. / 32., 0., -9. / 2048.]),
         Polynomial::new([0., 0., 0., -1. / 48., 0., 3. / 256., 0.]),
@@ -55,6 +57,8 @@ impl<'e> KarneyGeodesicSolver<'e> {
             -3. / 128.,                                                       // x^5
         ]);
         let C3L = [
+            // C30
+            Polynomial::new([0.; 6]),
             // C31
             Polynomial::new([
                 0.,                                                               // eps^0
@@ -151,13 +155,8 @@ impl<'e> KarneyGeodesicSolver<'e> {
     /// From Karney - Algorithms for geodesics eqn 15:
     /// I1(sigma) = A1 * (sigma + sum(1, inf, C1l * sin(2l * sigma)))
     fn I1(epsilon: Float, A1: Float, sigma: Angle) -> Float {
-        let C1Ls = Self::C1L.map(|p| p.fast_eval_at(epsilon));
-        A1 * (sigma.rad()
-            + C1Ls
-                .into_iter()
-                .enumerate()
-                .map(|(ix, c1x)| c1x * (2. * sigma * (ix + 1) as Float).sin())
-                .sum::<Float>())
+        let C1L = Self::C1L.map(|p| p.fast_eval_at(epsilon));
+        A1 * (sigma.rad() + sin_sum(&C1L, sigma.rad()))
     }
 
     /// From Karney - Algorithms for geodesics eqn 20:
@@ -182,12 +181,7 @@ impl<'e> KarneyGeodesicSolver<'e> {
     /// I3(sigma) = A3 * (sigma + sum(1, inf, C3l * sin(2l * sigma))
     fn I3(&self, A3: Float, epsilon: Float, sigma: Angle) -> Float {
         let C3L = self.C3L.map(|p| p.fast_eval_at(epsilon));
-        A3 * (sigma.rad()
-            + C3L
-                .into_iter()
-                .enumerate()
-                .map(|(ix, c3x)| c3x * (2. * sigma * (ix + 1) as Float).sin())
-                .sum::<Float>())
+        A3 * (sigma.rad() + sin_sum(&C3L, sigma.rad()))
     }
 }
 
