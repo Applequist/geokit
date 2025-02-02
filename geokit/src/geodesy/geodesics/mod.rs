@@ -70,67 +70,110 @@ mod tests {
     use crate::units::angle::DEG;
     use crate::units::length::M;
 
-    pub const DEFAULT_ERR_DIRECT: [Float; 3] = [1e-13, 1e-13, 1e-13];
-    pub const DEFAULT_ERR_INVERSE: [Float; 3] = [1e-13, 1e-13, 1e-8];
+    /// Maximum absolute difference in direct geodesic computation results.
+    pub struct DirectError {
+        /// Maximum absolute difference in longitude.
+        lon: Angle,
+        /// Maximum absolute difference in latitude.
+        lat: Angle,
+        /// Maximum absolute difference in azimuth
+        alpha: Angle,
+    }
 
-    pub fn check_direct(computed: &Geodesic, expected: &Geodesic, err: &[Float; 3]) {
+    impl Default for DirectError {
+        fn default() -> Self {
+            DirectError {
+                lon: Angle::new(1e-13, DEG),
+                lat: Angle::new(1e-13, DEG),
+                alpha: Angle::new(1e-13, DEG),
+            }
+        }
+    }
+
+    /// Maximum absolute difference in inverse geodesic computation results.
+    pub struct InverseError {
+        /// Maximum absolute difference in starting azimuth.
+        alpha1: Angle,
+        /// Maximum absolute difference in ending azimuth.
+        alpha2: Angle,
+        /// Maximum absolute difference in geodesic distance.
+        s: Length,
+    }
+
+    impl Default for InverseError {
+        fn default() -> Self {
+            InverseError {
+                alpha1: Angle::new(1e-13, DEG),
+                alpha2: Angle::new(1e-13, DEG),
+                s: Length::new(1e-8, M),
+            }
+        }
+    }
+
+    /// Check whether a direct geodesic computation is within the error bounds of the expected
+    /// result.
+    pub fn check_direct(computed: &Geodesic, expected: &Geodesic, err: &DirectError) {
         print_direct(computed, expected);
-        check_angle_deg(
+        check_angle(
             computed.p2.0.angle(),
             expected.p2.0.angle(),
-            err[0],
+            err.lon,
             "Longitude error",
         );
-        check_angle_deg(
+        check_angle(
             computed.p2.1.angle(),
             expected.p2.1.angle(),
-            err[1],
+            err.lat,
             "Latitude error",
         );
-        check_angle_deg(
+        check_angle(
             computed.alpha2.angle(),
             expected.alpha2.angle(),
-            err[2],
+            err.alpha,
             "Azimuth error",
         );
     }
 
-    pub fn check_inverse(computed: &Geodesic, expected: &Geodesic, err: &[Float; 3]) {
+    /// Check whether an inverse geodesic computation is within the error bounds of the expected
+    /// result.
+    pub fn check_inverse(computed: &Geodesic, expected: &Geodesic, err: &InverseError) {
         print_inverse(computed, expected);
-        check_angle_deg(
+        check_angle(
             computed.alpha1.angle(),
             expected.alpha1.angle(),
-            err[0],
+            err.alpha1,
             "Alpha1 error",
         );
-        check_angle_deg(
+        check_angle(
             computed.alpha2.angle(),
             expected.alpha2.angle(),
-            err[1],
+            err.alpha2,
             "Alpha2 error",
         );
-        check_length_m(computed.s, expected.s, err[2], "Distance error");
+        check_length(computed.s, expected.s, err.s, "Distance error");
     }
 
-    fn check_angle_deg(res: Angle, exp: Angle, err: Float, err_msg: &str) {
-        let abs_diff = (res - exp).val(DEG).abs();
+    /// Check that the absolute difference of two angles is less or equal than `err` degrees.
+    fn check_angle(res: Angle, exp: Angle, err: Angle, err_msg: &str) {
+        let abs_diff = (res - exp).abs();
         assert!(
             abs_diff <= err,
             "{}: |res - exp| = {:e} deg > {:e} deg",
             err_msg,
-            abs_diff,
-            err
+            abs_diff.val(DEG),
+            err.val(DEG)
         );
     }
 
-    fn check_length_m(res: Length, exp: Length, err: Float, err_msg: &str) {
-        let abs_diff = (res - exp).m().abs();
+    /// Check that the absolute difference of two lengthes is less or equal than `err` meters.
+    fn check_length(res: Length, exp: Length, err: Length, err_msg: &str) {
+        let abs_diff = (res - exp).abs();
         assert!(
             abs_diff <= err,
             "{}: |res - exp| = {:e} m > {:e} m",
             err_msg,
-            abs_diff,
-            err
+            abs_diff.m(),
+            err.m()
         );
     }
 

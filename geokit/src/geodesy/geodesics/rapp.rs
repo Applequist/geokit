@@ -333,7 +333,7 @@ mod tests {
     use crate::geodesy::geodesics::rapp::RappIterativeGeodisicSolver;
     use crate::geodesy::geodesics::tests::{
         antipodal_lines, check_direct, check_inverse, geographiclib_lines, standard_lines,
-        LineData, DEFAULT_ERR_DIRECT, DEFAULT_ERR_INVERSE,
+        DirectError, InverseError, LineData,
     };
     use crate::geodesy::geodesics::{GeodesicSolver, Length};
     use crate::math::Float;
@@ -342,7 +342,7 @@ mod tests {
     use approx::assert_abs_diff_eq;
     use std::f64::consts::{FRAC_PI_2, PI};
 
-    fn test_on(tset: LineData, err_direct: &[Float; 3], err_inverse: &[Float; 3]) {
+    fn test_on(tset: LineData, err_direct: &DirectError, err_inverse: &InverseError) {
         let solver = RappIterativeGeodisicSolver::new(&tset.ellipsoid);
         for tcase in tset.testcases.into_iter() {
             let direct = solver
@@ -358,19 +358,19 @@ mod tests {
     #[test]
     fn on_geographiclib_lines() {
         let tset = geographiclib_lines();
-        test_on(tset, &DEFAULT_ERR_DIRECT, &DEFAULT_ERR_INVERSE);
+        test_on(tset, &DirectError::default(), &InverseError::default());
     }
 
     #[test]
     fn on_standard_lines() {
         let tset = standard_lines();
-        test_on(tset, &DEFAULT_ERR_DIRECT, &DEFAULT_ERR_INVERSE);
+        test_on(tset, &DirectError::default(), &InverseError::default());
     }
 
     #[test]
     fn on_antipodal_lines() {
         let tset = antipodal_lines();
-        test_on(tset, &DEFAULT_ERR_DIRECT, &DEFAULT_ERR_INVERSE);
+        test_on(tset, &DirectError::default(), &InverseError::default());
     }
 
     #[test]
