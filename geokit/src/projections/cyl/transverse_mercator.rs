@@ -5,7 +5,7 @@ use crate::{
         cartesian::ENH,
         geodetic::{Lat, Lon, LLH},
     },
-    geodesy::{ellipsoid, Ellipsoid},
+    geodesy::Ellipsoid,
     math::{polynomial::Polynomial, Float},
     projections::{Projection, ProjectionError},
     quantities::length::Length,

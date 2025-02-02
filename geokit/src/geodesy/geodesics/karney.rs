@@ -9,7 +9,7 @@ use crate::math::polynomial::Polynomial;
 use crate::math::Float;
 use crate::quantities::angle::Angle;
 use crate::quantities::length::{Arc, Length};
-use crate::units::angle::{DEG, RAD};
+use crate::units::angle::RAD;
 
 /// Solve direct and inverse geodesic problems on an ellipsoid using algorithms
 /// for Karney - Algorithms for Geodesics.
@@ -191,15 +191,32 @@ impl<'e> KarneyGeodesicSolver<'e> {
     }
 }
 
+/// A triangle NEP on the auxiliary sphere corresponding to the goedesic going
+/// through a point P:
+/// NE: meridian arc from the North pole (N) to intersection of the geodesic
+/// going through P with the equator (E),
+/// EP: great circle from E to P,
+/// PN: meridian arc from P to N.
 #[derive(Debug)]
 struct Triangle {
-    alpha0: Azimuth, // azimuth at equator
+    /// Azimuth of the geodesic arc EP at E
+    alpha0: Azimuth,
+    /// Azimuth of the geodesic arc EP at P
     alpha: Azimuth,
+    /// reduced/parametric latitude of P
     beta: Lat,
+    /// angular arc length of EP
+    /// related to the length of EP on the ellipsoid `s` by: `s = b * I1(sigma)`
     sigma: Angle,
+    /// angle from meridian plane containing NE and meridian plane containing PN
+    /// related to the longitude difference on the ellipsoid by:
+    /// `lambda = omega - f * sin(alpha0) * I3(sigma)`
     omega: Angle,
 }
 
+/// Given the reduced/parametric latitude of a Point P on the ellipsoid,
+/// and the forward azimuth of a geodesic at P, solve the corresponding [Triangle]
+/// on the auxiliary sphere.
 fn solve_triangle_from_p(beta: Lat, alpha: Azimuth) -> Triangle {
     let (sin_alpha, cos_alpha) = alpha.sin_cos();
     let (sin_beta, cos_beta) = beta.sin_cos();
@@ -228,6 +245,9 @@ fn solve_triangle_from_p(beta: Lat, alpha: Azimuth) -> Triangle {
     }
 }
 
+/// Given the forward azimuth of a geodesic crossing the equator with azimuth
+/// `alpha0` and the angular arc length `sigma` of a great circle arc, solve the
+/// cooresponding [Triangle] on the auxiliary sphere.
 fn solve_triangle_from_e(alpha0: Azimuth, sigma: Angle) -> Triangle {
     let (sin_alpha0, cos_alpha0) = alpha0.sin_cos();
     let (sin_sigma, cos_sigma) = sigma.sin_cos();
@@ -276,15 +296,170 @@ mod tests {
     use crate::geodesy::ellipsoid::consts;
     use crate::geodesy::geodesics::karney::KarneyGeodesicSolver;
     use crate::geodesy::geodesics::tests::{
-        antipodal_lines, standard_lines, vincenty_direct_deltas, vincenty_inverse_deltas,
-        vincenty_lines,
+        antipodal_lines, check_direct, check_inverse, geographiclib_lines, standard_lines,
+        LineData, DEFAULT_ERR_DIRECT, DEFAULT_ERR_INVERSE,
     };
-    use crate::geodesy::geodesics::GeodesicSolver;
-    use crate::math::{PI, PI_2};
+    use crate::geodesy::geodesics::{Geodesic, GeodesicSolver};
+    use crate::math::{Float, PI, PI_2};
     use crate::quantities::length::Length;
     use crate::units::angle::{DEG, RAD};
     use crate::units::length::M;
     use approx::assert_abs_diff_eq;
+
+    fn test_on(tset: LineData, err_direct: &[Float; 3], err_inverse: &[Float; 3]) {
+        let solver = KarneyGeodesicSolver::new(&tset.ellipsoid);
+        for tcase in tset.testcases.into_iter() {
+            let direct = solver
+                .solve_direct(tcase.p1, tcase.alpha1, tcase.s)
+                .unwrap();
+            check_direct(&direct, &tcase, err_direct);
+
+            // TODO: implement inverse method.
+            //let inverse = solver.solve_inverse(tcase.p1, tcase.p2).unwrap();
+            //check_inverse(&inverse, &tcase, err_inverse);
+        }
+    }
+
+    #[test]
+    fn on_geographiclib_lines() {
+        let tset = geographiclib_lines();
+        test_on(tset, &DEFAULT_ERR_DIRECT, &DEFAULT_ERR_INVERSE);
+    }
+
+    #[test]
+    fn on_standard_lines() {
+        let tset = standard_lines();
+        test_on(tset, &DEFAULT_ERR_DIRECT, &DEFAULT_ERR_INVERSE);
+    }
+
+    #[test]
+    fn on_antipodal_lines() {
+        let tset = antipodal_lines();
+        test_on(tset, &DEFAULT_ERR_DIRECT, &DEFAULT_ERR_INVERSE);
+    }
+
+    #[test]
+    fn on_equator_lines() {
+        let wgs84 = consts::WGS84;
+        let solver = KarneyGeodesicSolver::new(&wgs84);
+        let computed = solver
+            .solve_direct(
+                (Lon::new(0.0 * RAD), Lat::new(0.0 * RAD)),
+                Azimuth::new(90.0 * DEG),
+                Length::new(20_000.0, M),
+            )
+            .unwrap();
+        assert_abs_diff_eq!(
+            computed.p2.0.rad(),
+            (0.17966306 * DEG).rad(),
+            epsilon = 1e-8
+        );
+        assert_abs_diff_eq!(computed.p2.1.rad(), 0.0, epsilon = 1e-8);
+        assert_abs_diff_eq!(computed.alpha2.rad(), PI_2, epsilon = 1e-8);
+
+        let computed = solver
+            .solve_direct(
+                (Lon::new(170.0 * DEG), Lat::new(0.0 * DEG)),
+                Azimuth::new(90.0 * DEG),
+                Length::new(2_000_000.0, M),
+            )
+            .unwrap();
+        assert_abs_diff_eq!(
+            computed.p2.0,
+            Lon::new(-172.03369432 * DEG),
+            epsilon = 1e-10
+        );
+        assert_abs_diff_eq!(computed.p2.1, Lat::new(0.0 * RAD), epsilon = 1e-10);
+        assert_abs_diff_eq!(computed.alpha2, Azimuth::new(PI_2 * RAD), epsilon = 1e-8);
+
+        let computed = solver
+            .solve_inverse(
+                (Lon::new(-10. * DEG), Lat::new(0. * DEG)),
+                (Lon::new(10. * DEG), Lat::new(0. * DEG)),
+            )
+            .unwrap();
+        assert_abs_diff_eq!(computed.alpha1.rad(), PI_2, epsilon = 1e-10);
+        assert_abs_diff_eq!(computed.alpha2.rad(), PI_2, epsilon = 1e-10);
+        assert_abs_diff_eq!(computed.s, Length::new(2_226_389.816, M), epsilon = 1e-3);
+
+        let computed = solver
+            .solve_inverse(
+                (Lon::new(10. * DEG), Lat::new(0. * DEG)),
+                (Lon::new(-10. * DEG), Lat::new(0. * DEG)),
+            )
+            .unwrap();
+        assert_abs_diff_eq!(computed.alpha1.rad(), -PI_2, epsilon = 1e-10);
+        assert_abs_diff_eq!(computed.alpha2.rad(), -PI_2, epsilon = 1e-10);
+        assert_abs_diff_eq!(computed.s, Length::new(2_226_389.816, M), epsilon = 1e-3);
+
+        let computed = solver
+            .solve_inverse(
+                (Lon::new(170. * DEG), Lat::new(0. * DEG)),
+                (Lon::new(-170. * DEG), Lat::new(0. * DEG)),
+            )
+            .unwrap();
+        assert_abs_diff_eq!(computed.alpha1.rad(), PI_2, epsilon = 1e-10);
+        assert_abs_diff_eq!(computed.alpha2.rad(), PI_2, epsilon = 1e-10);
+        assert_abs_diff_eq!(computed.s, Length::new(2_226_389.816, M), epsilon = 1e-3);
+    }
+
+    #[test]
+    fn on_meridian_lines() {
+        let wgs84 = consts::WGS84;
+        let solver = KarneyGeodesicSolver::new(&wgs84);
+
+        let computed = solver
+            .solve_direct(
+                (Lon::new(0. * DEG), Lat::new(-10. * DEG)),
+                Azimuth::new(0. * DEG),
+                Length::new(2_000_000.0, M),
+            )
+            .unwrap();
+        assert_abs_diff_eq!(computed.p2.0, Lon::new(0.0 * RAD), epsilon = 1e-10);
+        assert_abs_diff_eq!(computed.p2.1, Lat::new(8.08583903 * DEG), epsilon = 1e-10);
+        assert_abs_diff_eq!(computed.alpha2, Azimuth::new(0.0 * RAD), epsilon = 1e-8);
+
+        let computed = solver
+            .solve_direct(
+                (Lon::new(0. * DEG), Lat::new(80. * DEG)),
+                Azimuth::new(0. * DEG),
+                Length::new(2_000_000.0, M),
+            )
+            .unwrap();
+        assert_abs_diff_eq!(computed.p2.0, Lon::new(PI * RAD), epsilon = 1e-10);
+        assert_abs_diff_eq!(computed.p2.1, Lat::new(82.09240627 * DEG), epsilon = 1e-10);
+        assert_abs_diff_eq!(computed.alpha2, Azimuth::new(PI * RAD), epsilon = 1e-8);
+
+        let computed = solver
+            .solve_inverse(
+                (Lon::new(0. * DEG), Lat::new(-10. * DEG)),
+                (Lon::new(0. * DEG), Lat::new(10. * DEG)),
+            )
+            .unwrap();
+        assert_abs_diff_eq!(computed.alpha1.rad(), 0., epsilon = 1e-10);
+        assert_abs_diff_eq!(computed.alpha2.rad(), 0., epsilon = 1e-10);
+        assert_abs_diff_eq!(computed.s, Length::new(2_211_709.666, M), epsilon = 1e-3);
+
+        let computed = solver
+            .solve_inverse(
+                (Lon::new(0. * DEG), Lat::new(10. * DEG)),
+                (Lon::new(0. * DEG), Lat::new(-10. * DEG)),
+            )
+            .unwrap();
+        assert_abs_diff_eq!(computed.alpha1.rad(), PI, epsilon = 1e-10);
+        assert_abs_diff_eq!(computed.alpha2.rad(), PI, epsilon = 1e-10);
+        assert_abs_diff_eq!(computed.s, Length::new(2_211_709.666, M), epsilon = 1e-3);
+
+        let computed = solver
+            .solve_inverse(
+                (Lon::new(0. * DEG), Lat::new(80. * DEG)),
+                (Lon::new(180. * DEG), Lat::new(80. * DEG)),
+            )
+            .unwrap();
+        assert_abs_diff_eq!(computed.alpha1.rad(), 0., epsilon = 1e-10);
+        assert_abs_diff_eq!(computed.alpha2.rad(), PI, epsilon = 1e-10);
+        assert_abs_diff_eq!(computed.s, Length::new(2_233_651.715, M), epsilon = 1e-3);
+    }
 
     #[test]
     fn direct_karney_sample() {
@@ -319,170 +494,6 @@ mod tests {
             Azimuth::new(149.090_169_318_07 * DEG),
             epsilon = 1e-12
         );
-    }
-
-    #[test]
-    fn direct_vincenty_lines() {
-        let chars = ['a', 'b', 'c', 'd', 'e', 'f'];
-        for (ix, (input, delta)) in vincenty_lines()
-            .into_iter()
-            .zip(vincenty_direct_deltas())
-            .enumerate()
-        {
-            let solver = KarneyGeodesicSolver::new(&input.ellipsoid);
-            let computed = solver
-                .solve_direct(input.geodesic.p1, input.geodesic.alpha1, input.geodesic.s)
-                .unwrap();
-            println!("-----------------------------------------------------------------------------------");
-            println!("Input: Vincenty Line ({})", chars[ix]);
-            println!("{}", input.geodesic);
-            println!("Computed: ");
-            println!("{}", computed);
-            println!();
-
-            let diff_lon_dms = (computed.p2.0.angle() - input.geodesic.p2.0.angle()).to_dms();
-            println!("error on lon (computed - input) = {}", diff_lon_dms);
-
-            let diff_lat_dms = (computed.p2.1.angle() - input.geodesic.p2.1.angle()).to_dms();
-            println!("error on lat (computed - input) = {}", diff_lat_dms);
-
-            let diff_az_dms = (computed.alpha2.angle() - input.geodesic.alpha2.angle()).to_dms();
-            println!("error on az (computed - input) = {}", diff_az_dms);
-
-            assert_eq!(diff_lon_dms.deg(), 0.0);
-            assert_eq!(diff_lon_dms.min(), 0.0);
-            assert!(diff_lon_dms.sec() < delta.delta_delta_lon.abs());
-
-            assert_eq!(diff_lat_dms.deg(), 0.0);
-            assert_eq!(diff_lat_dms.min(), 0.0);
-            assert!(diff_lat_dms.sec() < delta.delta_lat2.abs());
-
-            assert_eq!(diff_az_dms.deg(), 0.0);
-            assert_eq!(diff_az_dms.min(), 0.0);
-            assert!(diff_az_dms.sec() < delta.delta_alpha2.abs());
-        }
-    }
-
-    #[test]
-    fn direct_standard_lines() {
-        // Direct problem
-        for (ix, input) in standard_lines().iter().enumerate() {
-            let solver = KarneyGeodesicSolver::new(&input.ellipsoid);
-            let computed = solver
-                .solve_direct(input.geodesic.p1, input.geodesic.alpha1, input.geodesic.s)
-                .unwrap();
-            println!("-----------------------------------------------------------------------------------");
-            println!("Input: Standard Line ({})", ix);
-            println!("{}", input.geodesic);
-            println!("Computed: ");
-            println!("{}", computed);
-            println!();
-
-            let diff_lon_dms = (computed.p2.0.angle() - input.geodesic.p2.0.angle()).to_dms();
-            println!("error on lon (computed - input) = {}", diff_lon_dms);
-
-            let diff_lat_dms = (computed.p2.1.angle() - input.geodesic.p2.1.angle()).to_dms();
-            println!("error on lat (computed - input) = {}", diff_lat_dms);
-
-            let diff_az_dms = (computed.alpha2.angle() - input.geodesic.alpha2.angle()).to_dms();
-            println!("error on az (computed - input) = {}", diff_az_dms);
-
-            assert_abs_diff_eq!(computed.p2.0, input.geodesic.p2.0, epsilon = 3e-11);
-            assert_abs_diff_eq!(computed.p2.1, input.geodesic.p2.1, epsilon = 3e-11);
-            assert_abs_diff_eq!(computed.alpha2, input.geodesic.alpha2, epsilon = 1e-10);
-        }
-    }
-
-    #[test]
-    fn direct_antipodal_lines() {
-        for (ix, input) in antipodal_lines().iter().enumerate() {
-            let solver = KarneyGeodesicSolver::new(&input.ellipsoid);
-            let computed = solver
-                .solve_direct(input.geodesic.p1, input.geodesic.alpha1, input.geodesic.s)
-                .unwrap();
-            println!("-----------------------------------------------------------------------------------");
-            println!("Input: Antipodal Line ({})", ix);
-            println!("{}", input.geodesic);
-            println!("Computed: ");
-            println!("{}", computed);
-            println!();
-
-            let diff_lon_dms = (computed.p2.0.angle() - input.geodesic.p2.0.angle()).to_dms();
-            println!("error on lon (computed - input) = {}", diff_lon_dms);
-
-            let diff_lat_dms = (computed.p2.1.angle() - input.geodesic.p2.1.angle()).to_dms();
-            println!("error on lat (computed - input) = {}", diff_lat_dms);
-
-            let diff_az_dms = (computed.alpha2.angle() - input.geodesic.alpha2.angle()).to_dms();
-            println!("error on az (computed - input) = {}", diff_az_dms);
-
-            assert_abs_diff_eq!(computed.p2.0, input.geodesic.p2.0, epsilon = 1e-11);
-            assert_abs_diff_eq!(computed.p2.1, input.geodesic.p2.1, epsilon = 1e-11);
-            assert_abs_diff_eq!(computed.alpha2, input.geodesic.alpha2, epsilon = 1e-9);
-        }
-    }
-
-    #[test]
-    fn direct_equator_lines() {
-        let wgs84 = consts::WGS84;
-        let solver = KarneyGeodesicSolver::new(&wgs84);
-        let computed = solver
-            .solve_direct(
-                (Lon::new(0.0 * RAD), Lat::new(0.0 * RAD)),
-                Azimuth::new(90.0 * DEG),
-                Length::new(20_000.0, M),
-            )
-            .unwrap();
-        assert_abs_diff_eq!(
-            computed.p2.0.rad(),
-            (0.17966306 * DEG).rad(),
-            epsilon = 1e-8
-        );
-        assert_abs_diff_eq!(computed.p2.1.rad(), 0.0, epsilon = 1e-8);
-        assert_abs_diff_eq!(computed.alpha2.rad(), PI_2, epsilon = 1e-8);
-
-        let computed = solver
-            .solve_direct(
-                (Lon::new(170.0 * DEG), Lat::new(0.0 * DEG)),
-                Azimuth::new(90.0 * DEG),
-                Length::new(2_000_000.0, M),
-            )
-            .unwrap();
-        assert_abs_diff_eq!(
-            computed.p2.0,
-            Lon::new(-172.03369432 * DEG),
-            epsilon = 1e-10
-        );
-        assert_abs_diff_eq!(computed.p2.1, Lat::new(0.0 * RAD), epsilon = 1e-10);
-        assert_abs_diff_eq!(computed.alpha2, Azimuth::new(PI_2 * RAD), epsilon = 1e-8);
-    }
-
-    #[test]
-    fn direct_meridian_lines() {
-        let wgs84 = consts::WGS84;
-        let solver = KarneyGeodesicSolver::new(&wgs84);
-
-        let computed = solver
-            .solve_direct(
-                (Lon::new(0. * DEG), Lat::new(-10. * DEG)),
-                Azimuth::new(0. * DEG),
-                Length::new(2_000_000.0, M),
-            )
-            .unwrap();
-        assert_abs_diff_eq!(computed.p2.0, Lon::new(0.0 * RAD), epsilon = 1e-10);
-        assert_abs_diff_eq!(computed.p2.1, Lat::new(8.08583903 * DEG), epsilon = 1e-10);
-        assert_abs_diff_eq!(computed.alpha2, Azimuth::new(0.0 * RAD), epsilon = 1e-8);
-
-        let computed = solver
-            .solve_direct(
-                (Lon::new(0. * DEG), Lat::new(80. * DEG)),
-                Azimuth::new(0. * DEG),
-                Length::new(2_000_000.0, M),
-            )
-            .unwrap();
-        assert_abs_diff_eq!(computed.p2.0, Lon::new(PI * RAD), epsilon = 1e-10);
-        assert_abs_diff_eq!(computed.p2.1, Lat::new(82.09240627 * DEG), epsilon = 1e-10);
-        assert_abs_diff_eq!(computed.alpha2, Azimuth::new(PI * RAD), epsilon = 1e-8);
     }
 
     #[test]
@@ -529,176 +540,5 @@ mod tests {
             epsilon = 1e-12
         );
         assert_abs_diff_eq!(computed.s.m(), 19_989_832.82761, epsilon = 1e-6);
-    }
-
-    #[test]
-    fn inverse_vincenty_lines() {
-        // Vincenty lines
-        let chars = ['a', 'b', 'c', 'd', 'e', 'f'];
-        for (ix, (input, delta)) in vincenty_lines()
-            .into_iter()
-            .zip(vincenty_inverse_deltas())
-            .enumerate()
-        {
-            let solver = KarneyGeodesicSolver::new(&input.ellipsoid);
-            let computed = solver
-                .solve_inverse(input.geodesic.p1, input.geodesic.p2)
-                .unwrap();
-            println!("-----------------------------------------------------------------------------------");
-            println!("Input: Vincenty Line ({})", chars[ix]);
-            println!("{}", input.geodesic);
-            println!("Computed: ");
-            println!("{}", computed);
-            println!();
-
-            let diff_az1_dms = (computed.alpha1.angle() - input.geodesic.alpha1.angle()).to_dms();
-            println!("error on az1 (computed - input) = {}", diff_az1_dms);
-
-            let diff_az2_dms = (computed.alpha2.angle() - input.geodesic.alpha2.angle()).to_dms();
-            println!("error on az2 (computed - input) = {}", diff_az2_dms);
-
-            let diff_s_m = computed.s - input.geodesic.s;
-            println!("error on s (computed - input) = {}", diff_s_m);
-
-            assert_eq!(diff_az1_dms.deg(), 0.0);
-            assert_eq!(diff_az1_dms.min(), 0.0);
-            assert!(diff_az1_dms.sec() < delta.delta_alpha1.abs());
-
-            assert_eq!(diff_az2_dms.deg(), 0.0);
-            assert_eq!(diff_az2_dms.min(), 0.0);
-            assert!(diff_az2_dms.sec() < delta.delta_alpha2.abs());
-
-            assert!(diff_s_m.m() < delta.delta_s.abs());
-        }
-    }
-
-    #[test]
-    fn inverse_standard_lines() {
-        // Standard lines
-        for (ix, input) in standard_lines().iter().enumerate() {
-            let solver = KarneyGeodesicSolver::new(&input.ellipsoid);
-            let computed = solver
-                .solve_inverse(input.geodesic.p1, input.geodesic.p2)
-                .unwrap();
-            println!("-----------------------------------------------------------------------------------");
-            println!("Input: Standard Line ({})", ix);
-            println!("{}", input.geodesic);
-            println!("Computed: ");
-            println!("{}", computed);
-            println!();
-
-            let diff_az1_dms = (computed.alpha1.angle() - input.geodesic.alpha1.angle()).to_dms();
-            println!("error on az1 (computed - input) = {}", diff_az1_dms);
-
-            let diff_az2_dms = (computed.alpha2.angle() - input.geodesic.alpha2.angle()).to_dms();
-            println!("error on az2 (computed - input) = {}", diff_az2_dms);
-
-            let diff_s_m = computed.s - input.geodesic.s;
-            println!("error on s (computed - input) = {}", diff_s_m);
-
-            assert_abs_diff_eq!(computed.alpha1, input.geodesic.alpha1, epsilon = 1e-10);
-            assert_abs_diff_eq!(computed.alpha2, input.geodesic.alpha2, epsilon = 1e-10);
-            assert_abs_diff_eq!(computed.s, input.geodesic.s, epsilon = 1e-3);
-        }
-    }
-
-    #[test]
-    fn inverse_antipodal_lines() {
-        // Anti-podal lines
-        for (ix, input) in antipodal_lines().iter().enumerate() {
-            let solver = KarneyGeodesicSolver::new(&input.ellipsoid);
-            let computed = solver
-                .solve_inverse(input.geodesic.p1, input.geodesic.p2)
-                .unwrap();
-            println!("-----------------------------------------------------------------------------------");
-            println!("Input: Antipodal Line ({})", ix);
-            println!("{}", input.geodesic);
-            println!("Computed: ");
-            println!("{}", computed);
-            println!();
-
-            let diff_az1_dms = (computed.alpha1.angle() - input.geodesic.alpha1.angle()).to_dms();
-            println!("error on az1 (computed - input) = {}", diff_az1_dms);
-
-            let diff_az2_dms = (computed.alpha2.angle() - input.geodesic.alpha2.angle()).to_dms();
-            println!("error on az2 (computed - input) = {}", diff_az2_dms);
-
-            let diff_s_m = computed.s - input.geodesic.s;
-            println!("error on s (computed - input) = {}", diff_s_m);
-
-            assert_abs_diff_eq!(computed.alpha1, input.geodesic.alpha1, epsilon = 1e-10);
-            assert_abs_diff_eq!(computed.alpha2, input.geodesic.alpha2, epsilon = 1e-10);
-            assert_abs_diff_eq!(computed.s, input.geodesic.s, epsilon = 1e-3);
-        }
-    }
-
-    #[test]
-    fn inverse_equator_lines() {
-        let wgs84 = consts::WGS84;
-        let solver = KarneyGeodesicSolver::new(&wgs84);
-        let computed = solver
-            .solve_inverse(
-                (Lon::new(-10. * DEG), Lat::new(0. * DEG)),
-                (Lon::new(10. * DEG), Lat::new(0. * DEG)),
-            )
-            .unwrap();
-        assert_abs_diff_eq!(computed.alpha1.rad(), PI_2, epsilon = 1e-10);
-        assert_abs_diff_eq!(computed.alpha2.rad(), PI_2, epsilon = 1e-10);
-        assert_abs_diff_eq!(computed.s, Length::new(2_226_389.816, M), epsilon = 1e-3);
-
-        let computed = solver
-            .solve_inverse(
-                (Lon::new(10. * DEG), Lat::new(0. * DEG)),
-                (Lon::new(-10. * DEG), Lat::new(0. * DEG)),
-            )
-            .unwrap();
-        assert_abs_diff_eq!(computed.alpha1.rad(), -PI_2, epsilon = 1e-10);
-        assert_abs_diff_eq!(computed.alpha2.rad(), -PI_2, epsilon = 1e-10);
-        assert_abs_diff_eq!(computed.s, Length::new(2_226_389.816, M), epsilon = 1e-3);
-
-        let computed = solver
-            .solve_inverse(
-                (Lon::new(170. * DEG), Lat::new(0. * DEG)),
-                (Lon::new(-170. * DEG), Lat::new(0. * DEG)),
-            )
-            .unwrap();
-        assert_abs_diff_eq!(computed.alpha1.rad(), PI_2, epsilon = 1e-10);
-        assert_abs_diff_eq!(computed.alpha2.rad(), PI_2, epsilon = 1e-10);
-        assert_abs_diff_eq!(computed.s, Length::new(2_226_389.816, M), epsilon = 1e-3);
-    }
-
-    #[test]
-    fn inverse_meridian_lines() {
-        let wgs84 = consts::WGS84;
-        let solver = KarneyGeodesicSolver::new(&wgs84);
-        let computed = solver
-            .solve_inverse(
-                (Lon::new(0. * DEG), Lat::new(-10. * DEG)),
-                (Lon::new(0. * DEG), Lat::new(10. * DEG)),
-            )
-            .unwrap();
-        assert_abs_diff_eq!(computed.alpha1.rad(), 0., epsilon = 1e-10);
-        assert_abs_diff_eq!(computed.alpha2.rad(), 0., epsilon = 1e-10);
-        assert_abs_diff_eq!(computed.s, Length::new(2_211_709.666, M), epsilon = 1e-3);
-
-        let computed = solver
-            .solve_inverse(
-                (Lon::new(0. * DEG), Lat::new(10. * DEG)),
-                (Lon::new(0. * DEG), Lat::new(-10. * DEG)),
-            )
-            .unwrap();
-        assert_abs_diff_eq!(computed.alpha1.rad(), PI, epsilon = 1e-10);
-        assert_abs_diff_eq!(computed.alpha2.rad(), PI, epsilon = 1e-10);
-        assert_abs_diff_eq!(computed.s, Length::new(2_211_709.666, M), epsilon = 1e-3);
-
-        let computed = solver
-            .solve_inverse(
-                (Lon::new(0. * DEG), Lat::new(80. * DEG)),
-                (Lon::new(180. * DEG), Lat::new(80. * DEG)),
-            )
-            .unwrap();
-        assert_abs_diff_eq!(computed.alpha1.rad(), 0., epsilon = 1e-10);
-        assert_abs_diff_eq!(computed.alpha2.rad(), PI, epsilon = 1e-10);
-        assert_abs_diff_eq!(computed.s, Length::new(2_233_651.715, M), epsilon = 1e-3);
     }
 }

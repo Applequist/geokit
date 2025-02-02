@@ -46,7 +46,6 @@ impl<const D: usize> Polynomial<D, Float> {
 
 #[cfg(test)]
 mod tests {
-    use num::Zero;
 
     use crate::math::complex::Complex;
     use crate::math::polynomial::Polynomial;

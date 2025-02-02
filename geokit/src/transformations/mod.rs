@@ -130,7 +130,7 @@ struct ProjectedToXYZ<'a> {
 }
 
 impl From<ProjectionError> for TransformationError {
-    fn from(value: ProjectionError) -> Self {
+    fn from(alue: ProjectionError) -> Self {
         // TODO: do proper error conversion
         Self::OutOfBounds
     }
