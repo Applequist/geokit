@@ -253,7 +253,6 @@ mod tests {
     };
     use crate::geodesy::geodesics::vincenty::VincentyGeodesicSolver;
     use crate::geodesy::geodesics::GeodesicSolver;
-    use crate::math::Float;
     use crate::quantities::length::Length;
     use crate::units::angle::{DEG, RAD};
     use crate::units::length::M;

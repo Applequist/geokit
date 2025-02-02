@@ -5,10 +5,10 @@ use crate::cs::geodetic::{Lat, Lon};
 use crate::geodesy::geodesics::{Geodesic, GeodesicSolver};
 use crate::geodesy::Ellipsoid;
 use crate::math::polynomial::Polynomial;
+use crate::math::PI;
 use crate::quantities::length::Length;
 use crate::units::angle::RAD;
 use crate::units::length::M;
-use std::f64::consts::PI;
 
 pub struct RappIterativeGeodisicSolver<'e> {
     ellipsoid: &'e Ellipsoid,
@@ -336,11 +336,10 @@ mod tests {
         DirectError, InverseError, LineData,
     };
     use crate::geodesy::geodesics::{GeodesicSolver, Length};
-    use crate::math::Float;
+    use crate::math::{PI, PI_2};
     use crate::units::angle::{DEG, RAD};
     use crate::units::length::M;
     use approx::assert_abs_diff_eq;
-    use std::f64::consts::{FRAC_PI_2, PI};
 
     fn test_on(tset: LineData, err_direct: &DirectError, err_inverse: &InverseError) {
         let solver = RappIterativeGeodisicSolver::new(&tset.ellipsoid);
@@ -386,7 +385,7 @@ mod tests {
             .unwrap();
         assert_abs_diff_eq!(direct.p2.0, Lon::new(0.17966306 * DEG), epsilon = 1e-8);
         assert_abs_diff_eq!(direct.p2.1, Lat::new(0.0 * DEG), epsilon = 1e-8);
-        assert_abs_diff_eq!(direct.alpha2, Azimuth::new(FRAC_PI_2 * RAD), epsilon = 1e-8);
+        assert_abs_diff_eq!(direct.alpha2, Azimuth::new(PI_2 * RAD), epsilon = 1e-8);
 
         let direct = solver
             .solve_direct(
@@ -397,7 +396,7 @@ mod tests {
             .unwrap();
         assert_abs_diff_eq!(direct.p2.0, Lon::new(-172.03369432 * DEG), epsilon = 1e-10);
         assert_abs_diff_eq!(direct.p2.1, Lat::new(0.0 * DEG), epsilon = 1e-10);
-        assert_abs_diff_eq!(direct.alpha2, Azimuth::new(FRAC_PI_2 * RAD), epsilon = 1e-8);
+        assert_abs_diff_eq!(direct.alpha2, Azimuth::new(PI_2 * RAD), epsilon = 1e-8);
 
         let inverse = solver
             .solve_inverse(
