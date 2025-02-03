@@ -6,7 +6,7 @@ use crate::geodesy::geodesics::{Geodesic, GeodesicSolver};
 use crate::geodesy::Ellipsoid;
 use crate::math::complex::Complex;
 use crate::math::polynomial::Polynomial;
-use crate::math::utils::sin_sum;
+use crate::math::utils::clenshaw_sin_sum;
 use crate::math::Float;
 use crate::quantities::angle::Angle;
 use crate::quantities::length::{Arc, Length};
@@ -146,6 +146,10 @@ impl<'e> KarneyGeodesicSolver<'e> {
         }
     }
 
+    pub fn inverse(p1: (Lon, Lat), p2: (Lon, Lat)) -> Geodesic {
+        unimplemented!()
+    }
+
     /// From Karney - Algorithms for geodesics eqn 17:
     /// A1 = (1 + 1/4 eps^2 + 1/64 eps^4 + 1/256 eps^6 + ...) / (1 - eps)
     fn A1(epsilon: Float) -> Float {
@@ -156,7 +160,7 @@ impl<'e> KarneyGeodesicSolver<'e> {
     /// I1(sigma) = A1 * (sigma + sum(1, inf, C1l * sin(2l * sigma)))
     fn I1(epsilon: Float, A1: Float, sigma: Angle) -> Float {
         let C1L = Self::C1L.map(|p| p.fast_eval_at(epsilon));
-        A1 * (sigma.rad() + sin_sum(&C1L, sigma.rad()))
+        A1 * (sigma.rad() + clenshaw_sin_sum(&C1L, 2. * sigma.rad()))
     }
 
     /// From Karney - Algorithms for geodesics eqn 20:
@@ -181,7 +185,7 @@ impl<'e> KarneyGeodesicSolver<'e> {
     /// I3(sigma) = A3 * (sigma + sum(1, inf, C3l * sin(2l * sigma))
     fn I3(&self, A3: Float, epsilon: Float, sigma: Angle) -> Float {
         let C3L = self.C3L.map(|p| p.fast_eval_at(epsilon));
-        A3 * (sigma.rad() + sin_sum(&C3L, sigma.rad()))
+        A3 * (sigma.rad() + clenshaw_sin_sum(&C3L, 2. * sigma.rad()))
     }
 }
 
@@ -279,7 +283,7 @@ impl<'e> GeodesicSolver for KarneyGeodesicSolver<'e> {
     }
 
     fn solve_inverse(&self, p1: (Lon, Lat), p2: (Lon, Lat)) -> Result<Geodesic, &'static str> {
-        unimplemented!()
+        Ok(self.inverse(p1, p2))
     }
 }
 
