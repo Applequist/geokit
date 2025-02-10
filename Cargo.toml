@@ -16,3 +16,4 @@ regex = "1.10.2"
 smol_str = "0.2.1"
 thiserror = "1.0.50"
 derive_more = { version = "1.0.0", features = ['display', 'add', 'add_assign', 'not'] }
+rand_distr = "0.5.0"

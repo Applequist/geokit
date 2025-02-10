@@ -116,7 +116,7 @@ mod tests {
         assert_eq!(ab.is_empty(), empty, "Expected {} empty", ab);
         assert_eq!(ab.is_full(), full, "Expected {} full", ab);
         assert_eq!(ab.is_inverted(), inverted, "Expected {} inverted", ab);
-        assert_abs_diff_eq!(ab.length(), length, epsilon = 1e-15);
+        assert_abs_diff_eq!(ab.length(), length);
     }
 
     #[test]

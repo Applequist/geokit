@@ -11,15 +11,14 @@
 //!
 //! And a set of value type to represent **normalized** coordinates.
 
+use super::geodetic::Height;
 use crate::{
     math::Float,
-    quantities::length::Length,
+    quantities::{length::Length, Convertible},
     units::length::{LengthUnit, M},
 };
 use approx::AbsDiffEq;
 use derive_more::derive::Display;
-
-use super::geodetic::Height;
 
 /// [GeocentricAxes] defines the possible set of axes used in **geocentric** 3D cartesion CS.
 /// Geocentric CS uses [meter][crate::units::length::M] unit by default for all axes.
@@ -27,6 +26,31 @@ use super::geodetic::Height;
 pub enum GeocentricAxes {
     /// Coordinates are x, y, and z in meters.
     XYZ,
+}
+
+pub struct CartesianErrors(Length);
+
+impl CartesianErrors {
+    #[inline]
+    pub const fn super_tiny() -> Self {
+        Self(Length::new(1e-9, M))
+    }
+
+    #[inline]
+    pub const fn tiny() -> Self {
+        Self(Length::new(1e-9, M))
+    }
+
+    #[inline]
+    pub const fn small() -> Self {
+        Self(Length::new(1e-6, M))
+    }
+}
+
+impl Default for CartesianErrors {
+    fn default() -> Self {
+        CartesianErrors::super_tiny()
+    }
 }
 
 /// [XYZ] represents **normalized** geocentric coordinates.
@@ -42,17 +66,11 @@ pub struct XYZ {
     pub z: Length,
 }
 
-impl AbsDiffEq for XYZ {
-    type Epsilon = Float;
-
-    fn default_epsilon() -> Self::Epsilon {
-        Float::default_epsilon()
-    }
-
-    fn abs_diff_eq(&self, other: &Self, epsilon: Self::Epsilon) -> bool {
-        self.x.abs_diff_eq(&other.x, epsilon)
-            && self.y.abs_diff_eq(&other.y, epsilon)
-            && self.z.abs_diff_eq(&other.z, epsilon)
+impl XYZ {
+    pub fn approx_eq(&self, other: &Self, epsilon: CartesianErrors) -> bool {
+        self.x.abs_diff_eq(&other.x, epsilon.0)
+            && self.y.abs_diff_eq(&other.y, epsilon.0)
+            && self.z.abs_diff_eq(&other.z, epsilon.0)
     }
 }
 

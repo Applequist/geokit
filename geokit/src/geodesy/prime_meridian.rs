@@ -6,7 +6,7 @@ use smol_str::SmolStr;
 /// It is defined by its longitude with respect to the Greenwich meridian,
 /// expressed **in radians** and positive eastward.
 #[derive(Debug, Clone, Display)]
-#[display("(name = {}, lon = {})", name, lon)]
+#[display("(name = {}, lon = {})", name, lon.angle().dms())]
 pub struct PrimeMeridian {
     name: SmolStr,
     lon: Lon,

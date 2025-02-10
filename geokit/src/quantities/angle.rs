@@ -6,6 +6,8 @@ use approx::AbsDiffEq;
 use derive_more::derive::{Add, AddAssign, Display, Neg, Sub, SubAssign};
 use std::ops::{Div, DivAssign, Mul, MulAssign};
 
+use super::Convertible;
+
 /// [Angle] represents a 1-dimensional angle value.
 /// The internal representation is a [Float] value in radians.
 ///
@@ -62,26 +64,32 @@ impl Angle {
     pub const M_PI_2: Angle = Angle(-PI_2);
     pub const M_PI: Angle = Angle(-PI);
 
+    /// Less that 7e-9 m at the equator
+    #[inline]
+    pub const fn super_tiny() -> Angle {
+        Angle(1e-15)
+    }
+
+    /// Less than 7e-6 m at the equator
+    #[inline]
+    pub const fn tiny() -> Angle {
+        Angle(1e-12)
+    }
+
+    /// Less than 7e-3 m at the equator
+    #[inline]
+    pub const fn small() -> Angle {
+        Angle(1e-9)
+    }
+
+    pub const fn default_epsilon() -> Angle {
+        Self::super_tiny()
+    }
+
     /// Create an angle value whose `qty` is given in `unit`.
     #[inline]
     pub const fn new(qty: Float, unit: AngleUnit) -> Self {
         Angle(qty * unit.rad_per_unit())
-    }
-
-    /// Create an angle value from a degree/minute/second values.
-    ///
-    /// # Parameters
-    ///
-    /// - `d`: the number of degrees. Determine the sign of the returned angle.
-    /// - `m`: the number of minutes. Must be >= 0. and <= 59.
-    /// - `s`: the number of seconds with fractional part. Must be >= 0 and < 60.
-    ///
-    pub fn dms(d: Float, m: Float, s: Float) -> Angle {
-        debug_assert!(m >= 0. && m <= 59.0, "minutes must be in [0..59]");
-        debug_assert!(s >= 0. && s < 60., "seconds must be in [0..60)");
-        let f = d.signum();
-        let deg = d.abs() + m / 60. + s / 3600.;
-        f * deg * DEG
     }
 
     /// Return the angle value clamped in [-pi/2..pi/2]
@@ -135,20 +143,6 @@ impl Angle {
         Angle(self.0.abs())
     }
 
-    /// Return this angle value in the given unit.
-    ///
-    /// # Example
-    /// ```
-    /// use geokit::units::angle::DEG;
-    /// use geokit::quantities::angle::Angle;
-    /// let a = Angle::PI_2;
-    /// let a_deg = a.val(DEG);
-    /// assert_eq!(a, a_deg * DEG);
-    /// ```
-    pub fn val(self, unit: AngleUnit) -> Float {
-        self.0 * unit.1 / unit.0
-    }
-
     /// Return this angle value in radians.
     #[inline]
     pub fn rad(self) -> Float {
@@ -180,8 +174,12 @@ impl Angle {
         (other - self).wrapped()
     }
 
+    pub fn deg(self) -> Deg {
+        Deg(self.val(DEG))
+    }
+
     /// Convert this angle into a [Dms] value for formatting.
-    pub fn to_dms(self) -> Dms {
+    pub fn dms(self) -> Dms {
         let rad = self.0;
         let sgn = rad.signum();
         let mut deg = rad.abs().to_degrees();
@@ -197,6 +195,24 @@ impl Angle {
             s = 60. * deg.fract();
         }
         Dms(sgn * d, m, s)
+    }
+}
+
+impl Convertible for Angle {
+    type Unit = AngleUnit;
+
+    /// Return this angle value in the given unit.
+    ///
+    /// # Example
+    /// ```
+    /// use geokit::units::angle::DEG;
+    /// use geokit::quantities::angle::Angle;
+    /// let a = Angle::PI_2;
+    /// let a_deg = a.val(DEG);
+    /// assert_eq!(a, a_deg * DEG);
+    /// ```
+    fn val(self, unit: AngleUnit) -> Float {
+        self.0 * unit.1 / unit.0
     }
 }
 
@@ -237,14 +253,14 @@ impl DivAssign<Float> for Angle {
 }
 
 impl AbsDiffEq for Angle {
-    type Epsilon = Float;
+    type Epsilon = Angle;
 
     fn default_epsilon() -> Self::Epsilon {
-        Float::default_epsilon()
+        Angle::default_epsilon()
     }
 
     fn abs_diff_eq(&self, other: &Self, epsilon: Self::Epsilon) -> bool {
-        self.0.abs_diff_eq(&other.0, epsilon)
+        (*self - *other).abs() <= epsilon
     }
 }
 
@@ -263,6 +279,10 @@ impl Mul<Float> for AngleUnit {
         rhs * self
     }
 }
+
+#[derive(Copy, Clone, PartialEq, Debug, Display)]
+#[display("{} deg", _0)]
+pub struct Deg(Float);
 
 /// An angle value expressed in degrees, minutes and seconds.
 ///
@@ -370,12 +390,12 @@ mod tests {
         let a6 = -90. * DEG;
         let a7 = 90. * DEG;
 
-        assert_abs_diff_eq!(a1.diff_to(a2), 70. * DEG, epsilon = 1e-15);
-        assert_abs_diff_eq!(a1.diff_to(a3), 100. * DEG, epsilon = 1e-15);
-        assert_abs_diff_eq!(a1.diff_to(a4), -70. * DEG, epsilon = 1e-15);
-        assert_abs_diff_eq!(a1.diff_to(a5), -20. * DEG, epsilon = 1e-15);
-        assert_abs_diff_eq!(a7.diff_to(a6), -180. * DEG, epsilon = 1e-15);
-        assert_abs_diff_eq!(a6.diff_to(a7), 180. * DEG, epsilon = 1e-15);
+        assert_abs_diff_eq!(a1.diff_to(a2), 70. * DEG, epsilon = Angle(1e-15));
+        assert_abs_diff_eq!(a1.diff_to(a3), 100. * DEG, epsilon = Angle(1e-15));
+        assert_abs_diff_eq!(a1.diff_to(a4), -70. * DEG, epsilon = Angle(1e-15));
+        assert_abs_diff_eq!(a1.diff_to(a5), -20. * DEG, epsilon = Angle(1e-15));
+        assert_abs_diff_eq!(a7.diff_to(a6), -180. * DEG, epsilon = Angle(1e-15));
+        assert_abs_diff_eq!(a6.diff_to(a7), 180. * DEG, epsilon = Angle(1e-15));
     }
 
     #[test]
@@ -385,10 +405,7 @@ mod tests {
             " -33° 06′ 22.01545000″"
         );
         assert_eq!(format!("{}", Dms(45., 0., 0.)), "  45° 00′ 00.00000000″");
-        assert_eq!(
-            format!("{}", (PI_4 * RAD).to_dms()),
-            "  45° 00′ 00.00000000″"
-        );
+        assert_eq!(format!("{}", (PI_4 * RAD).dms()), "  45° 00′ 00.00000000″");
         assert_eq!(
             format!("{}", Dms(-179., 59., 59.1234)),
             "-179° 59′ 59.12340000″"

@@ -168,13 +168,16 @@ pub mod consts {
 #[cfg(test)]
 mod tests {
     use approx::assert_abs_diff_eq;
+    use regex::Regex;
 
-    use crate::cs::cartesian::XYZ;
-    use crate::cs::geodetic::{Lat, Lon, LLH};
+    use crate::cs::cartesian::{CartesianErrors, XYZ};
+    use crate::cs::geodetic::{GeodeticErrors, Lat, Lon, LLH};
     use crate::geodesy::{ellipsoid, geodetic_datum, prime_meridian, Ellipsoid, PrimeMeridian};
+    use crate::math::Float;
     use crate::units::angle::DEG;
     use crate::units::length::M;
 
+    use super::consts::WGS84;
     use super::GeodeticDatum;
 
     #[test]
@@ -235,14 +238,13 @@ mod tests {
             height: 100.0 * M,
         });
 
-        assert_abs_diff_eq!(
-            xyz,
-            XYZ {
+        xyz.approx_eq(
+            &XYZ {
                 x: 4591703.1092 * M,
                 y: 187953.8205 * M,
-                z: 4408161.0783 * M
+                z: 4408161.0783 * M,
             },
-            epsilon = 1e-3
+            CartesianErrors::default(),
         );
     }
 
@@ -256,14 +258,48 @@ mod tests {
             z: 4408161.0783 * M,
         });
 
-        assert_abs_diff_eq!(
-            llh,
-            LLH {
+        llh.approx_eq(
+            &LLH {
                 lon: Lon::new(2.344 * DEG),
                 lat: Lat::new(44.0 * DEG),
-                height: 100. * M
+                height: 100. * M,
             },
-            epsilon = 1e-3
+            GeodeticErrors::default(),
         );
+    }
+
+    const XYZLLH: &'static str = include_str!("xyz_to_llh_100.txt");
+
+    fn read_conversions() -> impl Iterator<Item = (XYZ, LLH)> {
+        XYZLLH
+            .lines()
+            .filter(|&l| !l.is_empty() && !l.starts_with("#"))
+            .map(move |l| {
+                let xyzllh = l
+                    .split(',')
+                    .map(|s| s.trim().parse::<Float>().unwrap())
+                    .collect::<Vec<_>>();
+                let xyz = XYZ {
+                    x: xyzllh[0] * M,
+                    y: xyzllh[1] * M,
+                    z: xyzllh[2] * M,
+                };
+                let llh = LLH {
+                    lon: Lon::new(xyzllh[3] * DEG),
+                    lat: Lat::new(xyzllh[4] * DEG),
+                    height: xyzllh[5] * M,
+                };
+                (xyz, llh)
+            })
+    }
+
+    #[test]
+    fn xyz_to_lly_100() {
+        let datum = WGS84;
+
+        for (xyz, expected_llh) in read_conversions() {
+            let llh = datum.xyz_to_llh(xyz);
+            llh.approx_eq(&expected_llh, GeodeticErrors::default());
+        }
     }
 }

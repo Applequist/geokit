@@ -167,6 +167,7 @@ mod test {
         },
         geodesy::ellipsoid,
         projections::Projection,
+        quantities::Convertible,
         units::{angle::DEG, length::M},
     };
 

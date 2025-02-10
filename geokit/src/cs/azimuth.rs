@@ -1,6 +1,8 @@
 //! Provide a value type to work with [Azimuth].
 
 use crate::quantities::angle::Angle;
+use crate::quantities::Convertible;
+use crate::units::angle::DEG;
 use crate::{math::Float, units::angle::AngleUnit};
 use approx::AbsDiffEq;
 use derive_more::derive::Display;
@@ -32,7 +34,7 @@ use std::ops::{Add, Sub};
 /// as [Azimuth], eg positive clockwise.
 /// - Addition and subtraction of [Angle] values. Return an [Azimuth]
 #[derive(Debug, Copy, Clone, PartialEq, Display)]
-#[display("{}", self.0.to_dms())]
+#[display("{}", self.0.dms())]
 pub struct Azimuth(Angle);
 
 impl Azimuth {
@@ -57,18 +59,18 @@ impl Azimuth {
     /// - `m`: the number of minutes. Must be >= 0 and <= 59.
     /// - `s`: the number of seconds with fractional part. Must be >= 0 and <= 60.
     pub fn dms(d: Float, m: Float, s: Float) -> Self {
-        Self::new(Angle::dms(d, m, s))
+        debug_assert!(d > -180. && m <= 180., "degrees must be in (-180..180]");
+        debug_assert!(m >= 0. && m <= 59.0, "minutes must be in [0..59]");
+        debug_assert!(s >= 0. && s < 60., "seconds must be in [0..60)");
+        let f = d.signum();
+        let deg = d.abs() + m / 60. + s / 3600.;
+        Self::new(f * deg * DEG)
     }
 
     /// Return the azimtuh value as an [Angle]
     #[inline]
     pub fn angle(self) -> Angle {
         self.0
-    }
-
-    #[inline]
-    pub fn val(self, unit: AngleUnit) -> Float {
-        self.0.val(unit)
     }
 
     /// Return this azimuth as a raw angle value (-pi..pi] radians.
@@ -98,6 +100,15 @@ impl Azimuth {
     }
 }
 
+impl Convertible for Azimuth {
+    type Unit = AngleUnit;
+
+    #[inline]
+    fn val(self, unit: AngleUnit) -> Float {
+        self.0.val(unit)
+    }
+}
+
 impl Add<Angle> for Azimuth {
     type Output = Azimuth;
 
@@ -123,14 +134,14 @@ impl Sub for Azimuth {
 }
 
 impl AbsDiffEq for Azimuth {
-    type Epsilon = Float;
+    type Epsilon = Angle;
 
     fn default_epsilon() -> Self::Epsilon {
-        Float::default_epsilon()
+        Angle::default_epsilon()
     }
 
     fn abs_diff_eq(&self, other: &Self, epsilon: Self::Epsilon) -> bool {
-        self.0.abs_diff_eq(&other.0, epsilon)
+        (*self - *other).abs() <= epsilon
     }
 }
 
@@ -148,21 +159,21 @@ mod test {
         let sw = Azimuth::new(-170. * DEG);
         let nw = Azimuth::new(-30. * DEG);
 
-        assert_abs_diff_eq!(se - ne, 140. * DEG, epsilon = 1e-15);
-        assert_abs_diff_eq!(sw - ne, 180. * DEG, epsilon = 1e-15);
-        assert_abs_diff_eq!(nw - ne, -40. * DEG, epsilon = 1e-15);
+        assert_abs_diff_eq!(se - ne, 140. * DEG);
+        assert_abs_diff_eq!(sw - ne, 180. * DEG);
+        assert_abs_diff_eq!(nw - ne, -40. * DEG);
 
-        assert_abs_diff_eq!(sw - se, 40. * DEG, epsilon = 1e-15);
-        assert_abs_diff_eq!(nw - se, 180. * DEG, epsilon = 1e-15);
-        assert_abs_diff_eq!(ne - se, -140. * DEG, epsilon = 1e-15);
+        assert_abs_diff_eq!(sw - se, 40. * DEG);
+        assert_abs_diff_eq!(nw - se, 180. * DEG);
+        assert_abs_diff_eq!(ne - se, -140. * DEG);
 
-        assert_abs_diff_eq!(nw - sw, 140. * DEG, epsilon = 1e-15);
-        assert_abs_diff_eq!(ne - sw, 180. * DEG, epsilon = 1e-15);
-        assert_abs_diff_eq!(se - sw, -40. * DEG, epsilon = 1e-15);
+        assert_abs_diff_eq!(nw - sw, 140. * DEG);
+        assert_abs_diff_eq!(ne - sw, 180. * DEG);
+        assert_abs_diff_eq!(se - sw, -40. * DEG);
 
-        assert_abs_diff_eq!(ne - nw, 40. * DEG, epsilon = 1e-15);
-        assert_abs_diff_eq!(se - nw, 180. * DEG, epsilon = 1e-15);
-        assert_abs_diff_eq!(sw - nw, -140. * DEG, epsilon = 1e-15);
+        assert_abs_diff_eq!(ne - nw, 40. * DEG);
+        assert_abs_diff_eq!(se - nw, 180. * DEG);
+        assert_abs_diff_eq!(sw - nw, -140. * DEG);
     }
 
     #[test]

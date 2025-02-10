@@ -14,7 +14,8 @@
 use crate::math::Float;
 use crate::quantities::angle::Angle;
 use crate::quantities::length::Length;
-use crate::units::angle::{AngleUnit, RAD};
+use crate::quantities::Convertible;
+use crate::units::angle::{AngleUnit, DEG, RAD};
 use crate::units::length::{LengthUnit, M};
 use approx::AbsDiffEq;
 use derive_more::derive::{Display, Neg};
@@ -175,6 +176,44 @@ impl Default for GeodeticAxes {
     }
 }
 
+pub struct GeodeticErrors {
+    pub lon_err: Angle,
+    pub lat_err: Angle,
+    pub height_err: Length,
+}
+
+impl GeodeticErrors {
+    pub const fn super_tiny() -> Self {
+        GeodeticErrors {
+            lon_err: Angle::super_tiny(),
+            lat_err: Angle::super_tiny(),
+            height_err: Length::super_tiny(),
+        }
+    }
+
+    pub const fn tiny() -> Self {
+        GeodeticErrors {
+            lon_err: Angle::tiny(),
+            lat_err: Angle::tiny(),
+            height_err: Length::tiny(),
+        }
+    }
+
+    pub const fn small() -> Self {
+        GeodeticErrors {
+            lon_err: Angle::small(),
+            lat_err: Angle::small(),
+            height_err: Length::small(),
+        }
+    }
+}
+
+impl Default for GeodeticErrors {
+    fn default() -> Self {
+        GeodeticErrors::super_tiny()
+    }
+}
+
 /// [LLH] represents **normalized** geodeetic coordinates:
 /// - longitude in radians, positive east,
 /// - latitude in radians, positive north,
@@ -184,20 +223,16 @@ impl Default for GeodeticAxes {
 pub struct LLH {
     pub lon: Lon,
     pub lat: Lat,
-    pub height: Height,
+    pub height: Length,
 }
 
-impl AbsDiffEq for LLH {
-    type Epsilon = Float;
-
-    fn default_epsilon() -> Self::Epsilon {
-        Float::default_epsilon()
-    }
-
-    fn abs_diff_eq(&self, other: &Self, epsilon: Self::Epsilon) -> bool {
-        self.lon.abs_diff_eq(&other.lon, epsilon)
-            && self.lat.abs_diff_eq(&other.lat, epsilon)
-            && self.height.abs_diff_eq(&other.height, epsilon)
+impl LLH {
+    /// Check whether this [LLH] is equal to the `other` [LLH] within the given
+    /// [GeodeticErrors] bounds.
+    pub fn approx_eq(&self, other: &LLH, err: GeodeticErrors) -> bool {
+        self.lon.abs_diff_eq(&other.lon, err.lon_err)
+            && self.lat.abs_diff_eq(&other.lat, err.lat_err)
+            && self.height.abs_diff_eq(&other.height, err.height_err)
     }
 }
 
@@ -213,7 +248,7 @@ impl AbsDiffEq for LLH {
 /// - [Conversion][Self::val()] to other [AngleUnit]
 /// - Trigonometric operations like sin, cos, tan...
 #[derive(Debug, Copy, Clone, PartialEq, PartialOrd, Neg, Display)]
-#[display("{}", _0.to_dms())]
+#[display("{}", _0.deg())]
 pub struct Lon(Angle);
 
 impl Lon {
@@ -230,6 +265,10 @@ impl Lon {
     /// Create a new longitude value from an [Angle] ***ALREADY*** in [-pi..pi]
     pub const fn const_new(val: Angle) -> Self {
         Self(val)
+    }
+
+    pub fn deg(val_deg: Float) -> Self {
+        Self::new(Angle::new(val_deg, DEG))
     }
 
     /// Create a new longitue value from a *dms* angle value.
@@ -249,7 +288,12 @@ impl Lon {
     /// assert!(Lon::dms(-12., 45., 59.1234).rad() < 0.0);
     /// ```
     pub fn dms(d: Float, m: Float, s: Float) -> Self {
-        Self::new(Angle::dms(d, m, s))
+        debug_assert!(d > -180. && m <= 180., "degrees must be in (-180..180]");
+        debug_assert!(m >= 0. && m <= 59.0, "minutes must be in [0..59]");
+        debug_assert!(s >= 0. && s < 60., "seconds must be in [0..60)");
+        let f = d.signum();
+        let deg = d.abs() + m / 60. + s / 3600.;
+        Self::new(f * deg * DEG)
     }
 
     /// Normalize the longitude into (-pi..pi] such that any point on a parallel
@@ -266,11 +310,6 @@ impl Lon {
     #[inline]
     pub fn angle(self) -> Angle {
         self.0
-    }
-
-    #[inline]
-    pub fn val(self, unit: AngleUnit) -> Float {
-        self.0.val(unit)
     }
 
     /// Return the longitude as a raw angle value **in radians**.
@@ -297,6 +336,15 @@ impl Lon {
     #[inline]
     pub fn tan(self) -> Float {
         self.0.tan()
+    }
+}
+
+impl Convertible for Lon {
+    type Unit = AngleUnit;
+
+    #[inline]
+    fn val(self, unit: AngleUnit) -> Float {
+        self.0.val(unit)
     }
 }
 
@@ -371,7 +419,6 @@ impl Sub for Lon {
     /// assert_eq!(converted_lon, 40. * DEG);
     /// ```
     fn sub(self, rhs: Self) -> Self::Output {
-        // equiv. to Lon(rhs.0.diff_to(self.0))
         Lon::new(self.0 - rhs.0)
     }
 }
@@ -396,14 +443,14 @@ impl SubAssign<Angle> for Lon {
 }
 
 impl AbsDiffEq for Lon {
-    type Epsilon = Float;
+    type Epsilon = Angle;
 
     fn default_epsilon() -> Self::Epsilon {
-        Float::default_epsilon()
+        Angle::default_epsilon()
     }
 
     fn abs_diff_eq(&self, other: &Self, epsilon: Self::Epsilon) -> bool {
-        self.0.abs_diff_eq(&other.0, epsilon)
+        (*self - *other).0.abs() <= epsilon
     }
 }
 
@@ -435,7 +482,7 @@ impl AbsDiffEq for Lon {
 /// - saturating addition and subtraction of [Angle].
 /// - subtraction resulting in an [Angle].
 #[derive(Copy, Clone, Debug, PartialOrd, PartialEq, Neg, Display)]
-#[display("{}", self.0.to_dms())]
+#[display("{}", self.0.deg())]
 pub struct Lat(Angle);
 
 impl Lat {
@@ -447,6 +494,12 @@ impl Lat {
     /// The angle is clamped in [-pi/2..pi/2]
     pub fn new(val: Angle) -> Self {
         Lat(val.clamped(Angle::M_PI_2, Angle::PI_2))
+    }
+
+    /// Create a new latitude value with an angle in degrees.
+    /// The angle is clamped in [-pi/2..pi/2]
+    pub fn deg(val_deg: Float) -> Self {
+        Self::new(Angle::new(val_deg, DEG))
     }
 
     /// Create a new latitude value from a *dms* angle value.
@@ -466,7 +519,12 @@ impl Lat {
     /// assert!(Lat::dms(-12., 45., 59.1234).rad() < 0.0);
     /// ```
     pub fn dms(d: Float, m: Float, s: Float) -> Self {
-        Self::new(Angle::dms(d, m, s))
+        debug_assert!(d >= -90. && m <= 90., "degrees must be in [-90..90]");
+        debug_assert!(m >= 0. && m <= 59.0, "minutes must be in [0..59]");
+        debug_assert!(s >= 0. && s < 60., "seconds must be in [0..60)");
+        let f = d.signum();
+        let deg = d.abs() + m / 60. + s / 3600.;
+        Self::new(f * deg * DEG)
     }
 
     #[inline]
@@ -478,11 +536,6 @@ impl Lat {
     #[inline]
     pub fn angle(self) -> Angle {
         self.0
-    }
-
-    #[inline]
-    pub fn val(self, unit: AngleUnit) -> Float {
-        self.0.val(unit)
     }
 
     /// Return this latitude as a raw angle value in radians.
@@ -509,6 +562,15 @@ impl Lat {
     #[inline]
     pub fn tan(self) -> Float {
         self.0.tan()
+    }
+}
+
+impl Convertible for Lat {
+    type Unit = AngleUnit;
+
+    #[inline]
+    fn val(self, unit: AngleUnit) -> Float {
+        self.0.val(unit)
     }
 }
 
@@ -565,14 +627,14 @@ impl Div<Float> for Lat {
 }
 
 impl AbsDiffEq for Lat {
-    type Epsilon = Float;
+    type Epsilon = Angle;
 
     fn default_epsilon() -> Self::Epsilon {
-        Float::default_epsilon()
+        Angle::default_epsilon()
     }
 
     fn abs_diff_eq(&self, other: &Self, epsilon: Self::Epsilon) -> bool {
-        self.0.abs_diff_eq(&other.0, epsilon)
+        (*self - *other).abs() <= epsilon
     }
 }
 
@@ -710,8 +772,13 @@ mod tests {
 
     #[test]
     fn lon_display() {
-        // display
-        assert_eq!(format!("{}", Lon::new(90. * DEG)), "  90° 00′ 00.00000000″");
+        // Default display
+        assert_eq!(format!("{}", Lon::new(90. * DEG)), "90 deg");
+        // DMS display
+        assert_eq!(
+            format!("{}", Lon::new(90. * DEG).angle().dms()),
+            "  90° 00′ 00.00000000″"
+        );
     }
 
     #[test]
@@ -769,8 +836,8 @@ mod tests {
         ];
 
         for (x, x_plus_a, x_minus_a) in data {
-            assert_abs_diff_eq!(x + a, x_plus_a, epsilon = 1e-15);
-            assert_abs_diff_eq!(x - a, x_minus_a, epsilon = 1e-15);
+            assert_abs_diff_eq!(x + a, x_plus_a);
+            assert_abs_diff_eq!(x - a, x_minus_a);
         }
     }
 
@@ -799,7 +866,12 @@ mod tests {
 
     #[test]
     fn lat_display() {
-        // Display
-        assert_eq!(format!("{}", Lat::new(45. * DEG)), "  45° 00′ 00.00000000″");
+        // Default display
+        assert_eq!(format!("{}", Lat::new(45. * DEG)), "45 deg");
+        // DMS display
+        assert_eq!(
+            format!("{}", Lat::new(45. * DEG).angle().dms()),
+            "  45° 00′ 00.00000000″"
+        );
     }
 }

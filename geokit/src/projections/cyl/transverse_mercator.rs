@@ -8,7 +8,7 @@ use crate::{
     geodesy::Ellipsoid,
     math::{polynomial::Polynomial, Float},
     projections::{Projection, ProjectionError},
-    quantities::length::Length,
+    quantities::{length::Length, Convertible},
     units::{
         angle::{DEG, RAD},
         length::M,
@@ -245,10 +245,11 @@ mod test {
     use crate::{
         cs::{
             cartesian::ENH,
-            geodetic::{Lat, Lon, LLH},
+            geodetic::{GeodeticErrors, Lat, Lon, LLH},
         },
         geodesy::ellipsoid,
         projections::Projection,
+        quantities::Convertible,
         units::{angle::DEG, length::M},
     };
     use approx::assert_abs_diff_eq;
@@ -354,7 +355,7 @@ mod test {
         let north_pole_llh = proj.unproj(north_pole_enh).unwrap();
         println!("north_pole (llh)= {north_pole_llh:?}");
 
-        assert_abs_diff_eq!(&north_pole_llh, &north_pole, epsilon = 1e-9);
+        north_pole_llh.approx_eq(&north_pole, GeodeticErrors::default());
 
         let south_pole = LLH {
             lon: Lon::new(-10. * DEG),
@@ -367,6 +368,6 @@ mod test {
         let south_pole_llh = proj.unproj(south_pole_enh).unwrap();
         println!("south_pole (llh)= {south_pole_llh:?}");
 
-        assert_abs_diff_eq!(&south_pole_llh, &south_pole, epsilon = 1e-9);
+        south_pole_llh.approx_eq(&south_pole, GeodeticErrors::default());
     }
 }

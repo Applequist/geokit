@@ -328,28 +328,21 @@ mod tests {
         let wgs84 = consts::WGS84;
         assert_abs_diff_eq!(
             wgs84.prime_meridional_radius(Lat::ZERO),
-            wgs84.a() * (1. - wgs84.e_sq()),
-            epsilon = 1e-10
+            wgs84.a() * (1. - wgs84.e_sq())
         );
         assert_abs_diff_eq!(
             wgs84.prime_meridional_radius(Lat::MAX),
             wgs84.a_sq() / wgs84.b().m() * M,
-            epsilon = 1e-8
         );
     }
 
     #[test]
     fn test_prime_vertical_radius() {
         let wgs84 = consts::WGS84;
-        assert_abs_diff_eq!(
-            wgs84.prime_vertical_radius(Lat::ZERO),
-            wgs84.a(),
-            epsilon = 1e-10
-        );
+        assert_abs_diff_eq!(wgs84.prime_vertical_radius(Lat::ZERO), wgs84.a(),);
         assert_abs_diff_eq!(
             wgs84.prime_vertical_radius(Lat::MAX),
             wgs84.a_sq() / wgs84.b().m() * M,
-            epsilon = 1e-8
         );
     }
 

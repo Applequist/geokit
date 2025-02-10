@@ -59,6 +59,7 @@ pub mod vincenty;
 #[cfg(test)]
 mod tests {
 
+    use crate::asserts::{approx_angle_eq, approx_length_eq};
     use crate::cs::azimuth::Azimuth;
     use crate::cs::geodetic::{Lat, Lon};
     use crate::geodesy::ellipsoid::{self, consts};
@@ -113,107 +114,35 @@ mod tests {
     /// Check whether a direct geodesic computation is within the error bounds of the expected
     /// result.
     pub fn check_direct(computed: &Geodesic, expected: &Geodesic, err: &DirectError) {
-        print_direct(computed, expected);
-        check_angle(
-            computed.p2.0.angle(),
-            expected.p2.0.angle(),
-            err.lon,
-            "Longitude error",
-        );
-        check_angle(
-            computed.p2.1.angle(),
-            expected.p2.1.angle(),
-            err.lat,
-            "Latitude error",
-        );
-        check_angle(
-            computed.alpha2.angle(),
-            expected.alpha2.angle(),
-            err.alpha,
-            "Azimuth error",
-        );
+        if !approx_angle_eq(computed.p2.0, expected.p2.0, err.lon, "Longitude error")
+            || !approx_angle_eq(computed.p2.1, expected.p2.1, err.lat, "Latitude error")
+            || !approx_angle_eq(computed.alpha2, expected.alpha2, err.alpha, "Azimuth error")
+        {
+            print_test_case(computed, expected);
+            assert!(false, "Direct Geodesic computation failed");
+        }
     }
 
     /// Check whether an inverse geodesic computation is within the error bounds of the expected
     /// result.
     pub fn check_inverse(computed: &Geodesic, expected: &Geodesic, err: &InverseError) {
-        print_inverse(computed, expected);
-        check_angle(
-            computed.alpha1.angle(),
-            expected.alpha1.angle(),
-            err.alpha1,
-            "Alpha1 error",
-        );
-        check_angle(
-            computed.alpha2.angle(),
-            expected.alpha2.angle(),
-            err.alpha2,
-            "Alpha2 error",
-        );
-        check_length(computed.s, expected.s, err.s, "Distance error");
+        if !approx_angle_eq(computed.alpha1, expected.alpha1, err.alpha1, "Alpha1 error")
+            || !approx_angle_eq(computed.alpha2, expected.alpha2, err.alpha2, "Alpha2 error")
+            || !approx_length_eq(computed.s, expected.s, err.s, "Distance error")
+        {
+            print_test_case(computed, expected);
+            assert!(false, "Inverse Geodesic computation failed");
+        }
     }
 
-    /// Check that the absolute difference of two angles is less or equal than `err` degrees.
-    fn check_angle(res: Angle, exp: Angle, err: Angle, err_msg: &str) {
-        let abs_diff = (res - exp).abs();
-        assert!(
-            abs_diff <= err,
-            "{}: |res - exp| = {:e} deg > {:e} deg",
-            err_msg,
-            abs_diff.val(DEG),
-            err.val(DEG)
-        );
-    }
-
-    /// Check that the absolute difference of two lengthes is less or equal than `err` meters.
-    fn check_length(res: Length, exp: Length, err: Length, err_msg: &str) {
-        let abs_diff = (res - exp).abs();
-        assert!(
-            abs_diff <= err,
-            "{}: |res - exp| = {:e} m > {:e} m",
-            err_msg,
-            abs_diff.m(),
-            err.m()
-        );
-    }
-
-    fn print_direct(computed: &Geodesic, expected: &Geodesic) {
+    fn print_test_case(computed: &Geodesic, expected: &Geodesic) {
         println!(
             "-----------------------------------------------------------------------------------"
         );
-        println!("Test Case: ");
+        println!("Exptected: ");
         println!("{}", expected);
-        println!("Computed Direct: ");
+        println!("Computed: ");
         println!("{}", computed);
-        println!();
-        let diff_lon_dms = (computed.p2.0.angle() - expected.p2.0.angle()).to_dms();
-        println!("error on lon (res - exp) = {}", diff_lon_dms);
-
-        let diff_lat_dms = (computed.p2.1.angle() - expected.p2.1.angle()).to_dms();
-        println!("error on lat (res - exp) = {}", diff_lat_dms);
-
-        let diff_az_dms = (computed.alpha2.angle() - expected.alpha2.angle()).to_dms();
-        println!("error on az (res - exp) = {}", diff_az_dms);
-    }
-
-    fn print_inverse(computed: &Geodesic, expected: &Geodesic) {
-        println!(
-            "-----------------------------------------------------------------------------------"
-        );
-        println!("Test Case: ");
-        println!("{}", expected);
-        println!("Computed Inverse: ");
-        println!("{}", computed);
-        println!();
-
-        let diff_az1_dms = (computed.alpha1.angle() - expected.alpha1.angle()).to_dms();
-        println!("error on az1 (computed - input) = {}", diff_az1_dms);
-
-        let diff_az2_dms = (computed.alpha2.angle() - expected.alpha2.angle()).to_dms();
-        println!("error on az2 (computed - input) = {}", diff_az2_dms);
-
-        let diff_s_m = computed.s - expected.s;
-        println!("error on s (computed - input) = {}", diff_s_m);
     }
 
     pub struct LineData {
