@@ -1,9 +1,8 @@
 //! Provide a value type to work with [Azimuth].
 
+use crate::math::Float;
 use crate::quantities::angle::Angle;
-use crate::quantities::Convertible;
 use crate::units::angle::DEG;
-use crate::{math::Float, units::angle::AngleUnit};
 use approx::AbsDiffEq;
 use derive_more::derive::Display;
 use std::ops::{Add, Sub};
@@ -73,12 +72,6 @@ impl Azimuth {
         self.0
     }
 
-    /// Return this azimuth as a raw angle value (-pi..pi] radians.
-    #[inline]
-    pub fn rad(self) -> Float {
-        self.0.rad()
-    }
-
     #[inline]
     pub fn sin(self) -> Float {
         self.0.sin()
@@ -97,15 +90,6 @@ impl Azimuth {
     #[inline]
     pub fn tan(self) -> Float {
         self.0.tan()
-    }
-}
-
-impl Convertible for Azimuth {
-    type Unit = AngleUnit;
-
-    #[inline]
-    fn val(self, unit: AngleUnit) -> Float {
-        self.0.val(unit)
     }
 }
 
@@ -175,7 +159,4 @@ mod test {
         assert_abs_diff_eq!(se - nw, 180. * DEG);
         assert_abs_diff_eq!(sw - nw, -140. * DEG);
     }
-
-    #[test]
-    fn turn_to() {}
 }

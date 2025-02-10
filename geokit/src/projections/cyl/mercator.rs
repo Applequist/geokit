@@ -167,7 +167,6 @@ mod test {
         },
         geodesy::ellipsoid,
         projections::Projection,
-        quantities::Convertible,
         units::{angle::DEG, length::M},
     };
 
@@ -198,8 +197,8 @@ mod test {
                 height: 0.0 * M,
             })
             .unwrap();
-        assert_abs_diff_eq!(llh.lon.val(DEG), 120.0, epsilon = 3e-8);
-        assert_abs_diff_eq!(llh.lat.val(DEG), -3.0, epsilon = 3e-8);
+        assert_abs_diff_eq!(llh.lon, Lon::new(120.0 * DEG), epsilon = 3e-8 * DEG);
+        assert_abs_diff_eq!(llh.lat, Lat::new(-3.0 * DEG), epsilon = 3e-8 * DEG);
     }
 
     #[test]
@@ -229,7 +228,7 @@ mod test {
                 height: 0.0 * M,
             })
             .unwrap();
-        assert_abs_diff_eq!(llh.lon.val(DEG), 53.0, epsilon = 5e-8);
-        assert_abs_diff_eq!(llh.lat.val(DEG), 53.0, epsilon = 4e-8);
+        assert_abs_diff_eq!(llh.lon, Lon::new(53.0 * DEG), epsilon = 5e-8 * DEG);
+        assert_abs_diff_eq!(llh.lat, Lat::new(53.0 * DEG), epsilon = 4e-8 * DEG);
     }
 }

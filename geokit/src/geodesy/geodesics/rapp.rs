@@ -58,7 +58,7 @@ impl<'e> RappIterativeGeodisicSolver<'e> {
         let (lon1, lat1) = p1;
         let beta1 = self.ellipsoid.reduced_latitude(lat1);
         let (sin_beta1, cos_beta1) = beta1.sin_cos();
-        let (sin_alpha1, cos_alpha1) = alpha1.rad().sin_cos();
+        let (sin_alpha1, cos_alpha1) = alpha1.sin_cos();
         let sin_alpha = sin_alpha1 * cos_beta1;
         let cos_alpha_sq = 1. - sin_alpha.powi(2);
 
@@ -138,7 +138,7 @@ impl<'e> RappIterativeGeodisicSolver<'e> {
             let sin_lambda_2_sq = (1. - cos_lambda) / 2.;
             // Eq (1.73)
             (sin_lambda * cos_beta1)
-                .atan2((beta2 - beta1.rad()).sin() - 2. * cos_beta1 * sin_beta2 * sin_lambda_2_sq)
+                .atan2((beta2 - beta1.angle().rad()).sin() - 2. * cos_beta1 * sin_beta2 * sin_lambda_2_sq)
         } else {
             // Eq (1.71)
             (sin_lambda * cos_beta1)
@@ -164,7 +164,7 @@ impl<'e> RappIterativeGeodisicSolver<'e> {
         let (sin_beta1, cos_beta1) = beta1.sin_cos();
         let (sin_beta2, cos_beta2) = beta2.sin_cos();
 
-        let L = (lon2 - lon1).rad();
+        let L = (lon2 - lon1).angle().rad();
         let mut lambda = L;
         let (mut sin_lambda, mut cos_lambda);
         let mut sigma;
@@ -267,7 +267,7 @@ impl<'e> RappIterativeGeodisicSolver<'e> {
             }
         } else if lambda == PI {
             // lambda = PI -> pole crossing
-            if lat1.rad() >= 0. {
+            if lat1 >= Lat::ZERO {
                 // crossing north pole by going north then south
                 (0., PI)
             } else {

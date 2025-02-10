@@ -3,10 +3,11 @@ use crate::{
     units::angle::{AngleUnit, DEG},
 };
 use approx::AbsDiffEq;
-use derive_more::derive::{Add, AddAssign, Display, Neg, Sub, SubAssign};
-use std::ops::{Div, DivAssign, Mul, MulAssign};
-
-use super::Convertible;
+use derive_more::derive::{Add, AddAssign, Display, LowerExp, Neg, Sub, SubAssign};
+use std::{
+    fmt::LowerExp,
+    ops::{Div, DivAssign, Mul, MulAssign},
+};
 
 /// [Angle] represents a 1-dimensional angle value.
 /// The internal representation is a [Float] value in radians.
@@ -20,11 +21,6 @@ use super::Convertible;
 /// use geokit::quantities::angle::Angle;
 /// use geokit::units::angle::GRAD;
 /// let a = Angle::new(100., GRAD);
-/// ```
-/// - by using one of the convenience constructors:
-/// ```
-/// use geokit::quantities::angle::Angle;
-/// let dms = Angle::dms(-110., 45., 53.234);
 /// ```
 /// - by multiplying a [Float] quantity by an [AngleUnit] value:
 ///   The quantity expressed in the given unit is then converted to radians.
@@ -138,6 +134,20 @@ impl Angle {
         self.0 = a;
     }
 
+    /// Return this angle value in the given unit.
+    ///
+    /// # Example
+    /// ```
+    /// use geokit::units::angle::DEG;
+    /// use geokit::quantities::angle::Angle;
+    /// let a = Angle::PI_2;
+    /// let a_deg = a.val(DEG);
+    /// assert_eq!(a, a_deg * DEG);
+    /// ```
+    pub fn val(self, unit: AngleUnit) -> Float {
+        self.0 * unit.1 / unit.0
+    }
+
     /// Return the absolute value of this angle.
     pub fn abs(self) -> Angle {
         Angle(self.0.abs())
@@ -195,24 +205,6 @@ impl Angle {
             s = 60. * deg.fract();
         }
         Dms(sgn * d, m, s)
-    }
-}
-
-impl Convertible for Angle {
-    type Unit = AngleUnit;
-
-    /// Return this angle value in the given unit.
-    ///
-    /// # Example
-    /// ```
-    /// use geokit::units::angle::DEG;
-    /// use geokit::quantities::angle::Angle;
-    /// let a = Angle::PI_2;
-    /// let a_deg = a.val(DEG);
-    /// assert_eq!(a, a_deg * DEG);
-    /// ```
-    fn val(self, unit: AngleUnit) -> Float {
-        self.0 * unit.1 / unit.0
     }
 }
 
@@ -280,19 +272,35 @@ impl Mul<Float> for AngleUnit {
     }
 }
 
+impl LowerExp for Angle {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        LowerExp::fmt(&self.0, f)?;
+        f.write_str(" rad")
+    }
+}
+
+/// Use to format angle using their values in degrees.
 #[derive(Copy, Clone, PartialEq, Debug, Display)]
 #[display("{} deg", _0)]
 pub struct Deg(Float);
+
+impl LowerExp for Deg {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        LowerExp::fmt(&self.0, f)?;
+        f.write_str(" deg")
+    }
+}
 
 /// An angle value expressed in degrees, minutes and seconds.
 ///
 /// Use to display angle in DMS format:
 /// ```
 /// use geokit::quantities::angle::Angle;
-/// assert_eq!(format!("{}", Angle::dms(2., 20., 14.02500).to_dms()), "   2° 20′ 14.02500000″");
+/// use geokit::units::angle::DEG;
+/// assert_eq!(format!("{}", Angle::new(2.33432, DEG).dms()), "   2° 20′ 03.55200000″");
 /// ```
 #[derive(Copy, Clone, Debug, Display)]
-#[display("{:4}° {:02}′ {:011.8}″", _0, _1, _2)]
+#[display("{:4}° {:02}′ {:015.12}″", _0, _1, _2)]
 pub struct Dms(Float, Float, Float);
 
 impl Dms {
@@ -402,19 +410,28 @@ mod tests {
     fn angle_dms_display() {
         assert_eq!(
             format!("{}", Dms(-33., 6., 22.01545)),
-            " -33° 06′ 22.01545000″"
+            " -33° 06′ 22.015450000000″"
         );
-        assert_eq!(format!("{}", Dms(45., 0., 0.)), "  45° 00′ 00.00000000″");
-        assert_eq!(format!("{}", (PI_4 * RAD).dms()), "  45° 00′ 00.00000000″");
+        assert_eq!(
+            format!("{}", Dms(45., 0., 0.)),
+            "  45° 00′ 00.000000000000″"
+        );
+        assert_eq!(
+            format!("{}", (PI_4 * RAD).dms()),
+            "  45° 00′ 00.000000000000″"
+        );
         assert_eq!(
             format!("{}", Dms(-179., 59., 59.1234)),
-            "-179° 59′ 59.12340000″"
+            "-179° 59′ 59.123400000000″"
         );
-        assert_eq!(format!("{}", Dms(-33., 26., 0.)), " -33° 26′ 00.00000000″");
+        assert_eq!(
+            format!("{}", Dms(-33., 26., 0.)),
+            " -33° 26′ 00.000000000000″"
+        );
         // Check rounding
         assert_eq!(
             format!("{}", Dms(37., 19., 54.95367)),
-            "  37° 19′ 54.95367000″"
+            "  37° 19′ 54.953670000000″"
         );
     }
 }

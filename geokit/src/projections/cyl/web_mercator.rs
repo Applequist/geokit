@@ -108,7 +108,7 @@ mod tests {
                 height: Length::ZERO,
             })
             .unwrap();
-        assert_abs_diff_eq!(llh.lon.rad(), -1.751147016, epsilon = 1e-9);
-        assert_abs_diff_eq!(llh.lat.rad(), 0.426970023, epsilon = 1e-9);
+        assert_abs_diff_eq!(llh.lon, Lon::new(-1.751147016 * RAD), epsilon = 1e-9 * RAD);
+        assert_abs_diff_eq!(llh.lat, Lat::new(0.426970023 * RAD), epsilon = 1e-9 * RAD);
     }
 }

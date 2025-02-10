@@ -14,7 +14,6 @@
 use crate::math::Float;
 use crate::quantities::angle::Angle;
 use crate::quantities::length::Length;
-use crate::quantities::Convertible;
 use crate::units::angle::{AngleUnit, DEG, RAD};
 use crate::units::length::{LengthUnit, M};
 use approx::AbsDiffEq;
@@ -121,29 +120,29 @@ impl GeodeticAxes {
                 angle_unit,
                 height_unit,
             } => {
-                coords[0] = llh.lon.val(*angle_unit);
-                coords[1] = llh.lat.val(*angle_unit);
+                coords[0] = llh.lon.angle().val(*angle_unit);
+                coords[1] = llh.lat.angle().val(*angle_unit);
                 coords[2] = llh.height.val(*height_unit);
             }
             GeodeticAxes::EastNorth { angle_unit } => {
-                coords[0] = llh.lon.val(*angle_unit);
-                coords[1] = llh.lat.val(*angle_unit);
+                coords[0] = llh.lon.angle().val(*angle_unit);
+                coords[1] = llh.lat.angle().val(*angle_unit);
             }
             GeodeticAxes::NorthEastUp {
                 angle_unit,
                 height_unit,
             } => {
-                coords[0] = llh.lat.val(*angle_unit);
-                coords[1] = llh.lon.val(*angle_unit);
+                coords[0] = llh.lat.angle().val(*angle_unit);
+                coords[1] = llh.lon.angle().val(*angle_unit);
                 coords[2] = llh.height.val(*height_unit);
             }
             GeodeticAxes::NorthEast { angle_unit } => {
-                coords[0] = llh.lat.val(*angle_unit);
-                coords[1] = llh.lon.val(*angle_unit);
+                coords[0] = llh.lat.angle().val(*angle_unit);
+                coords[1] = llh.lon.angle().val(*angle_unit);
             }
             GeodeticAxes::NorthWest { angle_unit } => {
-                coords[0] = llh.lat.val(*angle_unit);
-                coords[1] = -llh.lon.val(*angle_unit);
+                coords[0] = llh.lat.angle().val(*angle_unit);
+                coords[1] = -llh.lon.angle().val(*angle_unit);
             }
         }
     }
@@ -285,7 +284,7 @@ impl Lon {
     /// ```
     /// use geokit::cs::geodetic::Lon;
     /// let a: Lon = Lon::dms(2., 20., 14.02500);
-    /// assert!(Lon::dms(-12., 45., 59.1234).rad() < 0.0);
+    /// assert!(Lon::dms(-12., 45., 59.1234) < Lon::ZERO);
     /// ```
     pub fn dms(d: Float, m: Float, s: Float) -> Self {
         debug_assert!(d > -180. && m <= 180., "degrees must be in (-180..180]");
@@ -312,12 +311,6 @@ impl Lon {
         self.0
     }
 
-    /// Return the longitude as a raw angle value **in radians**.
-    #[inline]
-    pub fn rad(self) -> Float {
-        self.0.rad()
-    }
-
     #[inline]
     pub fn sin(self) -> Float {
         self.0.sin()
@@ -339,15 +332,6 @@ impl Lon {
     }
 }
 
-impl Convertible for Lon {
-    type Unit = AngleUnit;
-
-    #[inline]
-    fn val(self, unit: AngleUnit) -> Float {
-        self.0.val(unit)
-    }
-}
-
 impl Add for Lon {
     type Output = Lon;
 
@@ -359,12 +343,13 @@ impl Add for Lon {
     /// To compute the longitude wrt Greenwich prime meridian
     /// from a longitude `lon` wrt a prime meridian of Greenwich longitude `lon_pm`:
     /// ```
-    /// use geokit::units::angle::DEG;
+    /// use geokit::units::angle::{DEG, RAD};
     /// use approx::assert_abs_diff_eq;
-    /// let lon_pm = -30. * DEG; // Greenwich longitude of new prime meridian
-    /// let lon = 10. * DEG; // longitude wrt prime meridian a Greenwich longitude `lon_pm`
+    /// use geokit::cs::geodetic::Lon;
+    /// let lon_pm = Lon::new(-30. * DEG); // Greenwich longitude of new prime meridian
+    /// let lon = Lon::new(10. * DEG); // longitude wrt prime meridian a Greenwich longitude `lon_pm`
     /// let converted_lon = lon + lon_pm; // Greenwich longitude
-    /// assert_abs_diff_eq!(converted_lon, -20. * DEG, epsilon = 1e-15);
+    /// assert_abs_diff_eq!(converted_lon, Lon::new(-20. * DEG), epsilon = 1e-15 * RAD);
     /// ```
     fn add(self, rhs: Self) -> Self::Output {
         Lon::new(self.0 + rhs.0)
@@ -412,11 +397,12 @@ impl Sub for Lon {
     /// To compute the longitude wrt a prime meridian of Greenwich longitude `lon_pm`
     /// from a Greenwich longitude `lon`:
     /// ```
+    /// use geokit::cs::geodetic::Lon;
     /// use geokit::units::angle::DEG;
-    /// let lon = 10. * DEG; // Greenwich longitude
-    /// let lon_pm = -30. * DEG; // Greenwich longitude of new prime meridian
+    /// let lon = Lon::new(10. * DEG); // Greenwich longitude
+    /// let lon_pm = Lon::new(-30. * DEG); // Greenwich longitude of new prime meridian
     /// let converted_lon = lon - lon_pm;
-    /// assert_eq!(converted_lon, 40. * DEG);
+    /// assert_eq!(converted_lon, Lon::new(40. * DEG));
     /// ```
     fn sub(self, rhs: Self) -> Self::Output {
         Lon::new(self.0 - rhs.0)
@@ -516,7 +502,7 @@ impl Lat {
     /// ```
     /// use geokit::cs::geodetic::Lat;
     /// let a: Lat = Lat::dms(2., 20., 14.02500);
-    /// assert!(Lat::dms(-12., 45., 59.1234).rad() < 0.0);
+    /// assert!(Lat::dms(-12., 45., 59.1234) < Lat::ZERO);
     /// ```
     pub fn dms(d: Float, m: Float, s: Float) -> Self {
         debug_assert!(d >= -90. && m <= 90., "degrees must be in [-90..90]");
@@ -538,12 +524,6 @@ impl Lat {
         self.0
     }
 
-    /// Return this latitude as a raw angle value in radians.
-    #[inline]
-    pub fn rad(self) -> Float {
-        self.0.rad()
-    }
-
     #[inline]
     pub fn sin(self) -> Float {
         self.0.sin()
@@ -562,15 +542,6 @@ impl Lat {
     #[inline]
     pub fn tan(self) -> Float {
         self.0.tan()
-    }
-}
-
-impl Convertible for Lat {
-    type Unit = AngleUnit;
-
-    #[inline]
-    fn val(self, unit: AngleUnit) -> Float {
-        self.0.val(unit)
     }
 }
 

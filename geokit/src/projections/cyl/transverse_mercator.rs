@@ -8,7 +8,7 @@ use crate::{
     geodesy::Ellipsoid,
     math::{polynomial::Polynomial, Float},
     projections::{Projection, ProjectionError},
-    quantities::{length::Length, Convertible},
+    quantities::{length::Length},
     units::{
         angle::{DEG, RAD},
         length::M,
@@ -193,7 +193,7 @@ const UTM_FN_SOUTH: Length = Length::new(10_000_000.0, M);
 
 /// Compute the zone number from a longitude.
 fn utm_zone(lon: Lon) -> UTMZone {
-    let lon_deg = lon.val(DEG);
+    let lon_deg = lon.angle().val(DEG);
     let delta_lon = ((lon_deg - UTM_ZONE_1_WEST_LIMIT_DEG) / UTM_ZONE_WIDTH_DEG).floor();
     let z = delta_lon - (delta_lon / UTM_ZONE_COUNT).floor() * UTM_ZONE_COUNT;
     z as u8
@@ -222,7 +222,7 @@ fn M0(lat0: Lat, B: Length, e: Float, h: [Float; 4]) -> Length {
     if lat0 == Lat::ZERO {
         0.0 * M
     } else if lat0.abs() == Lat::MAX {
-        B * lat0.rad()
+        B * lat0.angle().rad()
     } else {
         let Q0 = Q(e, lat0);
         let beta0 = beta(Q0);
@@ -249,7 +249,6 @@ mod test {
         },
         geodesy::ellipsoid,
         projections::Projection,
-        quantities::Convertible,
         units::{angle::DEG, length::M},
     };
     use approx::assert_abs_diff_eq;
@@ -283,8 +282,8 @@ mod test {
                 height: 0.0 * M,
             })
             .unwrap();
-        assert_abs_diff_eq!(llh.lon.val(DEG), 0.5, epsilon = 1e-7);
-        assert_abs_diff_eq!(llh.lat.val(DEG), 50.5, epsilon = 7e-8);
+        assert_abs_diff_eq!(llh.lon, Lon::new(0.5 * DEG), epsilon = 1e-7 * DEG);
+        assert_abs_diff_eq!(llh.lat, Lat::new(50.5 * DEG), epsilon = 7e-8 * DEG);
     }
 
     #[test]

@@ -14,7 +14,7 @@
 use super::geodetic::Height;
 use crate::{
     math::Float,
-    quantities::{length::Length, Convertible},
+    quantities::{length::Length},
     units::length::{LengthUnit, M},
 };
 use approx::AbsDiffEq;

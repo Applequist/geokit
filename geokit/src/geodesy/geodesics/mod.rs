@@ -58,8 +58,6 @@ pub mod vincenty;
 
 #[cfg(test)]
 mod tests {
-
-    use crate::asserts::{approx_angle_eq, approx_length_eq};
     use crate::cs::azimuth::Azimuth;
     use crate::cs::geodetic::{Lat, Lon};
     use crate::geodesy::ellipsoid::{self, consts};
@@ -70,6 +68,7 @@ mod tests {
     use crate::quantities::length::Length;
     use crate::units::angle::DEG;
     use crate::units::length::M;
+    use approx::AbsDiffEq;
 
     /// Maximum absolute difference in direct geodesic computation results.
     pub struct DirectError {
@@ -114,21 +113,69 @@ mod tests {
     /// Check whether a direct geodesic computation is within the error bounds of the expected
     /// result.
     pub fn check_direct(computed: &Geodesic, expected: &Geodesic, err: &DirectError) {
-        if !approx_angle_eq(computed.p2.0, expected.p2.0, err.lon, "Longitude error")
-            || !approx_angle_eq(computed.p2.1, expected.p2.1, err.lat, "Latitude error")
-            || !approx_angle_eq(computed.alpha2, expected.alpha2, err.alpha, "Azimuth error")
-        {
+        let has_lon_error = !computed.p2.0.abs_diff_eq(&expected.p2.0, err.lon);
+        let has_lat_error = !computed.p2.1.abs_diff_eq(&expected.p2.1, err.lat);
+        let has_az_error = !computed.alpha2.abs_diff_eq(&expected.alpha2, err.alpha);
+
+        if has_lon_error || has_lat_error || has_az_error {
             print_test_case(computed, expected);
-            assert!(false, "Direct Geodesic computation failed");
+            if has_lon_error {
+                println!(
+                    "Longitude error: | {} - {} | = {:e} > {:e}",
+                    computed.p2.0,
+                    expected.p2.0,
+                    (computed.p2.0 - expected.p2.0).angle().abs().deg(),
+                    err.lon.deg()
+                );
+            } else {
+                println!(
+                    "Longitude ok:      {} = {} +/- {:e}",
+                    computed.p2.0,
+                    expected.p2.0,
+                    err.lon.deg()
+                );
+            }
+            if has_lat_error {
+                println!(
+                    "Latitude error: | {} - {} | = {:e} > {:e}",
+                    computed.p2.1,
+                    expected.p2.1,
+                    (computed.p2.1 - expected.p2.1).abs().deg(),
+                    err.lat.deg()
+                );
+            } else {
+                println!(
+                    "Latitude ok:      {} = {} +/- {:e}",
+                    computed.p2.1,
+                    expected.p2.1,
+                    err.lat.deg()
+                );
+            }
+            if has_az_error {
+                println!(
+                    "Azimuth error: | {} - {} | = {:e} > {:e}",
+                    computed.alpha2,
+                    expected.alpha2,
+                    (computed.alpha2 - expected.alpha2).abs().deg(),
+                    err.alpha.deg()
+                );
+            } else {
+                println!(
+                    "Azimuth ok:      {} = {} +/- {:e}",
+                    computed.alpha2,
+                    expected.alpha2,
+                    err.alpha.deg()
+                );
+            }
         }
     }
 
     /// Check whether an inverse geodesic computation is within the error bounds of the expected
     /// result.
     pub fn check_inverse(computed: &Geodesic, expected: &Geodesic, err: &InverseError) {
-        if !approx_angle_eq(computed.alpha1, expected.alpha1, err.alpha1, "Alpha1 error")
-            || !approx_angle_eq(computed.alpha2, expected.alpha2, err.alpha2, "Alpha2 error")
-            || !approx_length_eq(computed.s, expected.s, err.s, "Distance error")
+        if !computed.alpha1.abs_diff_eq(&expected.alpha1, err.alpha1)
+            || !computed.alpha2.abs_diff_eq(&expected.alpha2, err.alpha2)
+            || !computed.s.abs_diff_eq(&expected.s, err.s)
         {
             print_test_case(computed, expected);
             assert!(false, "Inverse Geodesic computation failed");
@@ -139,7 +186,7 @@ mod tests {
         println!(
             "-----------------------------------------------------------------------------------"
         );
-        println!("Exptected: ");
+        println!("Expected: ");
         println!("{}", expected);
         println!("Computed: ");
         println!("{}", computed);

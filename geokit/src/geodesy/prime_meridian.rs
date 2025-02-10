@@ -129,7 +129,7 @@ mod tests {
     fn pm_display() {
         assert_eq!(
             format!("{}", PARIS),
-            "(name = Paris, lon =    2° 20′ 14.02500000″)"
+            "(name = Paris, lon =    2° 20′ 14.025000001200″)"
         );
     }
 }

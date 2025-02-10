@@ -1,3 +1,4 @@
+use super::XYZTransformation;
 use crate::{
     cs::cartesian::XYZ,
     math::Float,
@@ -5,8 +6,6 @@ use crate::{
     units::length::M,
 };
 use nalgebra::{Matrix3, Vector3};
-
-use super::XYZTransformation;
 
 pub struct XYZIdentity;
 

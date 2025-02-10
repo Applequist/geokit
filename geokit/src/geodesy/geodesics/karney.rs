@@ -349,12 +349,12 @@ mod tests {
             )
             .unwrap();
         assert_abs_diff_eq!(
-            computed.p2.0.rad(),
-            (0.17966306 * DEG).rad(),
-            epsilon = 1e-8
+            computed.p2.0,
+            Lon::new(0.17966306 * DEG),
+            epsilon = 1e-8 * RAD
         );
-        assert_abs_diff_eq!(computed.p2.1.rad(), 0.0, epsilon = 1e-8);
-        assert_abs_diff_eq!(computed.alpha2.rad(), PI_2, epsilon = 1e-8);
+        assert_abs_diff_eq!(computed.p2.1, Lat::ZERO, epsilon = 1e-8 * RAD);
+        assert_abs_diff_eq!(computed.alpha2, Azimuth::EAST, epsilon = 1e-8 * RAD);
 
         let computed = solver
             .solve_direct(
@@ -363,7 +363,7 @@ mod tests {
                 Length::new(2_000_000.0, M),
             )
             .unwrap();
-        assert_abs_diff_eq!(computed.p2.0, Lon::new(-172.03369432 * DEG),);
+        assert_abs_diff_eq!(computed.p2.0, Lon::new(-172.03369432 * DEG));
         assert_abs_diff_eq!(computed.p2.1, Lat::new(0.0 * RAD));
         assert_abs_diff_eq!(computed.alpha2, Azimuth::new(PI_2 * RAD));
 
@@ -373,8 +373,8 @@ mod tests {
                 (Lon::new(10. * DEG), Lat::new(0. * DEG)),
             )
             .unwrap();
-        assert_abs_diff_eq!(computed.alpha1.rad(), PI_2, epsilon = 1e-10);
-        assert_abs_diff_eq!(computed.alpha2.rad(), PI_2, epsilon = 1e-10);
+        assert_abs_diff_eq!(computed.alpha1, Azimuth::EAST);
+        assert_abs_diff_eq!(computed.alpha2, Azimuth::EAST);
         assert_abs_diff_eq!(computed.s, Length::new(2_226_389.816, M));
 
         let computed = solver
@@ -383,8 +383,8 @@ mod tests {
                 (Lon::new(-10. * DEG), Lat::new(0. * DEG)),
             )
             .unwrap();
-        assert_abs_diff_eq!(computed.alpha1.rad(), -PI_2, epsilon = 1e-10);
-        assert_abs_diff_eq!(computed.alpha2.rad(), -PI_2, epsilon = 1e-10);
+        assert_abs_diff_eq!(computed.alpha1, Azimuth::WEST, epsilon = 1e-10 * RAD);
+        assert_abs_diff_eq!(computed.alpha2, Azimuth::WEST, epsilon = 1e-10 * RAD);
         assert_abs_diff_eq!(computed.s, Length::new(2_226_389.816, M));
 
         let computed = solver
@@ -393,8 +393,8 @@ mod tests {
                 (Lon::new(-170. * DEG), Lat::new(0. * DEG)),
             )
             .unwrap();
-        assert_abs_diff_eq!(computed.alpha1.rad(), PI_2, epsilon = 1e-10);
-        assert_abs_diff_eq!(computed.alpha2.rad(), PI_2, epsilon = 1e-10);
+        assert_abs_diff_eq!(computed.alpha1, Azimuth::EAST, epsilon = 1e-10 * RAD);
+        assert_abs_diff_eq!(computed.alpha2, Azimuth::EAST, epsilon = 1e-10 * RAD);
         assert_abs_diff_eq!(computed.s, Length::new(2_226_389.816, M));
     }
 
@@ -431,8 +431,8 @@ mod tests {
                 (Lon::new(0. * DEG), Lat::new(10. * DEG)),
             )
             .unwrap();
-        assert_abs_diff_eq!(computed.alpha1.rad(), 0., epsilon = 1e-10);
-        assert_abs_diff_eq!(computed.alpha2.rad(), 0., epsilon = 1e-10);
+        assert_abs_diff_eq!(computed.alpha1, Azimuth::NORTH, epsilon = 1e-10 * RAD);
+        assert_abs_diff_eq!(computed.alpha2, Azimuth::NORTH, epsilon = 1e-10 * RAD);
         assert_abs_diff_eq!(computed.s, Length::new(2_211_709.666, M));
 
         let computed = solver
@@ -441,8 +441,8 @@ mod tests {
                 (Lon::new(0. * DEG), Lat::new(-10. * DEG)),
             )
             .unwrap();
-        assert_abs_diff_eq!(computed.alpha1.rad(), PI, epsilon = 1e-10);
-        assert_abs_diff_eq!(computed.alpha2.rad(), PI, epsilon = 1e-10);
+        assert_abs_diff_eq!(computed.alpha1, Azimuth::SOUTH, epsilon = 1e-10 * RAD);
+        assert_abs_diff_eq!(computed.alpha2, Azimuth::SOUTH, epsilon = 1e-10 * RAD);
         assert_abs_diff_eq!(computed.s, Length::new(2_211_709.666, M));
 
         let computed = solver
@@ -451,8 +451,8 @@ mod tests {
                 (Lon::new(180. * DEG), Lat::new(80. * DEG)),
             )
             .unwrap();
-        assert_abs_diff_eq!(computed.alpha1.rad(), 0., epsilon = 1e-10);
-        assert_abs_diff_eq!(computed.alpha2.rad(), PI, epsilon = 1e-10);
+        assert_abs_diff_eq!(computed.alpha1, Azimuth::NORTH, epsilon = 1e-10 * RAD);
+        assert_abs_diff_eq!(computed.alpha2, Azimuth::SOUTH, epsilon = 1e-10 * RAD);
         assert_abs_diff_eq!(computed.s, Length::new(2_233_651.715, M));
     }
 

@@ -6,7 +6,7 @@ use approx::AbsDiffEq;
 use derive_more::derive::{Add, AddAssign, Display, Sub, SubAssign};
 use std::ops::{Div, DivAssign, Mul, MulAssign};
 
-use super::{angle::Angle, Convertible};
+use super::{angle::Angle};
 
 /// [Length] is a generic length value type.
 /// The internal representation is a [Float] value in meters.
@@ -75,6 +75,19 @@ impl Length {
         Self(qty * unit.m_per_unit())
     }
 
+    /// Return this length value in the given unit.
+    ///
+    /// # Example
+    /// ```
+    /// use geokit::quantities::length::Length;
+    /// use geokit::units::length::{M, US_FT};
+    /// let l_m: Length = 10. * M;
+    /// let l_ft = l_m.val(US_FT);
+    /// assert_eq!(l_m, l_ft * US_FT);
+    /// ```
+    pub fn val(self, unit: LengthUnit) -> Float {
+        self.0 / unit.m_per_unit()
+    }
     /// Return this length value in meters.
     pub fn m(self) -> Float {
         self.0
@@ -90,24 +103,6 @@ impl Length {
 
     pub fn hypot(self, other: Self) -> Length {
         Self(self.m().hypot(other.m()))
-    }
-}
-
-impl Convertible for Length {
-    type Unit = LengthUnit;
-
-    /// Return this length value in the given unit.
-    ///
-    /// # Example
-    /// ```
-    /// use geokit::quantities::length::Length;
-    /// use geokit::units::length::{M, US_FT};
-    /// let l_m: Length = 10. * M;
-    /// let l_ft = l_m.val(US_FT);
-    /// assert_eq!(l_m, l_ft * US_FT);
-    /// ```
-    fn val(self, unit: LengthUnit) -> Float {
-        self.0 / unit.m_per_unit()
     }
 }
 

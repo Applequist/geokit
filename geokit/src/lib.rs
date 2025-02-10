@@ -6,7 +6,6 @@
 
 pub mod math;
 
-pub mod asserts;
 pub mod crs;
 pub mod cs;
 pub mod geodesy;
