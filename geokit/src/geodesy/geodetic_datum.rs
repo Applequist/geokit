@@ -167,18 +167,12 @@ pub mod consts {
 
 #[cfg(test)]
 mod tests {
-    use approx::assert_abs_diff_eq;
-    use regex::Regex;
-
+    use super::GeodeticDatum;
     use crate::cs::cartesian::{CartesianErrors, XYZ};
     use crate::cs::geodetic::{GeodeticErrors, Lat, Lon, LLH};
     use crate::geodesy::{ellipsoid, geodetic_datum, prime_meridian, Ellipsoid, PrimeMeridian};
-    use crate::math::Float;
     use crate::units::angle::DEG;
     use crate::units::length::M;
-
-    use super::consts::WGS84;
-    use super::GeodeticDatum;
 
     #[test]
     fn clone() {
@@ -266,40 +260,5 @@ mod tests {
             },
             GeodeticErrors::default(),
         );
-    }
-
-    const XYZLLH: &'static str = include_str!("xyz_to_llh_100.txt");
-
-    fn read_conversions() -> impl Iterator<Item = (XYZ, LLH)> {
-        XYZLLH
-            .lines()
-            .filter(|&l| !l.is_empty() && !l.starts_with("#"))
-            .map(move |l| {
-                let xyzllh = l
-                    .split(',')
-                    .map(|s| s.trim().parse::<Float>().unwrap())
-                    .collect::<Vec<_>>();
-                let xyz = XYZ {
-                    x: xyzllh[0] * M,
-                    y: xyzllh[1] * M,
-                    z: xyzllh[2] * M,
-                };
-                let llh = LLH {
-                    lon: Lon::new(xyzllh[3] * DEG),
-                    lat: Lat::new(xyzllh[4] * DEG),
-                    height: xyzllh[5] * M,
-                };
-                (xyz, llh)
-            })
-    }
-
-    #[test]
-    fn xyz_to_lly_100() {
-        let datum = WGS84;
-
-        for (xyz, expected_llh) in read_conversions() {
-            let llh = datum.xyz_to_llh(xyz);
-            llh.approx_eq(&expected_llh, GeodeticErrors::default());
-        }
     }
 }

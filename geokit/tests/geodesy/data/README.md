@@ -1,8 +1,8 @@
 # Geodesy test data
 
-## xyz_to_llh.txt
+## xyz_to_llh_10_000.txt
 
-Contains 500 test cases for geocentric to geodetic coordinates conversion.
+Contains 10_000 test cases for geocentric to geodetic coordinates conversion.
 
 Each line contains geodentric coordinates x, y, z followed 
 by the cooresponding geodetic coordinates lon, lat, height.
@@ -15,6 +15,3 @@ using the following proj command:
 cct -I +proj=cart +ellps=WGS84
 ```
 
-## xyz_to_llh_big.txt
-
-Same of `xyz_to_llh.txt` but 10_000 cases.

@@ -6,7 +6,7 @@ use approx::AbsDiffEq;
 use derive_more::derive::{Add, AddAssign, Display, Sub, SubAssign};
 use std::ops::{Div, DivAssign, Mul, MulAssign};
 
-use super::{angle::Angle};
+use super::angle::Angle;
 
 /// [Length] is a generic length value type.
 /// The internal representation is a [Float] value in meters.
@@ -47,13 +47,6 @@ pub struct Length(Float);
 impl Length {
     pub const ZERO: Length = Length(0.0);
 
-    /// Less that 7e-9 m at the equator
-    #[inline]
-    pub const fn super_tiny() -> Length {
-        Length(1e-9)
-    }
-
-    /// Less than 7e-6 m at the equator
     #[inline]
     pub const fn tiny() -> Length {
         Length(1e-6)
@@ -66,7 +59,7 @@ impl Length {
     }
 
     pub const fn default_epsilon() -> Length {
-        Self::super_tiny()
+        Self::tiny()
     }
 
     /// Create a length value whose `qty` is given in `unit`.

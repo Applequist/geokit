@@ -1,7 +1,7 @@
 use crate::{
     cs::geodetic::Lat,
     math::Float,
-    quantities::length::Length,
+    quantities::{angle::Angle, length::Length},
     units::{angle::RAD, length::M},
 };
 use derive_more::derive::Display;
@@ -156,8 +156,8 @@ impl Ellipsoid {
     /// tangent to the ellipsoid on the equator (radius = a), between the equatorial plane and a
     /// radius to a point Q on the sphere whose projection along the z-axis intersect the ellipsoid
     /// at P.
-    pub fn reduced_latitude(&self, lat: Lat) -> Lat {
-        Lat::new(((1. - self.f()) * lat.tan()).atan() * RAD)
+    pub fn reduced_latitude(&self, lat: Lat) -> Angle {
+        ((1. - self.f()) * lat.tan()).atan() * RAD
     }
 
     /// Return the geocentric latitude, `psi`: `tan(psi) = (1 - e^2)tan(lat)`
@@ -165,8 +165,8 @@ impl Ellipsoid {
     ///
     /// The geocentric latitude of a point P on the ellipsoid is the angle at the centre of the
     /// ellipsoid between the equatorial plane and a line to the point P.
-    pub fn geocentric_latitude(&self, lat: Lat) -> Lat {
-        Lat::new(((1. - self.e_sq()) * lat.tan()).atan() * RAD)
+    pub fn geocentric_latitude(&self, lat: Lat) -> Angle {
+        ((1. - self.e_sq()) * lat.tan()).atan() * RAD
     }
 
     /// Return the radius of curvature `N` **in meters** at the given **geodetic latitude in radians**

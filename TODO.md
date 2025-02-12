@@ -13,8 +13,8 @@
 
 - [v] Remove DatumTransformation from 'GeodeticDatum' 
 
-- [ ] Rework geodesic unit test
-- [ ] Use Clenshaw summation
+- [v] Rework geodesic unit test
+- [v] Use Clenshaw summation
 - [ ] Write solve_inverse for Karney solver
 - [ ] Full integration testing of geodesic
 

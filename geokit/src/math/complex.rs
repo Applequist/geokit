@@ -17,30 +17,34 @@ impl Complex {
         Self { re, im }
     }
 
+    pub fn conj(self) -> Self {
+        Self {
+            re: self.re,
+            im: -self.im,
+        }
+    }
+
     /// Return the squared absolute value of this complex.
-    pub fn abs_sq(&self) -> Float {
+    pub fn abs_sq(self) -> Float {
         self.re * self.re + self.im * self.im
     }
 
-    /// Return the absolute value of this complex.
-    pub fn abs(&self) -> Float {
+    /// Return the module or absolute value of this complex.
+    pub fn abs(self) -> Float {
         self.re.hypot(self.im)
     }
 
-    /// Return the argument **in radians** of this complex.
-    pub fn arg(&self) -> Angle {
+    /// Return the argument **in (-pi..pi] radians** of this complex.
+    pub fn arg(self) -> Angle {
         self.im.atan2(self.re) * RAD
     }
 
     /// Return the multiplicative inverse of this complex.
-    pub fn inv(&self) -> Self {
-        let m = self.abs_sq();
-        if m == 0.0 {
-            panic!("Zero is an invalid denominator!");
-        }
-        Self {
-            re: self.re / m,
-            im: -self.im / m,
+    pub fn inv(self) -> Result<Self, &'static str> {
+        if self.is_zero() {
+            Err("Complex not invertible: |z| = 0.0")
+        } else {
+            Ok(self.conj() / self.abs_sq())
         }
     }
 }
@@ -122,10 +126,11 @@ impl Mul<Float> for Complex {
 }
 
 impl Div for Complex {
-    type Output = Self;
+    type Output = Result<Self, &'static str>;
 
     fn div(self, rhs: Self) -> Self::Output {
-        self * rhs.inv()
+        let inv = rhs.inv()?;
+        Ok(self * inv)
     }
 }
 
@@ -169,7 +174,7 @@ mod tests {
     #[test]
     fn test_inv() {
         let z = Complex::new(1., 2.);
-        let inv_z = z.inv();
+        let inv_z = z.inv().unwrap();
         assert_eq!(z * inv_z, Complex::new(1., 0.));
     }
 
@@ -195,10 +200,10 @@ mod tests {
         assert_eq!(Complex::new(1., 1.) * 2., Complex::new(2., 2.));
 
         // Division
-        assert_eq!(
-            Complex::new(1., 1.) / Complex::new(1., -1.),
-            Complex::new(0., 1.)
-        );
+        let div = Complex::new(1., 1.) / Complex::new(1., -1.);
+        assert!(div.is_ok());
+        assert_eq!(div.unwrap(), Complex::new(0., 1.));
+
         assert_eq!(Complex::new(1., 1.) / 2., Complex::new(1. / 2., 1. / 2.));
     }
 }

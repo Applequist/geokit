@@ -1,5 +1,7 @@
 #![allow(non_snake_case)]
 
+use std::mem::swap;
+
 use crate::cs::azimuth::Azimuth;
 use crate::cs::geodetic::{Lat, Lon};
 use crate::geodesy::geodesics::{Geodesic, GeodesicSolver};
@@ -147,7 +149,107 @@ impl<'e> KarneyGeodesicSolver<'e> {
     }
 
     pub fn inverse(&self, p1: (Lon, Lat), p2: (Lon, Lat)) -> Geodesic {
-        unimplemented!()
+        let (lon1, mut lat1) = p1;
+        let (lon2, mut lat2) = p2;
+
+        // 1. swap endpoints and coordinates signs so:
+        // a. 0 <= lambda12 <= pi
+        // b. lat1 <= 0 and lat1 <= lat2 <= -lat1
+        let mut lambda12 = lon2 - lon1;
+        let mut lon_sign = lambda12.signum();
+        lambda12 *= lon_sign;
+
+        let swap_lat = if lat1.abs() < lat2.abs() { -1. } else { 1. };
+        if swap_lat < 0. {
+            lon_sign *= -1.;
+            swap(&mut lat1, &mut lat2);
+        }
+
+        let lat_sign = -lat1.signum();
+        lat1 *= lat_sign;
+        lat2 *= lat_sign;
+
+        assert!(
+            Lon::ZERO <= lambda12 && lambda12 <= Lon::MAX,
+            "lambda12 = {}",
+            lambda12
+        );
+        assert!(Lat::MIN <= lat1 && lat1 <= Lat::ZERO, "lat1 = {}", lat1);
+        assert!(lat1 <= lat2 && lat2 <= -lat1, "lat2 = {}", lat2);
+
+        println!("lat1 = {lat1}");
+        println!("lat2 = {lat2}");
+        println!("lambda12 = {lambda12}");
+
+        // 2.
+        let beta1 = self.ellipsoid.reduced_latitude(lat1);
+        let (sin_beta1, cos_beta1) = beta1.sin_cos();
+        let beta2 = self.ellipsoid.reduced_latitude(lat2);
+        let (sin_beta2, cos_beta2) = beta2.sin_cos();
+
+        println!("beta1 = {}", beta1.deg());
+        println!("beta2 = {}", beta2.deg());
+
+        let alpha1: Azimuth;
+        let alpha2: Azimuth;
+
+        // 2. Special cases
+        // a. Meridional: lambda12 = 0 or pi -> alpha1 = lambda12
+        let is_meridional_special_case = lambda12 == Lon::ZERO || lambda12 == Lon::MAX;
+        // b. Equatorial: lat1 = lat2 = 0 with lambda12 <= (1 -f) * pi -> alpha1 = pi / 2
+        let is_equatorial_special_case =
+            p1.1 == p2.1 && lambda12.angle() <= (1. - self.ellipsoid.f()) * Angle::PI;
+
+        let sigma12: Angle;
+        let mut s12: Length = Length::ZERO;
+        if is_meridional_special_case {
+            alpha1 = Azimuth::new(lambda12.angle());
+            alpha2 = Azimuth::new(lambda12.angle());
+        } else if is_equatorial_special_case {
+            alpha1 = Azimuth::EAST;
+            alpha2 = Azimuth::EAST;
+        } else {
+            let omega_bar =
+                (1. - self.ellipsoid.e_sq() * (0.5 * (cos_beta1 + cos_beta2)).powi(2)).sqrt();
+            let omega12 = lambda12.angle() / omega_bar;
+            let (sin_omega12, cos_omega12) = omega12.sin_cos();
+
+            // Eq (49)
+            let z1 = Complex::new(
+                cos_beta1 * sin_beta2 - sin_beta1 * cos_beta2 * cos_omega12,
+                cos_beta2 * sin_omega12,
+            );
+            // Eq (50)
+            let z2 = Complex::new(
+                -sin_beta1 * cos_beta2 + cos_beta1 * sin_beta2 * cos_omega12,
+                cos_beta1 * sin_omega12,
+            );
+            alpha1 = Azimuth::new(z1.arg());
+            alpha2 = Azimuth::new(z2.arg());
+
+            sigma12 = Complex::new(
+                sin_beta1 * sin_beta2 + cos_beta1 * cos_beta2 * cos_omega12,
+                z1.abs(),
+            )
+            .arg();
+
+            s12 = omega_bar * (self.ellipsoid.a() * sigma12).length();
+
+            println!("omega_bar = {omega_bar}");
+            println!("omega12 = {}", omega12.deg());
+            println!("sigma12 = {}", sigma12.deg());
+            println!("alpha1 = {}", alpha1.angle().deg());
+            println!("alpha2 = {}", alpha2.angle().deg());
+            println!("s12 = {s12}");
+        }
+
+        Geodesic {
+            p1,
+            alpha1,
+            p2,
+            alpha2,
+            s: s12,
+        }
     }
 
     /// From Karney - Algorithms for geodesics eqn 17:
@@ -202,7 +304,7 @@ struct Triangle {
     /// Azimuth of the geodesic arc EP at P
     alpha: Azimuth,
     /// reduced/parametric latitude of P
-    beta: Lat,
+    beta: Angle,
     /// angular arc length of EP
     /// related to the length of EP on the ellipsoid `s` by: `s = b * I1(sigma)`
     sigma: Angle,
@@ -215,7 +317,7 @@ struct Triangle {
 /// Given the reduced/parametric latitude of a Point P on the ellipsoid,
 /// and the forward azimuth of a geodesic at P, solve the corresponding [Triangle]
 /// on the auxiliary sphere.
-fn solve_triangle_from_p(beta: Lat, alpha: Azimuth) -> Triangle {
+fn solve_triangle_from_p(beta: Angle, alpha: Azimuth) -> Triangle {
     let (sin_alpha, cos_alpha) = alpha.sin_cos();
     let (sin_beta, cos_beta) = beta.sin_cos();
 
@@ -266,7 +368,7 @@ fn solve_triangle_from_e(alpha0: Azimuth, sigma: Angle) -> Triangle {
     Triangle {
         alpha0,
         alpha: Azimuth::new(alpha),
-        beta: Lat::new(beta),
+        beta,
         sigma,
         omega,
     }
@@ -291,11 +393,11 @@ impl<'e> GeodesicSolver for KarneyGeodesicSolver<'e> {
 mod tests {
     use crate::cs::azimuth::Azimuth;
     use crate::cs::geodetic::{Lat, Lon};
-    use crate::geodesy::ellipsoid::consts;
+    use crate::geodesy::ellipsoid::consts::{self, WGS84};
     use crate::geodesy::geodesics::karney::KarneyGeodesicSolver;
     use crate::geodesy::geodesics::tests::{
-        antipodal_lines, check_direct, geographiclib_lines, standard_lines, DirectError,
-        InverseError, LineData,
+        antipodal_lines, check_direct, check_inverse, equatorial_lines, geographiclib_lines,
+        meridional_lines, standard_lines, DirectError, InverseError, LineData,
     };
     use crate::geodesy::geodesics::{Geodesic, GeodesicSolver};
     use crate::math::{PI, PI_2};
@@ -332,128 +434,21 @@ mod tests {
     }
 
     #[test]
-    fn on_antipodal_lines() {
-        let tset = antipodal_lines();
+    fn on_equatorial_lines() {
+        let tset = equatorial_lines();
         test_on(tset, &DirectError::default(), &InverseError::default());
     }
 
     #[test]
-    fn on_equator_lines() {
-        let wgs84 = consts::WGS84;
-        let solver = KarneyGeodesicSolver::new(&wgs84);
-        let computed = solver
-            .solve_direct(
-                (Lon::new(0.0 * RAD), Lat::new(0.0 * RAD)),
-                Azimuth::new(90.0 * DEG),
-                Length::new(20_000.0, M),
-            )
-            .unwrap();
-        assert_abs_diff_eq!(
-            computed.p2.0,
-            Lon::new(0.17966306 * DEG),
-            epsilon = 1e-8 * RAD
-        );
-        assert_abs_diff_eq!(computed.p2.1, Lat::ZERO, epsilon = 1e-8 * RAD);
-        assert_abs_diff_eq!(computed.alpha2, Azimuth::EAST, epsilon = 1e-8 * RAD);
-
-        let computed = solver
-            .solve_direct(
-                (Lon::new(170.0 * DEG), Lat::new(0.0 * DEG)),
-                Azimuth::new(90.0 * DEG),
-                Length::new(2_000_000.0, M),
-            )
-            .unwrap();
-        assert_abs_diff_eq!(computed.p2.0, Lon::new(-172.03369432 * DEG));
-        assert_abs_diff_eq!(computed.p2.1, Lat::new(0.0 * RAD));
-        assert_abs_diff_eq!(computed.alpha2, Azimuth::new(PI_2 * RAD));
-
-        let computed = solver
-            .solve_inverse(
-                (Lon::new(-10. * DEG), Lat::new(0. * DEG)),
-                (Lon::new(10. * DEG), Lat::new(0. * DEG)),
-            )
-            .unwrap();
-        assert_abs_diff_eq!(computed.alpha1, Azimuth::EAST);
-        assert_abs_diff_eq!(computed.alpha2, Azimuth::EAST);
-        assert_abs_diff_eq!(computed.s, Length::new(2_226_389.816, M));
-
-        let computed = solver
-            .solve_inverse(
-                (Lon::new(10. * DEG), Lat::new(0. * DEG)),
-                (Lon::new(-10. * DEG), Lat::new(0. * DEG)),
-            )
-            .unwrap();
-        assert_abs_diff_eq!(computed.alpha1, Azimuth::WEST, epsilon = 1e-10 * RAD);
-        assert_abs_diff_eq!(computed.alpha2, Azimuth::WEST, epsilon = 1e-10 * RAD);
-        assert_abs_diff_eq!(computed.s, Length::new(2_226_389.816, M));
-
-        let computed = solver
-            .solve_inverse(
-                (Lon::new(170. * DEG), Lat::new(0. * DEG)),
-                (Lon::new(-170. * DEG), Lat::new(0. * DEG)),
-            )
-            .unwrap();
-        assert_abs_diff_eq!(computed.alpha1, Azimuth::EAST, epsilon = 1e-10 * RAD);
-        assert_abs_diff_eq!(computed.alpha2, Azimuth::EAST, epsilon = 1e-10 * RAD);
-        assert_abs_diff_eq!(computed.s, Length::new(2_226_389.816, M));
+    fn on_meridional_lines() {
+        let tset = meridional_lines();
+        test_on(tset, &DirectError::default(), &InverseError::default());
     }
 
     #[test]
-    fn on_meridian_lines() {
-        let wgs84 = consts::WGS84;
-        let solver = KarneyGeodesicSolver::new(&wgs84);
-
-        let computed = solver
-            .solve_direct(
-                (Lon::new(0. * DEG), Lat::new(-10. * DEG)),
-                Azimuth::new(0. * DEG),
-                Length::new(2_000_000.0, M),
-            )
-            .unwrap();
-        assert_abs_diff_eq!(computed.p2.0, Lon::new(0.0 * RAD));
-        assert_abs_diff_eq!(computed.p2.1, Lat::new(8.08583903 * DEG));
-        assert_abs_diff_eq!(computed.alpha2, Azimuth::new(0.0 * RAD));
-
-        let computed = solver
-            .solve_direct(
-                (Lon::new(0. * DEG), Lat::new(80. * DEG)),
-                Azimuth::new(0. * DEG),
-                Length::new(2_000_000.0, M),
-            )
-            .unwrap();
-        assert_abs_diff_eq!(computed.p2.0, Lon::new(PI * RAD));
-        assert_abs_diff_eq!(computed.p2.1, Lat::new(82.09240627 * DEG));
-        assert_abs_diff_eq!(computed.alpha2, Azimuth::new(PI * RAD));
-
-        let computed = solver
-            .solve_inverse(
-                (Lon::new(0. * DEG), Lat::new(-10. * DEG)),
-                (Lon::new(0. * DEG), Lat::new(10. * DEG)),
-            )
-            .unwrap();
-        assert_abs_diff_eq!(computed.alpha1, Azimuth::NORTH, epsilon = 1e-10 * RAD);
-        assert_abs_diff_eq!(computed.alpha2, Azimuth::NORTH, epsilon = 1e-10 * RAD);
-        assert_abs_diff_eq!(computed.s, Length::new(2_211_709.666, M));
-
-        let computed = solver
-            .solve_inverse(
-                (Lon::new(0. * DEG), Lat::new(10. * DEG)),
-                (Lon::new(0. * DEG), Lat::new(-10. * DEG)),
-            )
-            .unwrap();
-        assert_abs_diff_eq!(computed.alpha1, Azimuth::SOUTH, epsilon = 1e-10 * RAD);
-        assert_abs_diff_eq!(computed.alpha2, Azimuth::SOUTH, epsilon = 1e-10 * RAD);
-        assert_abs_diff_eq!(computed.s, Length::new(2_211_709.666, M));
-
-        let computed = solver
-            .solve_inverse(
-                (Lon::new(0. * DEG), Lat::new(80. * DEG)),
-                (Lon::new(180. * DEG), Lat::new(80. * DEG)),
-            )
-            .unwrap();
-        assert_abs_diff_eq!(computed.alpha1, Azimuth::NORTH, epsilon = 1e-10 * RAD);
-        assert_abs_diff_eq!(computed.alpha2, Azimuth::SOUTH, epsilon = 1e-10 * RAD);
-        assert_abs_diff_eq!(computed.s, Length::new(2_233_651.715, M));
+    fn on_antipodal_lines() {
+        let tset = antipodal_lines();
+        test_on(tset, &DirectError::default(), &InverseError::default());
     }
 
     #[test]
@@ -507,29 +502,29 @@ mod tests {
     fn inverse_karney_sample_short() {
         let wgs84 = consts::WGS84;
         let solver = KarneyGeodesicSolver::new(&wgs84);
-        let computed = solver
-            .solve_inverse(
-                (Lon::new(0. * DEG), Lat::new(-30.12345 * DEG)),
-                (Lon::new(0.000_05 * DEG), Lat::new(-30.12344 * DEG)),
-            )
-            .unwrap();
-        assert_abs_diff_eq!(computed.alpha1, Azimuth::new(77.043_533_542_37 * DEG),);
-        assert_abs_diff_eq!(computed.alpha2, Azimuth::new(77.043_508_449_13 * DEG),);
-        assert_abs_diff_eq!(computed.s.m(), 4.944_208, epsilon = 1e-6);
+        let expected = Geodesic {
+            p1: (Lon::new(0. * DEG), Lat::new(-30.12345 * DEG)),
+            alpha1: Azimuth::new(77.043_533_542_37 * DEG),
+            p2: (Lon::new(0.000_05 * DEG), Lat::new(-30.12344 * DEG)),
+            alpha2: Azimuth::new(77.043_508_449_13 * DEG),
+            s: 4.9444_208 * M,
+        };
+        let computed = solver.solve_inverse(expected.p1, expected.p2).unwrap();
+        check_inverse(&computed, &expected, &InverseError::default());
     }
 
     #[test]
     fn inverse_karney_sample_antipodal() {
         let wgs84 = consts::WGS84;
         let solver = KarneyGeodesicSolver::new(&wgs84);
-        let computed = solver
-            .solve_inverse(
-                (Lon::new(0.0 * DEG), Lat::new(-30. * DEG)),
-                (Lon::new(179.8 * DEG), Lat::new(29.9 * DEG)),
-            )
-            .unwrap();
-        assert_abs_diff_eq!(computed.alpha1, Azimuth::new(161.890_524_736_33 * DEG),);
-        assert_abs_diff_eq!(computed.alpha2, Azimuth::new(18.090_737_245_74 * DEG),);
-        assert_abs_diff_eq!(computed.s.m(), 19_989_832.82761, epsilon = 1e-6);
+        let expected = Geodesic {
+            p1: (Lon::ZERO, Lat::new(-30. * DEG)),
+            alpha1: Azimuth::new(161.890_524_736_33 * DEG),
+            p2: (Lon::new(179.8 * DEG), Lat::new(29.9 * DEG)),
+            alpha2: Azimuth::new(18.090_737_245_74 * DEG),
+            s: 19_989_832.82761 * M,
+        };
+        let computed = solver.solve_inverse(expected.p1, expected.p2).unwrap();
+        check_inverse(&computed, &expected, &InverseError::default());
     }
 }

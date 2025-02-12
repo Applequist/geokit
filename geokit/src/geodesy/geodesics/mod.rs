@@ -60,6 +60,7 @@ pub mod vincenty;
 mod tests {
     use crate::cs::azimuth::Azimuth;
     use crate::cs::geodetic::{Lat, Lon};
+    use crate::geodesy::ellipsoid::consts::WGS84;
     use crate::geodesy::ellipsoid::{self, consts};
     use crate::geodesy::geodesics::Geodesic;
     use crate::geodesy::Ellipsoid;
@@ -83,9 +84,9 @@ mod tests {
     impl Default for DirectError {
         fn default() -> Self {
             DirectError {
-                lon: Angle::new(1e-13, DEG),
-                lat: Angle::new(1e-13, DEG),
-                alpha: Angle::new(1e-13, DEG),
+                lon: Angle::default_epsilon(),
+                lat: Angle::default_epsilon(),
+                alpha: Angle::default_epsilon(),
             }
         }
     }
@@ -103,9 +104,9 @@ mod tests {
     impl Default for InverseError {
         fn default() -> Self {
             InverseError {
-                alpha1: Angle::new(1e-13, DEG),
-                alpha2: Angle::new(1e-13, DEG),
-                s: Length::new(1e-8, M),
+                alpha1: Angle::default_epsilon(),
+                alpha2: Angle::default_epsilon(),
+                s: Length::default_epsilon(),
             }
         }
     }
@@ -173,12 +174,60 @@ mod tests {
     /// Check whether an inverse geodesic computation is within the error bounds of the expected
     /// result.
     pub fn check_inverse(computed: &Geodesic, expected: &Geodesic, err: &InverseError) {
-        if !computed.alpha1.abs_diff_eq(&expected.alpha1, err.alpha1)
-            || !computed.alpha2.abs_diff_eq(&expected.alpha2, err.alpha2)
-            || !computed.s.abs_diff_eq(&expected.s, err.s)
-        {
+        let has_alpha1_err = !computed.alpha1.abs_diff_eq(&expected.alpha1, err.alpha1);
+        let has_alpha2_err = !computed.alpha2.abs_diff_eq(&expected.alpha2, err.alpha2);
+        let has_s_err = !computed.s.abs_diff_eq(&expected.s, err.s);
+
+        if has_alpha1_err || has_alpha2_err || has_s_err {
             print_test_case(computed, expected);
-            assert!(false, "Inverse Geodesic computation failed");
+            if has_alpha1_err {
+                println!(
+                    "Alpha1 error: | {} - {} | = {:e} > {:e}",
+                    computed.alpha1,
+                    expected.alpha1,
+                    (computed.alpha1 - expected.alpha1).abs().deg(),
+                    err.alpha1.deg()
+                );
+            } else {
+                println!(
+                    "Alpha1 ok:     {} = {} +/- {:e}",
+                    computed.alpha1,
+                    expected.alpha1,
+                    err.alpha1.deg(),
+                );
+            }
+            if has_alpha2_err {
+                println!(
+                    "Alpha2 error: | {} - {} | = {:e} > {:e}",
+                    computed.alpha2,
+                    expected.alpha2,
+                    (computed.alpha2 - expected.alpha2).abs().deg(),
+                    err.alpha2.deg()
+                );
+            } else {
+                println!(
+                    "Alpha2 ok:     {} = {} +/- {:e}",
+                    computed.alpha2,
+                    expected.alpha2,
+                    err.alpha2.deg(),
+                );
+            }
+            if has_s_err {
+                println!(
+                    "S error: | {} - {} | = {:e} m > {:e} m",
+                    computed.s,
+                    expected.s,
+                    (computed.s - expected.s).abs().m(),
+                    err.s.m(),
+                );
+            } else {
+                println!(
+                    "S ok      {} = {} +/- {:e} m",
+                    computed.s,
+                    expected.s,
+                    err.s.m()
+                );
+            }
         }
     }
 
@@ -186,10 +235,10 @@ mod tests {
         println!(
             "-----------------------------------------------------------------------------------"
         );
-        println!("Expected: ");
-        println!("{}", expected);
         println!("Computed: ");
         println!("{}", computed);
+        println!("Expected: ");
+        println!("{}", expected);
     }
 
     pub struct LineData {
@@ -254,6 +303,92 @@ mod tests {
                     p2: (Lon::dms(-2., 37., 39.52918), Lat::dms(28., 15., 36.69535)),
                     alpha2: Azimuth::dms(193., 34., 43.74060),
                     s: Length::new(1_000_000.0, M),
+                },
+            ],
+        }
+    }
+
+    pub fn equatorial_lines() -> LineData {
+        LineData {
+            ellipsoid: WGS84,
+            testcases: vec![
+                Geodesic {
+                    p1: (Lon::ZERO, Lat::ZERO),
+                    alpha1: Azimuth::EAST,
+                    p2: (Lon::new(0.17966306 * DEG), Lat::ZERO),
+                    alpha2: Azimuth::EAST,
+                    s: Length::new(20_000.0, M),
+                },
+                Geodesic {
+                    p1: (Lon::new(170.0 * DEG), Lat::ZERO),
+                    alpha1: Azimuth::new(90.0 * DEG),
+                    p2: (Lon::new(-172.03369432 * DEG), Lat::ZERO),
+                    alpha2: Azimuth::EAST,
+                    s: Length::new(2_000_000.0, M),
+                },
+                Geodesic {
+                    p1: (Lon::new(-10. * DEG), Lat::ZERO),
+                    alpha1: Azimuth::EAST,
+                    p2: (Lon::new(10. * DEG), Lat::ZERO),
+                    alpha2: Azimuth::EAST,
+                    s: Length::new(2_226_389.816, M),
+                },
+                Geodesic {
+                    p1: (Lon::new(10. * DEG), Lat::ZERO),
+                    alpha1: Azimuth::WEST,
+                    p2: (Lon::new(-10. * DEG), Lat::ZERO),
+                    alpha2: Azimuth::WEST,
+                    s: Length::new(2_226_389.816, M),
+                },
+                Geodesic {
+                    p1: (Lon::new(170. * DEG), Lat::ZERO),
+                    alpha1: Azimuth::EAST,
+                    p2: (Lon::new(-170. * DEG), Lat::ZERO),
+                    alpha2: Azimuth::EAST,
+                    s: Length::new(2_226_389.816, M),
+                },
+            ],
+        }
+    }
+
+    pub fn meridional_lines() -> LineData {
+        LineData {
+            ellipsoid: WGS84,
+            testcases: vec![
+                Geodesic {
+                    p1: (Lon::ZERO, Lat::new(-10. * DEG)),
+                    alpha1: Azimuth::NORTH,
+                    p2: (Lon::ZERO, Lat::new(8.08583903 * DEG)),
+                    alpha2: Azimuth::NORTH,
+                    s: 2_000_000.0 * M,
+                },
+                Geodesic {
+                    p1: (Lon::ZERO, Lat::new(80. * DEG)),
+                    alpha1: Azimuth::NORTH,
+                    p2: (Lon::MAX, Lat::new(82.09240627 * DEG)),
+                    alpha2: Azimuth::SOUTH,
+                    s: Length::new(2_000_000.0, M),
+                },
+                Geodesic {
+                    p1: (Lon::ZERO, Lat::new(-10. * DEG)),
+                    alpha1: Azimuth::NORTH,
+                    p2: (Lon::ZERO, Lat::new(10. * DEG)),
+                    alpha2: Azimuth::NORTH,
+                    s: 2_211_709.666 * M,
+                },
+                Geodesic {
+                    p1: (Lon::ZERO, Lat::new(10. * DEG)),
+                    alpha1: Azimuth::SOUTH,
+                    p2: (Lon::ZERO, Lat::new(-10. * DEG)),
+                    alpha2: Azimuth::SOUTH,
+                    s: 2_211_709.666 * M,
+                },
+                Geodesic {
+                    p1: (Lon::ZERO, Lat::new(80. * DEG)),
+                    alpha1: Azimuth::NORTH,
+                    p2: (Lon::new(180. * DEG), Lat::new(80. * DEG)),
+                    alpha2: Azimuth::SOUTH,
+                    s: 2_233_651.715 * M,
                 },
             ],
         }

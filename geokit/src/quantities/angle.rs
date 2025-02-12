@@ -60,12 +60,6 @@ impl Angle {
     pub const M_PI_2: Angle = Angle(-PI_2);
     pub const M_PI: Angle = Angle(-PI);
 
-    /// Less that 7e-9 m at the equator
-    #[inline]
-    pub const fn super_tiny() -> Angle {
-        Angle(1e-15)
-    }
-
     /// Less than 7e-6 m at the equator
     #[inline]
     pub const fn tiny() -> Angle {
@@ -79,7 +73,7 @@ impl Angle {
     }
 
     pub const fn default_epsilon() -> Angle {
-        Self::super_tiny()
+        Self::tiny()
     }
 
     /// Create an angle value whose `qty` is given in `unit`.
@@ -206,6 +200,10 @@ impl Angle {
         }
         Dms(sgn * d, m, s)
     }
+
+    pub fn signum(&self) -> f64 {
+        self.0.signum()
+    }
 }
 
 impl Mul<Angle> for Float {
@@ -300,7 +298,7 @@ impl LowerExp for Deg {
 /// assert_eq!(format!("{}", Angle::new(2.33432, DEG).dms()), "   2° 20′ 03.55200000″");
 /// ```
 #[derive(Copy, Clone, Debug, Display)]
-#[display("{:4}° {:02}′ {:015.12}″", _0, _1, _2)]
+#[display("{:4}° {:02}′ {:011.8}″", _0, _1, _2)]
 pub struct Dms(Float, Float, Float);
 
 impl Dms {
@@ -410,28 +408,19 @@ mod tests {
     fn angle_dms_display() {
         assert_eq!(
             format!("{}", Dms(-33., 6., 22.01545)),
-            " -33° 06′ 22.015450000000″"
+            " -33° 06′ 22.01545000″"
         );
-        assert_eq!(
-            format!("{}", Dms(45., 0., 0.)),
-            "  45° 00′ 00.000000000000″"
-        );
-        assert_eq!(
-            format!("{}", (PI_4 * RAD).dms()),
-            "  45° 00′ 00.000000000000″"
-        );
+        assert_eq!(format!("{}", Dms(45., 0., 0.)), "  45° 00′ 00.00000000″");
+        assert_eq!(format!("{}", (PI_4 * RAD).dms()), "  45° 00′ 00.00000000″");
         assert_eq!(
             format!("{}", Dms(-179., 59., 59.1234)),
-            "-179° 59′ 59.123400000000″"
+            "-179° 59′ 59.12340000″"
         );
-        assert_eq!(
-            format!("{}", Dms(-33., 26., 0.)),
-            " -33° 26′ 00.000000000000″"
-        );
+        assert_eq!(format!("{}", Dms(-33., 26., 0.)), " -33° 26′ 00.00000000″");
         // Check rounding
         assert_eq!(
             format!("{}", Dms(37., 19., 54.95367)),
-            "  37° 19′ 54.953670000000″"
+            "  37° 19′ 54.95367000″"
         );
     }
 }

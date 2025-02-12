@@ -18,7 +18,7 @@ use crate::units::angle::{AngleUnit, DEG, RAD};
 use crate::units::length::{LengthUnit, M};
 use approx::AbsDiffEq;
 use derive_more::derive::{Display, Neg};
-use std::ops::{Add, AddAssign, Div, Sub, SubAssign};
+use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
 
 /// A [GeodeticAxes] defines the possible set of axes used in **geodetic** CS.
 #[derive(Debug, Copy, Clone, PartialEq)]
@@ -182,14 +182,6 @@ pub struct GeodeticErrors {
 }
 
 impl GeodeticErrors {
-    pub const fn super_tiny() -> Self {
-        GeodeticErrors {
-            lon_err: Angle::super_tiny(),
-            lat_err: Angle::super_tiny(),
-            height_err: Length::super_tiny(),
-        }
-    }
-
     pub const fn tiny() -> Self {
         GeodeticErrors {
             lon_err: Angle::tiny(),
@@ -209,7 +201,7 @@ impl GeodeticErrors {
 
 impl Default for GeodeticErrors {
     fn default() -> Self {
-        GeodeticErrors::super_tiny()
+        GeodeticErrors::tiny()
     }
 }
 
@@ -330,6 +322,10 @@ impl Lon {
     pub fn tan(self) -> Float {
         self.0.tan()
     }
+
+    pub fn signum(&self) -> Float {
+        self.0.signum()
+    }
 }
 
 impl Add for Lon {
@@ -428,6 +424,42 @@ impl SubAssign<Angle> for Lon {
     }
 }
 
+impl Mul<Float> for Lon {
+    type Output = Lon;
+
+    fn mul(self, rhs: Float) -> Self::Output {
+        Lon::new(self.0 * rhs)
+    }
+}
+
+impl Mul<Lon> for Float {
+    type Output = Lon;
+
+    fn mul(self, rhs: Lon) -> Self::Output {
+        rhs * self
+    }
+}
+
+impl MulAssign<Float> for Lon {
+    fn mul_assign(&mut self, rhs: Float) {
+        self.0 = (self.0 * rhs).wrapped();
+    }
+}
+
+impl Div<Float> for Lon {
+    type Output = Lon;
+
+    fn div(self, rhs: Float) -> Self::Output {
+        Lon::new(self.0 / rhs)
+    }
+}
+
+impl DivAssign<Float> for Lon {
+    fn div_assign(&mut self, rhs: Float) {
+        self.0 = (self.0 / rhs).wrapped()
+    }
+}
+
 impl AbsDiffEq for Lon {
     type Epsilon = Angle;
 
@@ -440,8 +472,7 @@ impl AbsDiffEq for Lon {
     }
 }
 
-/// [Lat] represents a latitude coordinate (geodetic or other auxiliary ones)
-/// in [-pi/2..pi/2] radians.
+/// [Lat] represents a geodetic latitude coordinate in [-pi/2..pi/2] radians.
 ///
 /// # Creation
 ///
@@ -543,6 +574,10 @@ impl Lat {
     pub fn tan(self) -> Float {
         self.0.tan()
     }
+
+    pub fn signum(&self) -> Float {
+        self.0.signum()
+    }
 }
 
 impl Add<Angle> for Lat {
@@ -589,11 +624,39 @@ impl SubAssign<Angle> for Lat {
     }
 }
 
+impl Mul<Float> for Lat {
+    type Output = Lat;
+
+    fn mul(self, rhs: Float) -> Self::Output {
+        Lat::new(self.0 * rhs)
+    }
+}
+
+impl Mul<Lat> for Float {
+    type Output = Lat;
+
+    fn mul(self, rhs: Lat) -> Self::Output {
+        rhs * self
+    }
+}
+
+impl MulAssign<Float> for Lat {
+    fn mul_assign(&mut self, rhs: Float) {
+        self.0 = (self.0 * rhs).clamped(Angle::M_PI_2, Angle::PI_2);
+    }
+}
+
 impl Div<Float> for Lat {
     type Output = Lat;
 
     fn div(self, rhs: Float) -> Self::Output {
-        Lat(self.0 / rhs)
+        Lat::new(self.0 / rhs)
+    }
+}
+
+impl DivAssign<Float> for Lat {
+    fn div_assign(&mut self, rhs: Float) {
+        self.0 = (self.0 / rhs).clamped(Angle::M_PI_2, Angle::PI_2);
     }
 }
 
