@@ -1,9 +1,9 @@
 use crate::{
-    math::{utils::remainder, Float, PI, PI_2, TAU},
+    math::fp::{remainder, Float, PI, PI_2, TAU},
     units::angle::{AngleUnit, DEG},
 };
 use approx::AbsDiffEq;
-use derive_more::derive::{Add, AddAssign, Display, LowerExp, Neg, Sub, SubAssign};
+use derive_more::derive::{Add, AddAssign, Display, Neg, Sub, SubAssign};
 use std::{
     fmt::LowerExp,
     ops::{Div, DivAssign, Mul, MulAssign},
@@ -320,7 +320,7 @@ mod tests {
 
     use super::Dms;
     use crate::{
-        math::{Float, PI, PI_4},
+        math::fp::{Float, PI, PI_4},
         quantities::angle::Angle,
         units::angle::{DEG, GRAD, RAD, SEC},
     };

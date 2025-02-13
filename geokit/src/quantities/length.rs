@@ -1,5 +1,5 @@
 use crate::{
-    math::Float,
+    math::fp::Float,
     units::{angle::RAD, length::LengthUnit},
 };
 use approx::AbsDiffEq;
@@ -47,15 +47,16 @@ pub struct Length(Float);
 impl Length {
     pub const ZERO: Length = Length(0.0);
 
+    /// 1e-4 m is considered *tiny*
     #[inline]
     pub const fn tiny() -> Length {
-        Length(1e-6)
+        Length(1e-4)
     }
 
-    /// Less than 7e-3 m at the equator
+    /// 1e-2 m is considered *small*
     #[inline]
     pub const fn small() -> Length {
-        Length(1e-3)
+        Length(1e-2)
     }
 
     pub const fn default_epsilon() -> Length {
@@ -179,14 +180,14 @@ impl AbsDiffEq for Length {
     }
 }
 
-/// [Arc] represents the length of an arc of circle.
+/// [ArcLength] represents the length of an arc of circle.
 /// It is convenient to represent the following type of operations
 /// used in geometric computations:
-/// [Arc] = [Length] * [Angle] or [Angle] * [Length]
-/// [Angle] = [Arc] / [Length]
-pub struct Arc(pub Length);
+/// [ArcLength] = [Length] * [Angle] or [Angle] * [Length]
+/// [Angle] = [ArcLength] / [Length]
+pub struct ArcLength(pub Length);
 
-impl Arc {
+impl ArcLength {
     #[inline]
     pub fn length(self) -> Length {
         self.0
@@ -194,23 +195,23 @@ impl Arc {
 }
 
 impl Mul<Angle> for Length {
-    type Output = Arc;
+    type Output = ArcLength;
 
     #[inline]
     fn mul(self, rhs: Angle) -> Self::Output {
-        Arc(self * rhs.rad())
+        ArcLength(self * rhs.rad())
     }
 }
 
 impl Mul<Length> for Angle {
-    type Output = Arc;
+    type Output = ArcLength;
 
     fn mul(self, rhs: Length) -> Self::Output {
         rhs * self
     }
 }
 
-impl Div<Length> for Arc {
+impl Div<Length> for ArcLength {
     type Output = Angle;
 
     fn div(self, rhs: Length) -> Self::Output {

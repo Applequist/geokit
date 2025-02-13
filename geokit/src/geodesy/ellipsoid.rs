@@ -1,6 +1,6 @@
 use crate::{
     cs::geodetic::Lat,
-    math::Float,
+    math::fp::Float,
     quantities::{angle::Angle, length::Length},
     units::{angle::RAD, length::M},
 };
@@ -129,7 +129,9 @@ impl Ellipsoid {
     /// Return the first eccentricity squared: `(a^2 -b^2) / a^2`.
     #[inline]
     pub fn e_sq(&self) -> Float {
-        (self.a_sq() - self.b_sq()) / self.a_sq()
+        let a = self.a().m();
+        let b = self.b().m();
+        (a - b) * (a + b) / self.a_sq()
     }
 
     /// Return the first eccentricity.
@@ -197,7 +199,7 @@ impl PartialEq for Ellipsoid {
 /// Well known ellipsoid definitions.
 pub mod consts {
     use super::Ellipsoid;
-    use crate::math::Float;
+    use crate::math::fp::Float;
     use crate::quantities::length::Length;
     use crate::units::length::M;
     macro_rules! def {

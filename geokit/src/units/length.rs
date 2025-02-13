@@ -1,4 +1,4 @@
-use crate::math::Float;
+use crate::math::fp::Float;
 
 /// A Length unit as a to-meter length converter.
 /// A length expressed in this unit is converted to meters as follow:

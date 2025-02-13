@@ -4,8 +4,8 @@ use crate::cs::azimuth::Azimuth;
 use crate::cs::geodetic::{Lat, Lon};
 use crate::geodesy::geodesics::{Geodesic, GeodesicSolver};
 use crate::geodesy::Ellipsoid;
+use crate::math::fp::PI;
 use crate::math::polynomial::Polynomial;
-use crate::math::PI;
 use crate::quantities::length::Length;
 use crate::units::angle::RAD;
 use crate::units::length::M;
@@ -329,12 +329,14 @@ impl<'e> GeodesicSolver for RappIterativeGeodisicSolver<'e> {
 mod tests {
     use crate::geodesy::geodesics::rapp::RappIterativeGeodisicSolver;
     use crate::geodesy::geodesics::tests::{
-        antipodal_lines, check_direct, check_inverse, equatorial_lines, geographiclib_lines,
-        meridional_lines, standard_lines, DirectError, InverseError, LineData,
+        antipodal_lines, equatorial_lines, geographiclib_lines, meridional_lines, standard_lines,
+        LineData,
     };
-    use crate::geodesy::geodesics::GeodesicSolver;
+    use crate::geodesy::geodesics::{
+        check_direct, check_inverse, DirectErrors, GeodesicSolver, InverseErrors,
+    };
 
-    fn test_on(tset: LineData, err_direct: &DirectError, err_inverse: &InverseError) {
+    fn test_on(tset: LineData, err_direct: &DirectErrors, err_inverse: &InverseErrors) {
         let solver = RappIterativeGeodisicSolver::new(&tset.ellipsoid);
         for tcase in tset.testcases.into_iter() {
             let direct = solver
@@ -350,31 +352,31 @@ mod tests {
     #[test]
     fn on_geographiclib_lines() {
         let tset = geographiclib_lines();
-        test_on(tset, &DirectError::default(), &InverseError::default());
+        test_on(tset, &DirectErrors::default(), &InverseErrors::default());
     }
 
     #[test]
     fn on_standard_lines() {
         let tset = standard_lines();
-        test_on(tset, &DirectError::default(), &InverseError::default());
+        test_on(tset, &DirectErrors::default(), &InverseErrors::default());
     }
 
     #[test]
     fn on_equatorial_lines() {
         let tset = equatorial_lines();
-        test_on(tset, &DirectError::default(), &InverseError::default());
+        test_on(tset, &DirectErrors::default(), &InverseErrors::default());
     }
 
     #[test]
     fn on_meridional_lines() {
         let tset = meridional_lines();
-        test_on(tset, &DirectError::default(), &InverseError::default());
+        test_on(tset, &DirectErrors::default(), &InverseErrors::default());
     }
 
     #[ignore = "Known to fail"]
     #[test]
     fn on_antipodal_lines() {
         let tset = antipodal_lines();
-        test_on(tset, &DirectError::default(), &InverseError::default());
+        test_on(tset, &DirectErrors::default(), &InverseErrors::default());
     }
 }

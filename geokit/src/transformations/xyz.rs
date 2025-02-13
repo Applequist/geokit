@@ -1,7 +1,7 @@
 use super::XYZTransformation;
 use crate::{
     cs::cartesian::XYZ,
-    math::Float,
+    math::fp::Float,
     quantities::{angle::Angle, length::Length, scale::PPM},
     units::length::M,
 };

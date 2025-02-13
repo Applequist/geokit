@@ -4,11 +4,11 @@ use crate::{
         geodetic::{Lat, Lon, LLH},
     },
     geodesy::Ellipsoid,
-    math::PI_4,
+    math::fp::PI_4,
     projections::{Projection, ProjectionError},
     quantities::{
         angle::Angle,
-        length::{Arc, Length},
+        length::{ArcLength, Length},
     },
     units::angle::RAD,
 };
@@ -61,7 +61,7 @@ impl Projection for WebMercator {
         let d = (self.false_northing - input.northing) / self.a;
 
         Ok(LLH {
-            lon: self.lon0 + Arc(input.easting - self.false_easting) / self.a,
+            lon: self.lon0 + ArcLength(input.easting - self.false_easting) / self.a,
             lat: Lat::new(Angle::PI_2 - 2.0 * d.exp().atan() * RAD),
             height: input.height,
         })

@@ -7,11 +7,11 @@ use crate::cs::geodetic::{Lat, Lon};
 use crate::geodesy::geodesics::{Geodesic, GeodesicSolver};
 use crate::geodesy::Ellipsoid;
 use crate::math::complex::Complex;
+use crate::math::fp::clenshaw_sin_sum;
+use crate::math::fp::Float;
 use crate::math::polynomial::Polynomial;
-use crate::math::utils::clenshaw_sin_sum;
-use crate::math::Float;
 use crate::quantities::angle::Angle;
-use crate::quantities::length::{Arc, Length};
+use crate::quantities::length::{ArcLength, Length};
 use crate::units::angle::RAD;
 
 /// Solve direct and inverse geodesic problems on an ellipsoid using algorithms
@@ -122,7 +122,7 @@ impl<'e> KarneyGeodesicSolver<'e> {
         let s1: Length = self.ellipsoid.b() * I1_sigma1;
         let s2 = s1 + s12;
 
-        let tau2 = Arc(s2) / (self.ellipsoid.b() * A1);
+        let tau2 = ArcLength(s2) / (self.ellipsoid.b() * A1);
         let sigma2 = Self::Sigma(epsilon, tau2);
 
         // Solve triange NEP2
@@ -393,21 +393,22 @@ impl<'e> GeodesicSolver for KarneyGeodesicSolver<'e> {
 mod tests {
     use crate::cs::azimuth::Azimuth;
     use crate::cs::geodetic::{Lat, Lon};
-    use crate::geodesy::ellipsoid::consts::{self, WGS84};
+    use crate::geodesy::ellipsoid::consts::{self};
     use crate::geodesy::geodesics::karney::KarneyGeodesicSolver;
     use crate::geodesy::geodesics::tests::{
-        antipodal_lines, check_direct, check_inverse, equatorial_lines, geographiclib_lines,
-        meridional_lines, standard_lines, DirectError, InverseError, LineData,
+        antipodal_lines, equatorial_lines, geographiclib_lines, meridional_lines, standard_lines,
+        LineData,
     };
-    use crate::geodesy::geodesics::{Geodesic, GeodesicSolver};
-    use crate::math::{PI, PI_2};
+    use crate::geodesy::geodesics::{
+        check_direct, check_inverse, DirectErrors, Geodesic, GeodesicSolver, InverseErrors,
+    };
     use crate::quantities::angle::Angle;
     use crate::quantities::length::Length;
-    use crate::units::angle::{DEG, RAD};
+    use crate::units::angle::DEG;
     use crate::units::length::M;
     use approx::assert_abs_diff_eq;
 
-    fn test_on(tset: LineData, err_direct: &DirectError, _err_inverse: &InverseError) {
+    fn test_on(tset: LineData, err_direct: &DirectErrors, err_inverse: &InverseErrors) {
         let solver = KarneyGeodesicSolver::new(&tset.ellipsoid);
         for tcase in tset.testcases.into_iter() {
             let direct = solver
@@ -415,40 +416,39 @@ mod tests {
                 .unwrap();
             check_direct(&direct, &tcase, err_direct);
 
-            // TODO: implement inverse method.
-            //let inverse = solver.solve_inverse(tcase.p1, tcase.p2).unwrap();
-            //check_inverse(&inverse, &tcase, err_inverse);
+            let inverse = solver.solve_inverse(tcase.p1, tcase.p2).unwrap();
+            check_inverse(&inverse, &tcase, err_inverse);
         }
     }
 
     #[test]
     fn on_geographiclib_lines() {
         let tset = geographiclib_lines();
-        test_on(tset, &DirectError::default(), &InverseError::default());
+        test_on(tset, &DirectErrors::default(), &InverseErrors::default());
     }
 
     #[test]
     fn on_standard_lines() {
         let tset = standard_lines();
-        test_on(tset, &DirectError::default(), &InverseError::default());
+        test_on(tset, &DirectErrors::default(), &InverseErrors::default());
     }
 
     #[test]
     fn on_equatorial_lines() {
         let tset = equatorial_lines();
-        test_on(tset, &DirectError::default(), &InverseError::default());
+        test_on(tset, &DirectErrors::default(), &InverseErrors::default());
     }
 
     #[test]
     fn on_meridional_lines() {
         let tset = meridional_lines();
-        test_on(tset, &DirectError::default(), &InverseError::default());
+        test_on(tset, &DirectErrors::default(), &InverseErrors::default());
     }
 
     #[test]
     fn on_antipodal_lines() {
         let tset = antipodal_lines();
-        test_on(tset, &DirectError::default(), &InverseError::default());
+        test_on(tset, &DirectErrors::default(), &InverseErrors::default());
     }
 
     #[test]
@@ -479,7 +479,7 @@ mod tests {
                 alpha2: Azimuth::new(149.090_169_318_07 * DEG),
                 ..computed
             },
-            &DirectError::default(),
+            &DirectErrors::default(),
         );
         assert_abs_diff_eq!(
             computed.p2.0,
@@ -510,7 +510,7 @@ mod tests {
             s: 4.9444_208 * M,
         };
         let computed = solver.solve_inverse(expected.p1, expected.p2).unwrap();
-        check_inverse(&computed, &expected, &InverseError::default());
+        check_inverse(&computed, &expected, &InverseErrors::default());
     }
 
     #[test]
@@ -525,6 +525,6 @@ mod tests {
             s: 19_989_832.82761 * M,
         };
         let computed = solver.solve_inverse(expected.p1, expected.p2).unwrap();
-        check_inverse(&computed, &expected, &InverseError::default());
+        check_inverse(&computed, &expected, &InverseErrors::default());
     }
 }

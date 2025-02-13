@@ -1,7 +1,7 @@
 use crate::crs::{GeocentricCrs, GeographicCrs, ProjectedCrs};
 use crate::cs::cartesian::{ProjectedAxes, XYZ};
 use crate::geodesy::GeodeticDatum;
-use crate::math::Float;
+use crate::math::fp::Float;
 use crate::projections::{Projection, ProjectionError};
 use derive_more::derive::Display;
 use thiserror::Error;

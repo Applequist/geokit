@@ -1,6 +1,8 @@
 use crate::cs::azimuth::Azimuth;
 use crate::cs::geodetic::{Lat, Lon};
+use crate::quantities::angle::Angle;
 use crate::quantities::length::Length;
+use approx::AbsDiffEq;
 use derive_more::derive::Display;
 
 /// Geodesic segment data.
@@ -52,6 +54,177 @@ pub trait GeodesicSolver {
     fn solve_inverse(&self, p1: (Lon, Lat), p2: (Lon, Lat)) -> Result<Geodesic, &'static str>;
 }
 
+/// Maximum absolute difference in direct geodesic computation results.
+pub struct DirectErrors {
+    /// Maximum absolute difference in longitude.
+    lon: Angle,
+    /// Maximum absolute difference in latitude.
+    lat: Angle,
+    /// Maximum absolute difference in azimuth
+    alpha: Angle,
+}
+
+impl Default for DirectErrors {
+    fn default() -> Self {
+        DirectErrors {
+            lon: Angle::default_epsilon(),
+            lat: Angle::default_epsilon(),
+            alpha: Angle::default_epsilon(),
+        }
+    }
+}
+
+/// Maximum absolute difference in inverse geodesic computation results.
+pub struct InverseErrors {
+    /// Maximum absolute difference in starting azimuth.
+    alpha1: Angle,
+    /// Maximum absolute difference in ending azimuth.
+    alpha2: Angle,
+    /// Maximum absolute difference in geodesic distance.
+    s: Length,
+}
+
+impl Default for InverseErrors {
+    fn default() -> Self {
+        InverseErrors {
+            alpha1: Angle::default_epsilon(),
+            alpha2: Angle::default_epsilon(),
+            s: Length::default_epsilon(),
+        }
+    }
+}
+
+/// Check whether a direct geodesic computation is within the error bounds of the expected
+/// result.
+pub fn check_direct(computed: &Geodesic, expected: &Geodesic, err: &DirectErrors) {
+    let has_lon_error = !computed.p2.0.abs_diff_eq(&expected.p2.0, err.lon);
+    let has_lat_error = !computed.p2.1.abs_diff_eq(&expected.p2.1, err.lat);
+    let has_az_error = !computed.alpha2.abs_diff_eq(&expected.alpha2, err.alpha);
+
+    if has_lon_error || has_lat_error || has_az_error {
+        print_test_case(computed, expected);
+        if has_lon_error {
+            println!(
+                "Longitude error: | {} - {} | = {:e} > {:e}",
+                computed.p2.0,
+                expected.p2.0,
+                (computed.p2.0 - expected.p2.0).angle().abs().deg(),
+                err.lon.deg()
+            );
+        } else {
+            println!(
+                "Longitude ok:      {} = {} +/- {:e}",
+                computed.p2.0,
+                expected.p2.0,
+                err.lon.deg()
+            );
+        }
+        if has_lat_error {
+            println!(
+                "Latitude error: | {} - {} | = {:e} > {:e}",
+                computed.p2.1,
+                expected.p2.1,
+                (computed.p2.1 - expected.p2.1).abs().deg(),
+                err.lat.deg()
+            );
+        } else {
+            println!(
+                "Latitude ok:      {} = {} +/- {:e}",
+                computed.p2.1,
+                expected.p2.1,
+                err.lat.deg()
+            );
+        }
+        if has_az_error {
+            println!(
+                "Azimuth error: | {} - {} | = {:e} > {:e}",
+                computed.alpha2,
+                expected.alpha2,
+                (computed.alpha2 - expected.alpha2).abs().deg(),
+                err.alpha.deg()
+            );
+        } else {
+            println!(
+                "Azimuth ok:      {} = {} +/- {:e}",
+                computed.alpha2,
+                expected.alpha2,
+                err.alpha.deg()
+            );
+        }
+        assert!(false);
+    }
+}
+
+/// Check whether an inverse geodesic computation is within the error bounds of the expected
+/// result.
+pub fn check_inverse(computed: &Geodesic, expected: &Geodesic, err: &InverseErrors) {
+    let has_alpha1_err = !computed.alpha1.abs_diff_eq(&expected.alpha1, err.alpha1);
+    let has_alpha2_err = !computed.alpha2.abs_diff_eq(&expected.alpha2, err.alpha2);
+    let has_s_err = !computed.s.abs_diff_eq(&expected.s, err.s);
+
+    if has_alpha1_err || has_alpha2_err || has_s_err {
+        print_test_case(computed, expected);
+        if has_alpha1_err {
+            println!(
+                "Alpha1 error: | {} - {} | = {:e} > {:e}",
+                computed.alpha1,
+                expected.alpha1,
+                (computed.alpha1 - expected.alpha1).abs().deg(),
+                err.alpha1.deg()
+            );
+        } else {
+            println!(
+                "Alpha1 ok:     {} = {} +/- {:e}",
+                computed.alpha1,
+                expected.alpha1,
+                err.alpha1.deg(),
+            );
+        }
+        if has_alpha2_err {
+            println!(
+                "Alpha2 error: | {} - {} | = {:e} > {:e}",
+                computed.alpha2,
+                expected.alpha2,
+                (computed.alpha2 - expected.alpha2).abs().deg(),
+                err.alpha2.deg()
+            );
+        } else {
+            println!(
+                "Alpha2 ok:     {} = {} +/- {:e}",
+                computed.alpha2,
+                expected.alpha2,
+                err.alpha2.deg(),
+            );
+        }
+        if has_s_err {
+            println!(
+                "S error: | {} - {} | = {:e} m > {:e} m",
+                computed.s,
+                expected.s,
+                (computed.s - expected.s).abs().m(),
+                err.s.m(),
+            );
+        } else {
+            println!(
+                "S ok      {} = {} +/- {:e} m",
+                computed.s,
+                expected.s,
+                err.s.m()
+            );
+        }
+        assert!(false)
+    }
+}
+
+fn print_test_case(computed: &Geodesic, expected: &Geodesic) {
+    println!("---------------------------- FAILURE ---------------------------------------------");
+    println!("Computed: ");
+    println!("{}", computed);
+    println!("Expected: ");
+    println!("{}", expected);
+    println!("");
+}
+
 pub mod karney;
 pub mod rapp;
 pub mod vincenty;
@@ -64,182 +237,10 @@ mod tests {
     use crate::geodesy::ellipsoid::{self, consts};
     use crate::geodesy::geodesics::Geodesic;
     use crate::geodesy::Ellipsoid;
-    use crate::math::Float;
-    use crate::quantities::angle::Angle;
+    use crate::math::fp::Float;
     use crate::quantities::length::Length;
     use crate::units::angle::DEG;
     use crate::units::length::M;
-    use approx::AbsDiffEq;
-
-    /// Maximum absolute difference in direct geodesic computation results.
-    pub struct DirectError {
-        /// Maximum absolute difference in longitude.
-        lon: Angle,
-        /// Maximum absolute difference in latitude.
-        lat: Angle,
-        /// Maximum absolute difference in azimuth
-        alpha: Angle,
-    }
-
-    impl Default for DirectError {
-        fn default() -> Self {
-            DirectError {
-                lon: Angle::default_epsilon(),
-                lat: Angle::default_epsilon(),
-                alpha: Angle::default_epsilon(),
-            }
-        }
-    }
-
-    /// Maximum absolute difference in inverse geodesic computation results.
-    pub struct InverseError {
-        /// Maximum absolute difference in starting azimuth.
-        alpha1: Angle,
-        /// Maximum absolute difference in ending azimuth.
-        alpha2: Angle,
-        /// Maximum absolute difference in geodesic distance.
-        s: Length,
-    }
-
-    impl Default for InverseError {
-        fn default() -> Self {
-            InverseError {
-                alpha1: Angle::default_epsilon(),
-                alpha2: Angle::default_epsilon(),
-                s: Length::default_epsilon(),
-            }
-        }
-    }
-
-    /// Check whether a direct geodesic computation is within the error bounds of the expected
-    /// result.
-    pub fn check_direct(computed: &Geodesic, expected: &Geodesic, err: &DirectError) {
-        let has_lon_error = !computed.p2.0.abs_diff_eq(&expected.p2.0, err.lon);
-        let has_lat_error = !computed.p2.1.abs_diff_eq(&expected.p2.1, err.lat);
-        let has_az_error = !computed.alpha2.abs_diff_eq(&expected.alpha2, err.alpha);
-
-        if has_lon_error || has_lat_error || has_az_error {
-            print_test_case(computed, expected);
-            if has_lon_error {
-                println!(
-                    "Longitude error: | {} - {} | = {:e} > {:e}",
-                    computed.p2.0,
-                    expected.p2.0,
-                    (computed.p2.0 - expected.p2.0).angle().abs().deg(),
-                    err.lon.deg()
-                );
-            } else {
-                println!(
-                    "Longitude ok:      {} = {} +/- {:e}",
-                    computed.p2.0,
-                    expected.p2.0,
-                    err.lon.deg()
-                );
-            }
-            if has_lat_error {
-                println!(
-                    "Latitude error: | {} - {} | = {:e} > {:e}",
-                    computed.p2.1,
-                    expected.p2.1,
-                    (computed.p2.1 - expected.p2.1).abs().deg(),
-                    err.lat.deg()
-                );
-            } else {
-                println!(
-                    "Latitude ok:      {} = {} +/- {:e}",
-                    computed.p2.1,
-                    expected.p2.1,
-                    err.lat.deg()
-                );
-            }
-            if has_az_error {
-                println!(
-                    "Azimuth error: | {} - {} | = {:e} > {:e}",
-                    computed.alpha2,
-                    expected.alpha2,
-                    (computed.alpha2 - expected.alpha2).abs().deg(),
-                    err.alpha.deg()
-                );
-            } else {
-                println!(
-                    "Azimuth ok:      {} = {} +/- {:e}",
-                    computed.alpha2,
-                    expected.alpha2,
-                    err.alpha.deg()
-                );
-            }
-        }
-    }
-
-    /// Check whether an inverse geodesic computation is within the error bounds of the expected
-    /// result.
-    pub fn check_inverse(computed: &Geodesic, expected: &Geodesic, err: &InverseError) {
-        let has_alpha1_err = !computed.alpha1.abs_diff_eq(&expected.alpha1, err.alpha1);
-        let has_alpha2_err = !computed.alpha2.abs_diff_eq(&expected.alpha2, err.alpha2);
-        let has_s_err = !computed.s.abs_diff_eq(&expected.s, err.s);
-
-        if has_alpha1_err || has_alpha2_err || has_s_err {
-            print_test_case(computed, expected);
-            if has_alpha1_err {
-                println!(
-                    "Alpha1 error: | {} - {} | = {:e} > {:e}",
-                    computed.alpha1,
-                    expected.alpha1,
-                    (computed.alpha1 - expected.alpha1).abs().deg(),
-                    err.alpha1.deg()
-                );
-            } else {
-                println!(
-                    "Alpha1 ok:     {} = {} +/- {:e}",
-                    computed.alpha1,
-                    expected.alpha1,
-                    err.alpha1.deg(),
-                );
-            }
-            if has_alpha2_err {
-                println!(
-                    "Alpha2 error: | {} - {} | = {:e} > {:e}",
-                    computed.alpha2,
-                    expected.alpha2,
-                    (computed.alpha2 - expected.alpha2).abs().deg(),
-                    err.alpha2.deg()
-                );
-            } else {
-                println!(
-                    "Alpha2 ok:     {} = {} +/- {:e}",
-                    computed.alpha2,
-                    expected.alpha2,
-                    err.alpha2.deg(),
-                );
-            }
-            if has_s_err {
-                println!(
-                    "S error: | {} - {} | = {:e} m > {:e} m",
-                    computed.s,
-                    expected.s,
-                    (computed.s - expected.s).abs().m(),
-                    err.s.m(),
-                );
-            } else {
-                println!(
-                    "S ok      {} = {} +/- {:e} m",
-                    computed.s,
-                    expected.s,
-                    err.s.m()
-                );
-            }
-        }
-    }
-
-    fn print_test_case(computed: &Geodesic, expected: &Geodesic) {
-        println!(
-            "-----------------------------------------------------------------------------------"
-        );
-        println!("Computed: ");
-        println!("{}", computed);
-        println!("Expected: ");
-        println!("{}", expected);
-    }
 
     pub struct LineData {
         pub ellipsoid: Ellipsoid,

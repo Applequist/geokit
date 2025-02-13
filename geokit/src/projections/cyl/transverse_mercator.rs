@@ -6,9 +6,9 @@ use crate::{
         geodetic::{Lat, Lon, LLH},
     },
     geodesy::Ellipsoid,
-    math::{polynomial::Polynomial, Float},
+    math::{fp::Float, polynomial::Polynomial},
     projections::{Projection, ProjectionError},
-    quantities::{length::Length},
+    quantities::length::Length,
     units::{
         angle::{DEG, RAD},
         length::M,

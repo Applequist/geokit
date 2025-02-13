@@ -1,4 +1,4 @@
-use crate::math::{Float, PI};
+use crate::math::fp::{Float, PI};
 
 /// An angle unit as a to-radians angle converter.
 /// An angle expressed in this unit is converted to radians as follow:

@@ -1,4 +1,4 @@
-use geokit::{geodesy::ellipsoid::consts::WGS84, math::Float};
+use geokit::{geodesy::ellipsoid::consts::WGS84, math::fp::Float};
 use rand_distr::{Distribution, UnitSphere};
 
 /// `cargo run sample_s2 | cct -I +proj=cart +ellps=WGS84`

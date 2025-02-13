@@ -3,10 +3,10 @@
 use crate::cs::cartesian::ENH;
 use crate::cs::geodetic::{Lat, Lon, LLH};
 use crate::geodesy::Ellipsoid;
+use crate::math::fp::{Float, PI_2, PI_4};
 use crate::math::polynomial::Polynomial;
-use crate::math::{Float, PI_2, PI_4};
 use crate::projections::{Projection, ProjectionError};
-use crate::quantities::length::{Arc, Length};
+use crate::quantities::length::{ArcLength, Length};
 use crate::units::angle::RAD;
 
 /// The [Mercator] map projection is a conformal projection of the ellipsoid on
@@ -148,7 +148,7 @@ impl Projection for Mercator {
             + self.c_sin_nxi[3] * sin_8xi;
 
         Ok(LLH {
-            lon: self.lon0 + Arc(input.easting - self.false_easting) / (self.a * self.k0),
+            lon: self.lon0 + ArcLength(input.easting - self.false_easting) / (self.a * self.k0),
             lat: Lat::new(x * RAD),
             height: input.height,
         })

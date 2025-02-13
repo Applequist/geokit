@@ -11,7 +11,7 @@
 //! This module a [system of axes][GeodeticAxes] for geodetic CS and
 //! a set of value types to represent **normalized** geodetic coordinates.
 
-use crate::math::Float;
+use crate::math::fp::Float;
 use crate::quantities::angle::Angle;
 use crate::quantities::length::Length;
 use crate::units::angle::{AngleUnit, DEG, RAD};
@@ -176,32 +176,18 @@ impl Default for GeodeticAxes {
 }
 
 pub struct GeodeticErrors {
-    pub lon_err: Angle,
-    pub lat_err: Angle,
-    pub height_err: Length,
-}
-
-impl GeodeticErrors {
-    pub const fn tiny() -> Self {
-        GeodeticErrors {
-            lon_err: Angle::tiny(),
-            lat_err: Angle::tiny(),
-            height_err: Length::tiny(),
-        }
-    }
-
-    pub const fn small() -> Self {
-        GeodeticErrors {
-            lon_err: Angle::small(),
-            lat_err: Angle::small(),
-            height_err: Length::small(),
-        }
-    }
+    pub lon: Angle,
+    pub lat: Angle,
+    pub height: Length,
 }
 
 impl Default for GeodeticErrors {
     fn default() -> Self {
-        GeodeticErrors::tiny()
+        GeodeticErrors {
+            lon: Angle::default_epsilon(),
+            lat: Angle::default_epsilon(),
+            height: Length::default_epsilon(),
+        }
     }
 }
 
@@ -221,9 +207,68 @@ impl LLH {
     /// Check whether this [LLH] is equal to the `other` [LLH] within the given
     /// [GeodeticErrors] bounds.
     pub fn approx_eq(&self, other: &LLH, err: GeodeticErrors) -> bool {
-        self.lon.abs_diff_eq(&other.lon, err.lon_err)
-            && self.lat.abs_diff_eq(&other.lat, err.lat_err)
-            && self.height.abs_diff_eq(&other.height, err.height_err)
+        self.lon.abs_diff_eq(&other.lon, err.lon)
+            && self.lat.abs_diff_eq(&other.lat, err.lat)
+            && self.height.abs_diff_eq(&other.height, err.height)
+    }
+}
+
+pub fn check_llh(res: &LLH, exp: &LLH, err: &GeodeticErrors) {
+    let has_lon_err = !res.lon.abs_diff_eq(&exp.lon, err.lon);
+    let has_lat_err = !res.lat.abs_diff_eq(&exp.lat, err.lat);
+    let has_height_err = !res.height.abs_diff_eq(&exp.height, err.height);
+    if has_lon_err || has_lat_err || has_height_err {
+        println!("----------- computed LLH != expected LLH ------------");
+        if has_lon_err {
+            println!(
+                "Longitude error: | {} - {} | = {:e} > {:e}",
+                res.lon,
+                exp.lon,
+                (res.lon - exp.lon).angle().abs().deg(),
+                err.lon.deg()
+            );
+        } else {
+            println!(
+                "Longitude ok:      {} = {} +/- {:e}",
+                res.lon,
+                exp.lon,
+                err.lon.deg()
+            );
+        }
+        if has_lat_err {
+            println!(
+                "Latitude error: | {} - {} | = {:e} > {:e}",
+                res.lat,
+                exp.lat,
+                (res.lat - exp.lat).abs().deg(),
+                err.lat.deg()
+            );
+        } else {
+            println!(
+                "Latitude ok:      {} = {} +/- {:e}",
+                res.lat,
+                exp.lat,
+                err.lat.deg()
+            );
+        }
+        if has_height_err {
+            println!(
+                "Height error: | {} - {} | = {:e} m > {:e} m",
+                res.height,
+                exp.height,
+                (res.height - exp.height).abs().m(),
+                err.height.m()
+            );
+        } else {
+            println!(
+                "Height ok      {} = {} +/- {:e} m",
+                res.height,
+                exp.height,
+                err.height.m()
+            );
+        }
+        println!("");
+        assert!(false);
     }
 }
 
@@ -686,7 +731,7 @@ pub type Height = Length;
 #[cfg(test)]
 mod tests {
     use crate::cs::geodetic::{GeodeticAxes, Height, Lat, Lon, LLH};
-    use crate::math::Float;
+    use crate::math::fp::Float;
     use crate::units::angle::{DEG, RAD};
     use approx::assert_abs_diff_eq;
     use std::f64::consts::FRAC_PI_4;

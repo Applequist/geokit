@@ -13,8 +13,8 @@
 
 use super::geodetic::Height;
 use crate::{
-    math::Float,
-    quantities::{length::Length},
+    math::fp::Float,
+    quantities::length::Length,
     units::length::{LengthUnit, M},
 };
 use approx::AbsDiffEq;
@@ -30,26 +30,9 @@ pub enum GeocentricAxes {
 
 pub struct CartesianErrors(Length);
 
-impl CartesianErrors {
-    #[inline]
-    pub const fn super_tiny() -> Self {
-        Self(Length::new(1e-9, M))
-    }
-
-    #[inline]
-    pub const fn tiny() -> Self {
-        Self(Length::new(1e-9, M))
-    }
-
-    #[inline]
-    pub const fn small() -> Self {
-        Self(Length::new(1e-6, M))
-    }
-}
-
 impl Default for CartesianErrors {
     fn default() -> Self {
-        CartesianErrors::super_tiny()
+        CartesianErrors(Length::default_epsilon())
     }
 }
 
@@ -67,10 +50,55 @@ pub struct XYZ {
 }
 
 impl XYZ {
+    pub fn dist_to(&self, other: &Self) -> Length {
+        (self.x - other.x)
+            .hypot(self.y - other.y)
+            .hypot(self.z - other.z)
+    }
+
     pub fn approx_eq(&self, other: &Self, epsilon: CartesianErrors) -> bool {
-        self.x.abs_diff_eq(&other.x, epsilon.0)
-            && self.y.abs_diff_eq(&other.y, epsilon.0)
-            && self.z.abs_diff_eq(&other.z, epsilon.0)
+        self.dist_to(other) <= epsilon.0
+    }
+}
+
+pub fn check_xyz(res: &XYZ, exp: &XYZ, err: &CartesianErrors) {
+    let d = res.dist_to(exp);
+    if d > err.0 {
+        println!("d({}, {}) = {:e} m > {:e} m", res, exp, d.m(), err.0.m());
+        if !res.x.abs_diff_eq(&exp.x, err.0) {
+            println!(
+                "X error: | {} - {} | = {:e} m > {:e} m",
+                res.x,
+                exp.x,
+                (res.x - exp.x).abs().m(),
+                err.0.m()
+            );
+        } else {
+            println!("X ok      {} = {} +/- {:e} m", res.x, exp.x, err.0.m());
+        }
+        if !res.y.abs_diff_eq(&exp.y, err.0) {
+            println!(
+                "Y error: | {} - {} | = {:e} m > {:e} m",
+                res.y,
+                exp.y,
+                (res.y - exp.y).abs().m(),
+                err.0.m()
+            );
+        } else {
+            println!("Y ok      {} = {} +/- {:e} m", res.y, exp.y, err.0.m());
+        }
+        if !res.z.abs_diff_eq(&exp.z, err.0) {
+            println!(
+                "Z error: | {} - {} | = {:e} m > {:e} m",
+                res.z,
+                exp.z,
+                (res.z - exp.z).abs().m(),
+                err.0.m()
+            );
+        } else {
+            println!("Z ok      {} = {} +/- {:e} m", res.z, exp.z, err.0.m());
+        }
+        assert!(false);
     }
 }
 

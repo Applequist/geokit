@@ -4,7 +4,7 @@ use crate::{
         geodetic::{Lat, Lon, LLH},
     },
     geodesy::Ellipsoid,
-    math::Float,
+    math::fp::Float,
     quantities::length::Length,
 };
 use cyl::{mercator::Mercator, transverse_mercator::TransverseMercator, web_mercator::WebMercator};

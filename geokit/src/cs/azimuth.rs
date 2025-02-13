@@ -1,6 +1,6 @@
 //! Provide a value type to work with [Azimuth].
 
-use crate::math::Float;
+use crate::math::fp::Float;
 use crate::quantities::angle::Angle;
 use crate::units::angle::DEG;
 use approx::AbsDiffEq;

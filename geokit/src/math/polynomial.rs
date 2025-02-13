@@ -1,6 +1,7 @@
-use super::Float;
 use num::{Num, Zero};
 use std::ops::{Add, Mul};
+
+use super::fp::Float;
 
 /// A polynomial of a single variable of degree less than `D`.
 /// All coefficients are stored on the stack.
@@ -48,8 +49,8 @@ impl<const D: usize> Polynomial<D, Float> {
 mod tests {
 
     use crate::math::complex::Complex;
+    use crate::math::fp::Float;
     use crate::math::polynomial::Polynomial;
-    use crate::math::Float;
 
     #[test]
     fn eval_at() {

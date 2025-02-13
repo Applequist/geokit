@@ -1,4 +1,4 @@
-use crate::{math::Float, quantities::angle::Angle, units::angle::RAD};
+use crate::{math::fp::Float, quantities::angle::Angle, units::angle::RAD};
 use num::Zero;
 use std::ops::{Add, Div, Mul, Sub};
 

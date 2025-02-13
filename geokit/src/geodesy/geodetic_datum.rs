@@ -1,6 +1,8 @@
 use super::{Ellipsoid, PrimeMeridian};
 use crate::cs::cartesian::XYZ;
 use crate::cs::geodetic::{Lat, Lon, LLH};
+use crate::quantities::angle::Angle;
+use crate::quantities::length::Length;
 use crate::units::length::M;
 use derive_more::derive::Display;
 use smol_str::SmolStr;
@@ -114,7 +116,7 @@ impl GeodeticDatum {
             let delta_h = (h - next_h).abs();
             lat = next_lat;
             h = next_h;
-            if delta_lat.rad() < 0.5e-5 && delta_h.m() < 0.5e-3 {
+            if delta_lat < Angle::small() && delta_h <= Length::tiny() {
                 break;
             }
         }
@@ -168,8 +170,8 @@ pub mod consts {
 #[cfg(test)]
 mod tests {
     use super::GeodeticDatum;
-    use crate::cs::cartesian::{CartesianErrors, XYZ};
-    use crate::cs::geodetic::{GeodeticErrors, Lat, Lon, LLH};
+    use crate::cs::cartesian::{check_xyz, CartesianErrors, XYZ};
+    use crate::cs::geodetic::{check_llh, GeodeticErrors, Lat, Lon, LLH};
     use crate::geodesy::{ellipsoid, geodetic_datum, prime_meridian, Ellipsoid, PrimeMeridian};
     use crate::units::angle::DEG;
     use crate::units::length::M;
@@ -226,39 +228,35 @@ mod tests {
     fn llh_to_xyz() {
         let datum = geodetic_datum::consts::WGS84;
 
-        let xyz = datum.llh_to_xyz(LLH {
+        let computed = datum.llh_to_xyz(LLH {
             lon: Lon::new(2.344 * DEG),
             lat: Lat::new(44.0 * DEG),
             height: 100.0 * M,
         });
 
-        xyz.approx_eq(
-            &XYZ {
-                x: 4591703.1092 * M,
-                y: 187953.8205 * M,
-                z: 4408161.0783 * M,
-            },
-            CartesianErrors::default(),
-        );
+        let expected = XYZ {
+            x: 4591703.1092 * M,
+            y: 187953.8205 * M,
+            z: 4408161.0783 * M,
+        };
+        check_xyz(&computed, &expected, &CartesianErrors::default());
     }
 
     #[test]
     fn xyz_to_llh() {
         let datum = geodetic_datum::consts::WGS84;
 
-        let llh = datum.xyz_to_llh(XYZ {
+        let computed = datum.xyz_to_llh(XYZ {
             x: 4591703.1092 * M,
             y: 187953.8205 * M,
             z: 4408161.0783 * M,
         });
 
-        llh.approx_eq(
-            &LLH {
-                lon: Lon::new(2.344 * DEG),
-                lat: Lat::new(44.0 * DEG),
-                height: 100. * M,
-            },
-            GeodeticErrors::default(),
-        );
+        let expected = LLH {
+            lon: Lon::new(2.344 * DEG),
+            lat: Lat::new(44.0 * DEG),
+            height: 100. * M,
+        };
+        check_llh(&computed, &expected, &GeodeticErrors::default());
     }
 }
