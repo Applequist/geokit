@@ -60,18 +60,21 @@ impl Angle {
     pub const M_PI_2: Angle = Angle(-PI_2);
     pub const M_PI: Angle = Angle(-PI);
 
+    /// 1e-12 rad.
     /// Less than 7e-6 m at the equator
     #[inline]
     pub const fn tiny() -> Angle {
         Angle(1e-12)
     }
 
+    /// 1e-9 rad.
     /// Less than 7e-3 m at the equator
     #[inline]
     pub const fn small() -> Angle {
         Angle(1e-9)
     }
 
+    /// Default to `Self::tiny`.
     pub const fn default_epsilon() -> Angle {
         Self::tiny()
     }

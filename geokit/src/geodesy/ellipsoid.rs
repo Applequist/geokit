@@ -82,7 +82,7 @@ impl Ellipsoid {
 
     /// Return whether the ellipsoid is actually a sphere or not.
     pub fn is_spherical(&self) -> bool {
-        self.invf.is_infinite()
+        self.a == self.b || self.invf.is_infinite()
     }
 
     /// Return the semi-major axis length **in meters**.

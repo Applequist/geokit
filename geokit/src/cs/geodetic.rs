@@ -18,6 +18,7 @@ use crate::units::angle::{AngleUnit, DEG, RAD};
 use crate::units::length::{LengthUnit, M};
 use approx::AbsDiffEq;
 use derive_more::derive::{Display, Neg};
+use std::any::Any;
 use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
 
 /// A [GeodeticAxes] defines the possible set of axes used in **geodetic** CS.
@@ -181,13 +182,27 @@ pub struct GeodeticErrors {
     pub height: Length,
 }
 
+impl GeodeticErrors {
+    pub const fn tiny() -> Self {
+        GeodeticErrors {
+            lon: Angle::tiny(),
+            lat: Angle::tiny(),
+            height: Length::tiny(),
+        }
+    }
+
+    pub const fn small() -> Self {
+        GeodeticErrors {
+            lon: Angle::small(),
+            lat: Angle::small(),
+            height: Length::small(),
+        }
+    }
+}
+
 impl Default for GeodeticErrors {
     fn default() -> Self {
-        GeodeticErrors {
-            lon: Angle::default_epsilon(),
-            lat: Angle::default_epsilon(),
-            height: Length::default_epsilon(),
-        }
+        Self::tiny()
     }
 }
 

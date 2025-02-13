@@ -40,9 +40,9 @@ fn xyz_to_llh_10_000() {
     let datum = WGS84;
 
     for (xyz, llh) in read_conversions() {
-        let computed_llh = datum.xyz_to_llh(xyz);
-        check_llh(&computed_llh, &llh, &GeodeticErrors::default());
         let computed_xyz = datum.llh_to_xyz(llh);
         check_xyz(&computed_xyz, &xyz, &CartesianErrors::default());
+        let computed_llh = datum.xyz_to_llh(xyz);
+        check_llh(&computed_llh, &llh, &GeodeticErrors::default());
     }
 }
