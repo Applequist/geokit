@@ -61,14 +61,14 @@ impl Angle {
     pub const M_PI: Angle = Angle(-PI);
 
     /// 1e-12 rad.
-    /// Less than 7e-6 m at the equator
+    /// Less than 7e-6 m at the equator (WGS84 ellipsoid)
     #[inline]
     pub const fn tiny() -> Angle {
         Angle(1e-12)
     }
 
     /// 1e-9 rad.
-    /// Less than 7e-3 m at the equator
+    /// Less than 7e-3 m at the equator (WGS84ellipsoid)
     #[inline]
     pub const fn small() -> Angle {
         Angle(1e-9)

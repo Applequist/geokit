@@ -6,6 +6,9 @@ pub const PI_4: Float = std::f64::consts::FRAC_PI_4;
 pub const PI: Float = std::f64::consts::PI;
 pub const TAU: Float = std::f64::consts::TAU;
 
+pub fn sq(x: Float) -> Float {
+    x * x
+}
 pub fn remainder(val: Float, r: Float) -> Float {
     val - (val / r).round_ties_even() * r
 }
