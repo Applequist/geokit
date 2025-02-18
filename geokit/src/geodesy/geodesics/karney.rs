@@ -7,8 +7,8 @@ use crate::cs::geodetic::{Lat, Lon};
 use crate::geodesy::geodesics::{Geodesic, GeodesicSolver};
 use crate::geodesy::Ellipsoid;
 use crate::math::complex::Complex;
-use crate::math::fp::clenshaw_sin_sum;
 use crate::math::fp::Float;
+use crate::math::fp::{clenshaw_sin_sum, sq};
 use crate::math::polynomial::Polynomial;
 use crate::quantities::angle::Angle;
 use crate::quantities::length::{ArcLength, Length};
@@ -149,107 +149,7 @@ impl<'e> KarneyGeodesicSolver<'e> {
     }
 
     pub fn inverse(&self, p1: (Lon, Lat), p2: (Lon, Lat)) -> Geodesic {
-        let (lon1, mut lat1) = p1;
-        let (lon2, mut lat2) = p2;
-
-        // 1. swap endpoints and coordinates signs so:
-        // a. 0 <= lambda12 <= pi
-        // b. lat1 <= 0 and lat1 <= lat2 <= -lat1
-        let mut lambda12 = lon2 - lon1;
-        let mut lon_sign = lambda12.signum();
-        lambda12 *= lon_sign;
-
-        let swap_lat = if lat1.abs() < lat2.abs() { -1. } else { 1. };
-        if swap_lat < 0. {
-            lon_sign *= -1.;
-            swap(&mut lat1, &mut lat2);
-        }
-
-        let lat_sign = -lat1.signum();
-        lat1 *= lat_sign;
-        lat2 *= lat_sign;
-
-        assert!(
-            Lon::ZERO <= lambda12 && lambda12 <= Lon::MAX,
-            "lambda12 = {}",
-            lambda12
-        );
-        assert!(Lat::MIN <= lat1 && lat1 <= Lat::ZERO, "lat1 = {}", lat1);
-        assert!(lat1 <= lat2 && lat2 <= -lat1, "lat2 = {}", lat2);
-
-        println!("lat1 = {lat1}");
-        println!("lat2 = {lat2}");
-        println!("lambda12 = {lambda12}");
-
-        // 2.
-        let beta1 = self.ellipsoid.reduced_latitude(lat1);
-        let (sin_beta1, cos_beta1) = beta1.sin_cos();
-        let beta2 = self.ellipsoid.reduced_latitude(lat2);
-        let (sin_beta2, cos_beta2) = beta2.sin_cos();
-
-        println!("beta1 = {}", beta1.deg());
-        println!("beta2 = {}", beta2.deg());
-
-        let alpha1: Azimuth;
-        let alpha2: Azimuth;
-
-        // 2. Special cases
-        // a. Meridional: lambda12 = 0 or pi -> alpha1 = lambda12
-        let is_meridional_special_case = lambda12 == Lon::ZERO || lambda12 == Lon::MAX;
-        // b. Equatorial: lat1 = lat2 = 0 with lambda12 <= (1 -f) * pi -> alpha1 = pi / 2
-        let is_equatorial_special_case =
-            p1.1 == p2.1 && lambda12.angle() <= (1. - self.ellipsoid.f()) * Angle::PI;
-
-        let sigma12: Angle;
-        let mut s12: Length = Length::ZERO;
-        if is_meridional_special_case {
-            alpha1 = Azimuth::new(lambda12.angle());
-            alpha2 = Azimuth::new(lambda12.angle());
-        } else if is_equatorial_special_case {
-            alpha1 = Azimuth::EAST;
-            alpha2 = Azimuth::EAST;
-        } else {
-            let omega_bar =
-                (1. - self.ellipsoid.e_sq() * (0.5 * (cos_beta1 + cos_beta2)).powi(2)).sqrt();
-            let omega12 = lambda12.angle() / omega_bar;
-            let (sin_omega12, cos_omega12) = omega12.sin_cos();
-
-            // Eq (49)
-            let z1 = Complex::new(
-                cos_beta1 * sin_beta2 - sin_beta1 * cos_beta2 * cos_omega12,
-                cos_beta2 * sin_omega12,
-            );
-            // Eq (50)
-            let z2 = Complex::new(
-                -sin_beta1 * cos_beta2 + cos_beta1 * sin_beta2 * cos_omega12,
-                cos_beta1 * sin_omega12,
-            );
-            alpha1 = Azimuth::new(z1.arg());
-            alpha2 = Azimuth::new(z2.arg());
-
-            sigma12 = Complex::new(
-                sin_beta1 * sin_beta2 + cos_beta1 * cos_beta2 * cos_omega12,
-                z1.abs(),
-            )
-            .arg();
-
-            s12 = omega_bar * (self.ellipsoid.a() * sigma12).length();
-
-            println!("omega_bar = {omega_bar}");
-            println!("omega12 = {}", omega12.deg());
-            println!("sigma12 = {}", sigma12.deg());
-            println!("alpha1 = {}", alpha1.angle().deg());
-            println!("alpha2 = {}", alpha2.angle().deg());
-            println!("s12 = {s12}");
-        }
-
-        Geodesic {
-            p1,
-            alpha1,
-            p2,
-            alpha2,
-            s: s12,
-        }
+        unimplemented!()
     }
 
     /// From Karney - Algorithms for geodesics eqn 17:
