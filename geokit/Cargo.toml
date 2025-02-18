@@ -11,7 +11,8 @@ thiserror = { workspace = true }
 approx = { workspace = true }
 derive_more = { workspace = true }
 rand_distr = { workspace = true }
-rand = "0.9.0"
+rand = { workspace = true }
+clap = { workspace = true }
 
 [dev-dependencies]
 regex = { workspace = true }
