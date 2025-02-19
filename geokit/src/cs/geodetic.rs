@@ -778,7 +778,7 @@ mod tests {
         ];
 
         // normalization
-        for (t, a, e) in input_expected {
+        for (_t, a, e) in input_expected {
             let lon = Lon::new(a);
             assert_abs_diff_eq!(lon.angle(), e);
         }

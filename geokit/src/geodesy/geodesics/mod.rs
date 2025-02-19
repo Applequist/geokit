@@ -94,7 +94,7 @@ impl Default for InverseErrors {
     }
 }
 
-/// Check whether a direct geodesic computation is within the error bounds of the expected
+/// Checks whether a direct geodesic computation is within the error bounds of the expected
 /// result.
 pub fn check_direct(computed: &Geodesic, expected: &Geodesic, err: &DirectErrors) {
     let has_lon_error = !computed.p2.0.abs_diff_eq(&expected.p2.0, err.lon);

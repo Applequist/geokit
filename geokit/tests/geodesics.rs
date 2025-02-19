@@ -7,8 +7,7 @@ use geokit::{
     geodesy::{
         ellipsoid::consts::WGS84,
         geodesics::{
-            check_direct, check_inverse, karney::KarneyGeodesicSolver, DirectErrors, Geodesic,
-            GeodesicSolver, InverseErrors,
+            check_direct, karney::KarneyGeodesicSolver, DirectErrors, Geodesic, GeodesicSolver,
         },
     },
     math::fp::Float,

@@ -1,14 +1,12 @@
 #![allow(non_snake_case)]
 
-use std::mem::swap;
-
 use crate::cs::azimuth::Azimuth;
 use crate::cs::geodetic::{Lat, Lon};
 use crate::geodesy::geodesics::{Geodesic, GeodesicSolver};
 use crate::geodesy::Ellipsoid;
 use crate::math::complex::Complex;
+use crate::math::fp::clenshaw_sin_sum;
 use crate::math::fp::Float;
-use crate::math::fp::{clenshaw_sin_sum, sq};
 use crate::math::polynomial::Polynomial;
 use crate::quantities::angle::Angle;
 use crate::quantities::length::{ArcLength, Length};
@@ -148,7 +146,8 @@ impl<'e> KarneyGeodesicSolver<'e> {
         }
     }
 
-    pub fn inverse(&self, p1: (Lon, Lat), p2: (Lon, Lat)) -> Geodesic {
+    pub fn inverse(&self, _p1: (Lon, Lat), _p2: (Lon, Lat)) -> Geodesic {
+        // TODO: Implement this
         unimplemented!()
     }
 
