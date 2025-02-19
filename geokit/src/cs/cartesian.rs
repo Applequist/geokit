@@ -1,15 +1,12 @@
-//! Cartesian coordinates spaces are used to represent points from 2D and 3D cartesion space.
+//! Cartesian coordinates systems are used to represent points from 2D and 3D cartesion space
+//! using distances from hyperplanes along axes as coordinates.
 //!
-//! Points in those spaces are represented using distances from hyperplanes along axes.
-//! A set of axes defines the direction, orientation and unit to use with these axes.
-//!
-//! A special set of axes is said to be **normalized**.
+//! Cartesian coordinates systems are used for geocentric, projected and topocentric cartesian
+//! spaces.
 //!
 //! This module Provide systems of axes for the following cartesian CS:
 //! - [GeocentricAxes] for geocentric cartesian CS.
 //! - [ProjectedAxes] for projected cartesian CS.
-//!
-//! And a set of value type to represent **normalized** coordinates.
 
 use super::geodetic::Height;
 use crate::{
@@ -21,26 +18,40 @@ use approx::AbsDiffEq;
 use derive_more::derive::Display;
 
 /// [GeocentricAxes] defines the possible set of axes used in **geocentric** 3D cartesion CS.
-/// Geocentric CS uses [meter][crate::units::length::M] unit by default for all axes.
+/// Geocentric CS uses [meter](crate::units::length::M) unit by default for all axes.
 #[derive(Debug, Clone, Copy, PartialEq, Display)]
 pub enum GeocentricAxes {
-    /// Coordinates are x, y, and z in meters.
+    /// Coordinates are:
+    /// - x in meters. **The X-axis is the intersection of the equatirial
+    /// plane and the Greenwich meridian plane, positive toward the Greenwich meridian.
+    /// - y in meters, positive east
+    /// - z in meters, positive north
     XYZ,
 }
 
+/// Errors used to compare approximate equality between cartesian coordinates.
+///
+/// See [XYZ::approx_eq]
+/// See [ENH::approx_eq]
 pub struct CartesianErrors(Length);
+
+impl CartesianErrors {
+    pub fn tiny() -> Self {
+        CartesianErrors(Length::tiny())
+    }
+
+    pub fn small() -> Self {
+        CartesianErrors(Length::small())
+    }
+}
 
 impl Default for CartesianErrors {
     fn default() -> Self {
-        CartesianErrors(Length::default_epsilon())
+        CartesianErrors::tiny()
     }
 }
 
 /// [XYZ] represents **normalized** geocentric coordinates.
-/// - x in meters. **The X-axis is the intersection of the equatirial
-/// plane and the Greenwich meridian plane, positive toward the Greenwich meridian.
-/// - y in meters, positive east
-/// - z in meters, positive north
 #[derive(Debug, Copy, Clone, PartialEq, Display)]
 #[display("({}, {}, {})", x, y, z)]
 pub struct XYZ {
@@ -50,20 +61,32 @@ pub struct XYZ {
 }
 
 impl XYZ {
+    /// Computes the distance between `self` and `other` in meters.
     pub fn dist_to(&self, other: &Self) -> Length {
         (self.x - other.x)
             .hypot(self.y - other.y)
             .hypot(self.z - other.z)
     }
 
-    pub fn approx_eq(&self, other: &Self, epsilon: CartesianErrors) -> bool {
-        self.dist_to(other) <= epsilon.0
+    /// Checks whether this [XYZ] is approximately equal to the `other` [XYZ]
+    /// within the given [CartesianErrors] bounds.
+    ///
+    /// `self` and `other` are approximately equal if the following conditions are
+    /// all satisfied:
+    /// - `self.dist_to(other) <= err.0`
+    pub fn approx_eq(&self, other: &Self, err: CartesianErrors) -> bool {
+        self.dist_to(other) <= err.0
     }
 }
 
-pub fn check_xyz(res: &XYZ, exp: &XYZ, err: &CartesianErrors) {
+/// Returns whether `res` is approximately equal to `exp` within the given [CartesianErrors] error
+/// bounds, printing information about the coordinates when not equal.
+///
+/// Use only in tests.
+pub fn approx_eq_xyz(res: &XYZ, exp: &XYZ, err: &CartesianErrors) -> bool {
     let d = res.dist_to(exp);
-    if d > err.0 {
+    let is_approx_eq = d <= err.0;
+    if !is_approx_eq {
         println!("d({}, {}) = {:e} m > {:e} m", res, exp, d.m(), err.0.m());
         if !res.x.abs_diff_eq(&exp.x, err.0) {
             println!(
@@ -98,8 +121,8 @@ pub fn check_xyz(res: &XYZ, exp: &XYZ, err: &CartesianErrors) {
         } else {
             println!("Z ok      {} = {} +/- {:e} m", res.z, exp.z, err.0.m());
         }
-        assert!(false);
     }
+    is_approx_eq
 }
 
 impl GeocentricAxes {

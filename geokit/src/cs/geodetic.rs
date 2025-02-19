@@ -1,5 +1,5 @@
 //! Geodetic coordinates systems are used to represent points on or near the surface of an ellipsoid
-//! of revolution using longitude, latitude and in the 3D case, ellipsoid height.
+//! of revolution using longitude, latitude and in the 3D case, ellipsoid height coordinates.
 //!
 //! # Normalized Geodetic coordinates system
 //!
@@ -173,6 +173,9 @@ impl Default for GeodeticAxes {
     }
 }
 
+/// Errors bounds used to check approximate equality between geodetic coordinates.
+///
+/// See [LLH::approx_eq].
 pub struct GeodeticErrors {
     pub lon: Angle,
     pub lat: Angle,
@@ -180,6 +183,7 @@ pub struct GeodeticErrors {
 }
 
 impl GeodeticErrors {
+    /// Tiny geodetic errors.
     pub const fn tiny() -> Self {
         GeodeticErrors {
             lon: Angle::tiny(),
@@ -188,6 +192,7 @@ impl GeodeticErrors {
         }
     }
 
+    /// Small geodetic errors.
     pub const fn small() -> Self {
         GeodeticErrors {
             lon: Angle::small(),
@@ -216,8 +221,14 @@ pub struct LLH {
 }
 
 impl LLH {
-    /// Check whether this [LLH] is equal to the `other` [LLH] within the given
-    /// [GeodeticErrors] bounds.
+    /// Checks whether this [LLH] is approximately equal to the `other` [LLH]
+    /// within the given [GeodeticErrors] bounds.
+    ///
+    /// `self` and `other` are approximately equal if the following conditions are
+    /// all satisfied:
+    /// - `(self.lon - other.lon).abs() <= err.lon`
+    /// - `(self.lat - other.lat).abs() <= err.lat`
+    /// - `(self.height - other.height).abs() <= err.height`
     pub fn approx_eq(&self, other: &LLH, err: GeodeticErrors) -> bool {
         self.lon.abs_diff_eq(&other.lon, err.lon)
             && self.lat.abs_diff_eq(&other.lat, err.lat)
@@ -225,13 +236,26 @@ impl LLH {
     }
 }
 
-pub fn check_llh(res: &LLH, exp: &LLH, err: &GeodeticErrors) {
-    let has_lon_err = !res.lon.abs_diff_eq(&exp.lon, err.lon);
-    let has_lat_err = !res.lat.abs_diff_eq(&exp.lat, err.lat);
-    let has_height_err = !res.height.abs_diff_eq(&exp.height, err.height);
-    if has_lon_err || has_lat_err || has_height_err {
+/// Returns whehter `res` is approximately equal to `exp` within the given [GeodeticErrors] error
+/// bounds, printing information about the coordinates when not equal.
+///
+/// Use only in tests.
+pub fn approx_eq_llh(res: &LLH, exp: &LLH, err: &GeodeticErrors) -> bool {
+    let lon_ok = res.lon.abs_diff_eq(&exp.lon, err.lon);
+    let lat_ok = res.lat.abs_diff_eq(&exp.lat, err.lat);
+    let height_ok = res.height.abs_diff_eq(&exp.height, err.height);
+    let is_approx_eq = lon_ok && lat_ok && height_ok;
+
+    if !is_approx_eq {
         println!("----------- computed LLH != expected LLH ------------");
-        if has_lon_err {
+        if lon_ok {
+            println!(
+                "Longitude ok:      {} = {} +/- {:e}",
+                res.lon,
+                exp.lon,
+                err.lon.deg()
+            );
+        } else {
             println!(
                 "Longitude error: | {} - {} | = {:e} > {:e}",
                 res.lon,
@@ -239,15 +263,15 @@ pub fn check_llh(res: &LLH, exp: &LLH, err: &GeodeticErrors) {
                 (res.lon - exp.lon).abs().deg(),
                 err.lon.deg()
             );
-        } else {
-            println!(
-                "Longitude ok:      {} = {} +/- {:e}",
-                res.lon,
-                exp.lon,
-                err.lon.deg()
-            );
         }
-        if has_lat_err {
+        if lat_ok {
+            println!(
+                "Latitude ok:      {} = {} +/- {:e}",
+                res.lat,
+                exp.lat,
+                err.lat.deg()
+            );
+        } else {
             println!(
                 "Latitude error: | {} - {} | = {:e} > {:e}",
                 res.lat,
@@ -255,15 +279,15 @@ pub fn check_llh(res: &LLH, exp: &LLH, err: &GeodeticErrors) {
                 (res.lat - exp.lat).abs().deg(),
                 err.lat.deg()
             );
-        } else {
-            println!(
-                "Latitude ok:      {} = {} +/- {:e}",
-                res.lat,
-                exp.lat,
-                err.lat.deg()
-            );
         }
-        if has_height_err {
+        if height_ok {
+            println!(
+                "Height ok      {} = {} +/- {:e} m",
+                res.height,
+                exp.height,
+                err.height.m()
+            );
+        } else {
             println!(
                 "Height error: | {} - {} | = {:e} m > {:e} m",
                 res.height,
@@ -271,17 +295,10 @@ pub fn check_llh(res: &LLH, exp: &LLH, err: &GeodeticErrors) {
                 (res.height - exp.height).abs().m(),
                 err.height.m()
             );
-        } else {
-            println!(
-                "Height ok      {} = {} +/- {:e} m",
-                res.height,
-                exp.height,
-                err.height.m()
-            );
         }
         println!("");
-        assert!(false);
     }
+    is_approx_eq
 }
 
 /// [Lon] represents a longitude coordinate in (-pi..pi] radians.
