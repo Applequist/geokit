@@ -1,3 +1,11 @@
+//! A command line tool to sample point on the ellipsoid.
+//!
+//! Points are uniformaly sampled on S2 and then converted to points on/near an ellipsoid.
+//! The distribution is then not exactly uniform.
+//! The sample are "send" to the standard output one per line.
+//!
+//! This is mostly useful to feed input to tools like [proj](https://proj.org) to
+//! generate test data.
 use clap::{Parser, ValueEnum};
 use geokit::math::fp::PI;
 use rand::Rng;
