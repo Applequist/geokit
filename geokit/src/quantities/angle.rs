@@ -12,39 +12,18 @@ use std::{
 /// [Angle] represents a 1-dimensional angle value.
 /// The internal representation is a [Float] value in radians.
 ///
-/// # Creation
-///
-/// There are several ways to create an [Angle] value:
-/// - by using [Angle::new], passing a quantity and an [AngleUnit].
-///   The quantity expressed in the given unit is then converted to radians.
-/// ```
-/// use geokit::quantities::angle::Angle;
-/// use geokit::units::angle::GRAD;
-/// let a = Angle::new(100., GRAD);
-/// ```
-/// - by multiplying a [Float] quantity by an [AngleUnit] value:
-///   The quantity expressed in the given unit is then converted to radians.
-/// ```
-/// use geokit::quantities::angle::Angle;
-/// use geokit::units::angle::GRAD;
-/// let a: Angle = 100. * GRAD;
-/// ```
-///
-/// # Operations
-///
 /// [Angle] supports the following operations:
 /// - Addition, subtraction,
 /// - negation
 /// - multiplication by a scalar (left and right)
 /// - division by a scalar (right)
 /// - [Wrapping][Self::wrapped()] in [-pi, pi]
-/// - [Normalization][Self::normalized()] in (-pi, pi]
 /// - [Conversion][Self::val()] to other [AngleUnit]
 /// - trigonometric operations like cos, sin, tan...
-/// - formatting using [DMS][Self::to_dms].
+/// - formatting using [DMS][Self::to_dms] or [Deg][Self::to_deg].
 ///
 /// To make sure that all points on the unit circle can be represented by a unique
-/// angle value, [Angle] also has a ***normalization*** operation that wrap its value
+/// angle value, [Angle] also has a [***normalization***][Self::normalized] operation that wrap its value
 /// in the (-pi, pi] raddians range.
 #[derive(
     Debug, Copy, Clone, PartialEq, PartialOrd, Add, AddAssign, Sub, SubAssign, Neg, Display,
@@ -60,15 +39,15 @@ impl Angle {
     pub const M_PI_2: Angle = Angle(-PI_2);
     pub const M_PI: Angle = Angle(-PI);
 
-    /// 1e-12 rad.
-    /// Less than 7e-6 m at the equator (WGS84 ellipsoid)
+    /// A tiny 1e-12 rad angle.
+    /// This represents an arc less than 7e-6 m at the equator (WGS84 ellipsoid).
     #[inline]
     pub const fn tiny() -> Angle {
         Angle(1e-12)
     }
 
-    /// 1e-9 rad.
-    /// Less than 7e-3 m at the equator (WGS84ellipsoid)
+    /// A (very) small 1e-9 rad angle.
+    /// This represents an arc less than 7e-3 m at the equator (WGS84ellipsoid)
     #[inline]
     pub const fn small() -> Angle {
         Angle(1e-9)
@@ -79,13 +58,13 @@ impl Angle {
         Self::tiny()
     }
 
-    /// Create an angle value whose `qty` is given in `unit`.
+    /// Creates an angle value whose `qty` is given in `unit`.
     #[inline]
     pub const fn new(qty: Float, unit: AngleUnit) -> Self {
         Angle(qty * unit.rad_per_unit())
     }
 
-    /// Return the angle value clamped in [-pi/2..pi/2]
+    /// Returns the angle value clamped in [min, max]
     pub(crate) fn clamped(self, min: Angle, max: Angle) -> Self {
         debug_assert!(
             min < max,
@@ -96,7 +75,7 @@ impl Angle {
         Self(self.0.clamp(min.rad(), max.rad()))
     }
 
-    /// Return the angle value wrapped in [-pi, pi].
+    /// Returns the angle value wrapped in [-pi, pi].
     pub(crate) fn wrapped(self) -> Self {
         let mut a = remainder(self.0, TAU);
         if a < -PI {
@@ -105,14 +84,14 @@ impl Angle {
         Self(a)
     }
 
-    /// Return this angle value wrapped into (-PI, PI] radians.
+    /// Returns this angle value wrapped into (-pi, pi] radians.
     ///
     /// # Example:
+    ///
     /// ```
-    /// use geokit::units::angle::DEG;
-    /// let a = 185. * DEG;
-    /// let normalized  = a.normalized();
-    /// assert_eq!(normalized, -175. * DEG);
+    /// # use geokit::units::angle::DEG;
+    /// assert_eq!((185. * DEG).normalized(), -175. * DEG);
+    /// assert_eq!((-180. * DEG).normalized(), 180. * DEG);
     /// ```
     pub fn normalized(self) -> Self {
         let mut a = remainder(self.0, TAU);
@@ -131,26 +110,25 @@ impl Angle {
         self.0 = a;
     }
 
-    /// Return this angle value in the given unit.
+    /// Returns this angle value in the given unit.
     ///
     /// # Example
+    ///
     /// ```
-    /// use geokit::units::angle::DEG;
-    /// use geokit::quantities::angle::Angle;
-    /// let a = Angle::PI_2;
-    /// let a_deg = a.val(DEG);
-    /// assert_eq!(a, a_deg * DEG);
+    /// # use geokit::units::angle::DEG;
+    /// # use geokit::quantities::angle::Angle;
+    /// assert_eq!(Angle::PI_2.val(DEG), 90.);
     /// ```
     pub fn val(self, unit: AngleUnit) -> Float {
         self.0 * unit.1 / unit.0
     }
 
-    /// Return the absolute value of this angle.
+    /// Returns the absolute value of this angle.
     pub fn abs(self) -> Angle {
         Angle(self.0.abs())
     }
 
-    /// Return this angle value in radians.
+    /// Returns this angle value in radians.
     #[inline]
     pub fn rad(self) -> Float {
         self.0
@@ -176,16 +154,45 @@ impl Angle {
         self.0.tan()
     }
 
-    /// Returns the smallest *oriented* angle from this angle to the `other` angle.
+    /// Returns the *oriented* angle in (-pi, pi] from this angle to the `other` angle.
+    ///
+    /// This is **different** from [Angle::sub].
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use geokit::quantities::angle::Angle;
+    /// # use geokit::units::angle::DEG;
+    /// # use approx::assert_abs_diff_eq;
+    /// assert_eq!((10. * DEG).diff_to(50. * DEG), 40. * DEG);
+    /// assert_abs_diff_eq!((10. * DEG).diff_to(350. * DEG), -20. * DEG);
+    /// ```
     pub fn diff_to(self, other: Self) -> Angle {
         (other - self).normalized()
     }
 
+    /// Returns a [Deg] value to format this angle in decimal degrees.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use geokit::units::angle::DEG;
+    /// # use geokit::quantities::angle::Angle;
+    /// assert_eq!(format!("{}", Angle::PI_2.deg()), "90 deg");
+    /// ```
     pub fn deg(self) -> Deg {
         Deg(self.val(DEG))
     }
 
-    /// Convert this angle into a [Dms] value for formatting.
+    /// Converts this angle into a [Dms] value for formatting.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use geokit::units::angle::DEG;
+    /// # use geokit::quantities::angle::Angle;
+    /// assert_eq!(format!("{}", Angle::PI_2.dms()), "  90° 00′ 00.00000000″");
+    /// ```
     pub fn dms(self) -> Dms {
         let rad = self.0;
         let sgn = rad.signum();
@@ -294,25 +301,23 @@ impl LowerExp for Deg {
 
 /// An angle value expressed in degrees, minutes and seconds.
 ///
-/// Use to display angle in DMS format:
-/// ```
-/// use geokit::quantities::angle::Angle;
-/// use geokit::units::angle::DEG;
-/// assert_eq!(format!("{}", Angle::new(2.33432, DEG).dms()), "   2° 20′ 03.55200000″");
-/// ```
+/// The sign is carried by the degrees part.
 #[derive(Copy, Clone, Debug, Display)]
 #[display("{:4}° {:02}′ {:011.8}″", _0, _1, _2)]
 pub struct Dms(Float, Float, Float);
 
 impl Dms {
+    /// Returns the decimal degrees with sign.
     pub fn deg(&self) -> Float {
         self.0
     }
 
+    /// Returns the minutes part in [0., 59.].
     pub fn min(&self) -> Float {
         self.1
     }
 
+    /// Returns the seconds part.
     pub fn sec(&self) -> Float {
         self.2
     }
