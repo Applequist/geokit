@@ -1,35 +1,16 @@
 //! Provide a value type to work with [Azimuth].
 
-use crate::math::fp::Float;
 use crate::quantities::angle::Angle;
 use crate::units::angle::DEG;
+use crate::{math::fp::Float, units::angle::RAD};
 use approx::AbsDiffEq;
 use derive_more::derive::Display;
 use std::ops::{Add, Sub};
 
 /// An [Azimuth] value represents a direction **in (-pi..pi] radians**, positive **clockwise** from North.
 ///
-/// # Creation
-///
-/// There are 2 ways to create an [Azimuth] value:
-/// 1. By using [Azimuth::new], passing an [Angle] value,
-/// ```
-/// use geokit::units::angle::DEG;
-/// use geokit::cs::azimuth::Azimuth;
-/// let az = Azimuth::new(33. * DEG);
-/// ```
-/// 2. Or by specifying DMS values:
-/// ```
-/// use geokit::cs::azimuth::Azimuth;
-/// let az = Azimuth::dms(-12., 34., 56.123);
-/// ```
-/// In both cases, the angle value is wrapped into (-pi, pi] so that
-/// any direction has unique [Azimuth] value.
-///
-/// # Operations
-///
 /// [Azimuth] supports the following operations:
-/// - Subtraction: return the oriented angle between twa azimuth (same orientation
+/// - Subtraction: return the oriented angle between two azimuth (same orientation
 /// as [Azimuth], eg positive clockwise.
 /// - Addition and subtraction of [Angle] values. Return an [Azimuth]
 #[derive(Debug, Copy, Clone, PartialEq, Display)]
@@ -37,19 +18,38 @@ use std::ops::{Add, Sub};
 pub struct Azimuth(Angle);
 
 impl Azimuth {
+    /// The azimuth pointing North.
     pub const NORTH: Azimuth = Azimuth(Angle::ZERO);
+    /// The azimuth pointing East.
     pub const EAST: Azimuth = Azimuth(Angle::PI_2);
+    /// The azimuth pointing South.
     pub const SOUTH: Azimuth = Azimuth(Angle::PI);
+    /// The azimuth pointing West.
     pub const WEST: Azimuth = Azimuth(Angle::M_PI_2);
 
-    /// Create a new azimuth value.
+    /// Creates a new azimuth value.
     ///
-    /// The given angle `val` is wrapped into (-pi, pi].
+    /// The given angle `val` is normalized into (-pi, pi].
     pub fn new(val: Angle) -> Self {
         Self(val.normalized())
     }
 
-    /// Create a new azimuth value from a *dms* angle value.
+    /// Creates a [Azimuth] with the given angle **in radians**.
+    ///
+    /// The given angle is normalized into (-pi, pi].
+    pub fn rad(val_rad: Float) -> Self {
+        Self::new(val_rad * RAD)
+    }
+
+    /// Creates a [Azimuth] with the given angle **in degrees**.
+    ///
+    /// The given angle is converted to radians and normalized in (-pi, pi]
+    pub fn deg(val_deg: Float) -> Self {
+        Self::new(val_deg * DEG)
+    }
+
+    /// Creates a new azimuth value from a *dms* angle value.
+    ///
     /// The angle value is converted to radians and wrapped into (-pi, pi].
     ///
     /// # Parameters
@@ -96,6 +96,17 @@ impl Azimuth {
 impl Add<Angle> for Azimuth {
     type Output = Azimuth;
 
+    /// Returns an [Azimuth] whose angle is the **normalized** angle `self.angle() + rhs`.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use geokit::cs::azimuth::Azimuth;
+    /// # use geokit::quantities::angle::Angle;
+    /// # use geokit::units::angle::DEG;
+    ///
+    /// assert_eq!(Azimuth::EAST + 180. * DEG, Azimuth::WEST);
+    /// ```
     fn add(self, rhs: Angle) -> Self::Output {
         Azimuth::new(self.0 + rhs)
     }
@@ -104,6 +115,7 @@ impl Add<Angle> for Azimuth {
 impl Add<Azimuth> for Angle {
     type Output = Azimuth;
 
+    /// Returns an [Azimuth] whose angle is the **normalized** angle `self + rhs.angle()`.
     fn add(self, rhs: Azimuth) -> Self::Output {
         rhs + self
     }
@@ -112,6 +124,21 @@ impl Add<Azimuth> for Angle {
 impl Sub for Azimuth {
     type Output = Angle;
 
+    /// Returns the **oriented** [Angle] in (-pi, pi] radians from `rhs` to `self`.
+    ///
+    /// The returned angle has the same orientation as [Azimuth].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use geokit::cs::azimuth::Azimuth;
+    /// # use geokit::quantities::angle::Angle;
+    /// # use geokit::units::angle::DEG;
+    ///
+    /// assert_eq!(Azimuth::EAST - Azimuth::NORTH, 90. * DEG);
+    /// assert_eq!(Azimuth::WEST - Azimuth::NORTH, -90. * DEG);
+    ///
+    /// ```
     fn sub(self, rhs: Self) -> Self::Output {
         rhs.0.diff_to(self.0).normalized()
     }

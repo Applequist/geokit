@@ -4,7 +4,7 @@ use crate::math::fp::{Float, PI};
 /// An angle expressed in this unit is converted to radians as follow:
 /// ```
 /// use geokit::units::angle::AngleUnit;
-/// use geokit::math::PI;
+/// use geokit::math::fp::PI;
 /// let deg = AngleUnit(PI, 180.0);
 /// let angle_deg = 1.0;
 /// let angle_rad = angle_deg * deg.rad_per_unit();

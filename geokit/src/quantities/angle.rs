@@ -176,9 +176,9 @@ impl Angle {
         self.0.tan()
     }
 
-    /// Returns the smallest *signed* angle from this angle to the `other` angle.
+    /// Returns the smallest *oriented* angle from this angle to the `other` angle.
     pub fn diff_to(self, other: Self) -> Angle {
-        (other - self).wrapped()
+        (other - self).normalized()
     }
 
     pub fn deg(self) -> Deg {
