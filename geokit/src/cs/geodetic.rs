@@ -1,4 +1,4 @@
-//! Geodetic coordinates system are used to represent points on or near the surface of an ellipsoid
+//! Geodetic coordinates systems are used to represent points on or near the surface of an ellipsoid
 //! of revolution using longitude, latitude and in the 3D case, ellipsoid height.
 //!
 //! # Normalized Geodetic coordinates system
