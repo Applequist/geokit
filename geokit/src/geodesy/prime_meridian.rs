@@ -18,7 +18,7 @@ impl PrimeMeridian {
     pub fn new(name: &str, gw_lon: Lon) -> Self {
         Self {
             name: SmolStr::new(name),
-            lon: gw_lon.normalize(),
+            lon: gw_lon,
         }
     }
 

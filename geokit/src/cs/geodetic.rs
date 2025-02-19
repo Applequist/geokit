@@ -1,15 +1,13 @@
-//! aeodetic coordinates spaces are used to represent points on or near the surface of an ellipsoid
-//! of revolution.
+//! Geodetic coordinates system are used to represent points on or near the surface of an ellipsoid
+//! of revolution using longitude, latitude and in the 3D case, ellipsoid height.
 //!
-//! Points in those spaces are represented using:
-//! - longitude,
-//! - latitude,
-//! - and in the 3D case, ellipsoidal height.
+//! # Normalized Geodetic coordinates system
 //!
-//! A special set of axes is said to be **normalized**.
-//!
-//! This module a [system of axes][GeodeticAxes] for geodetic CS and
-//! a set of value types to represent **normalized** geodetic coordinates.
+//! When a geodetic coordinates system specifies coordinates as follow, in this order:
+//! - longitude in (-pi, pi] radians positive east,
+//! - latitude in [-pi/2, pi/2] radians positive north,
+//! - ellipsoidal height in meters positive up,
+//! the coordinates system is said to be **normalized**.
 
 use crate::math::fp::Float;
 use crate::quantities::angle::Angle;
@@ -18,7 +16,6 @@ use crate::units::angle::{AngleUnit, DEG, RAD};
 use crate::units::length::{LengthUnit, M};
 use approx::AbsDiffEq;
 use derive_more::derive::{Display, Neg};
-use std::any::Any;
 use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
 
 /// A [GeodeticAxes] defines the possible set of axes used in **geodetic** CS.
@@ -75,8 +72,8 @@ pub enum GeodeticAxes {
 }
 
 impl GeodeticAxes {
-    /// Convert coordinates expressed in this system of axes into
-    /// [**normalized** geodetic coordinates][LLH].
+    /// Converts coordinates expressed in this system of axes into
+    /// **normalized** geodetic coordinates.
     pub fn normalize(&self, coords: &[Float]) -> LLH {
         match self {
             GeodeticAxes::EastNorthUp {
@@ -113,7 +110,7 @@ impl GeodeticAxes {
         }
     }
 
-    /// Convert [**normalized geodetic coordinates][LLH] into coordinates
+    /// Converts **normalized geodetic coordinates into coordinates
     /// expressed in this system of axes.
     pub fn denormalize(&self, llh: LLH, coords: &mut [Float]) {
         match self {
@@ -148,7 +145,7 @@ impl GeodeticAxes {
         }
     }
 
-    /// Return the dimension (2D or 3D) of the coordinate system.
+    /// Returns the dimension (2D or 3D) of the coordinate system.
     pub fn dim(&self) -> usize {
         match self {
             GeodeticAxes::EastNorthUp {
@@ -207,8 +204,8 @@ impl Default for GeodeticErrors {
 }
 
 /// [LLH] represents **normalized** geodeetic coordinates:
-/// - longitude in radians, positive east,
-/// - latitude in radians, positive north,
+/// - longitude in (-pi, pi] radians, positive east,
+/// - latitude in [-pi/2, pi/2] radians, positive north,
 /// - ellipsoidal height in meters, positive upward.
 #[derive(Debug, Copy, Clone, PartialEq, Display)]
 #[display("(lon = {}, lat = {}, h = {})", lon, lat, height)]
@@ -239,7 +236,7 @@ pub fn check_llh(res: &LLH, exp: &LLH, err: &GeodeticErrors) {
                 "Longitude error: | {} - {} | = {:e} > {:e}",
                 res.lon,
                 exp.lon,
-                (res.lon - exp.lon).angle().abs().deg(),
+                (res.lon - exp.lon).abs().deg(),
                 err.lon.deg()
             );
         } else {
@@ -287,18 +284,13 @@ pub fn check_llh(res: &LLH, exp: &LLH, err: &GeodeticErrors) {
     }
 }
 
-/// [Lon] represents a longitude coordinate in [-pi..pi] radians.
-///
-/// # Operations
+/// [Lon] represents a longitude coordinate in (-pi..pi] radians.
 ///
 /// [Lon] supports the following operations
 /// - Addition and subtraction of [Angle] to yield a new [Lon]
-/// - Addition and subtraction of [Lon] to yield a new [Lon]: used for change or origin of
-/// longitude.
-/// - [Normalization][Self::normalized()] in (-pi..pi].
 /// - [Conversion][Self::val()] to other [AngleUnit]
 /// - Trigonometric operations like sin, cos, tan...
-#[derive(Debug, Copy, Clone, PartialEq, PartialOrd, Neg, Display)]
+#[derive(Debug, Copy, Clone, PartialEq, PartialOrd, Display)]
 #[display("{}", _0.deg())]
 pub struct Lon(Angle);
 
@@ -307,23 +299,27 @@ impl Lon {
     pub const ZERO: Lon = Lon(Angle::ZERO);
     pub const MAX: Lon = Lon(Angle::PI);
 
-    /// Create a new longitude value from a given angle.
-    /// The angle is wrapped into [-pi..pi].
+    /// Creates a [Lon] value from a given angle.
+    /// The angle is wrapped into (-pi..pi].
     pub fn new(val: Angle) -> Self {
-        Self(val.wrapped())
+        Self(val.normalized())
     }
 
-    /// Create a new longitude value from an [Angle] ***ALREADY*** in [-pi..pi]
+    /// Creates a new longitude value from an [Angle] ***ALREADY*** normalized in (-pi..pi].
     pub const fn const_new(val: Angle) -> Self {
         Self(val)
     }
 
-    pub fn deg(val_deg: Float) -> Self {
-        Self::new(Angle::new(val_deg, DEG))
+    pub fn rad(val_rad: Float) -> Self {
+        Self::new(val_rad * RAD)
     }
 
-    /// Create a new longitue value from a *dms* angle value.
-    /// The angle value is converted to radians and wrapped into [-pi, pi].
+    pub fn deg(val_deg: Float) -> Self {
+        Self::new(val_deg * DEG)
+    }
+
+    /// Creates a [Lon] value from a *dms* angle value.
+    /// The angle value is converted to radians and normalized into (-pi, pi].
     ///
     /// # Parameters
     ///
@@ -345,16 +341,6 @@ impl Lon {
         let f = d.signum();
         let deg = d.abs() + m / 60. + s / 3600.;
         Self::new(f * deg * DEG)
-    }
-
-    /// Normalize the longitude into (-pi..pi] such that any point on a parallel
-    /// has a unique *normalized* longitude.
-    pub fn normalize(self) -> Self {
-        if self <= Self::MIN {
-            Self::MAX
-        } else {
-            self
-        }
     }
 
     /// Return the angle of the longitude.
@@ -388,36 +374,10 @@ impl Lon {
     }
 }
 
-impl Add for Lon {
-    type Output = Lon;
-
-    /// Add two longitudes.
-    /// This is useful to change reference of longitude.
-    ///
-    /// # Example
-    ///
-    /// To compute the longitude wrt Greenwich prime meridian
-    /// from a longitude `lon` wrt a prime meridian of Greenwich longitude `lon_pm`:
-    /// ```
-    /// use geokit::units::angle::{DEG, RAD};
-    /// use approx::assert_abs_diff_eq;
-    /// use geokit::cs::geodetic::Lon;
-    /// let lon_pm = Lon::new(-30. * DEG); // Greenwich longitude of new prime meridian
-    /// let lon = Lon::new(10. * DEG); // longitude wrt prime meridian a Greenwich longitude `lon_pm`
-    /// let converted_lon = lon + lon_pm; // Greenwich longitude
-    /// assert_abs_diff_eq!(converted_lon, Lon::new(-20. * DEG), epsilon = 1e-15 * RAD);
-    /// ```
-    fn add(self, rhs: Self) -> Self::Output {
-        Lon::new(self.0 + rhs.0)
-    }
-}
-
 impl Add<Angle> for Lon {
     type Output = Self;
 
-    /// Return a new longitude `rhs` radians east (rhs > 0) or
-    /// west (rhs < 0) of this longitude.
-    /// The resulting longitude is [wrapped][Angle::wrapped] in [-pi..pi]
+    /// Returns a [Lon] whose angle is the **normalized** sum `self.angle() * rhs`.
     fn add(self, rhs: Angle) -> Self::Output {
         Self::new(self.0 + rhs)
     }
@@ -426,50 +386,42 @@ impl Add<Angle> for Lon {
 impl Add<Lon> for Angle {
     type Output = Lon;
 
-    /// Return a new longitude by adding `self` radians east (self > 0) or i
-    /// west (self < 0) to this longitude and [wrapping][Angle::wrapped]
-    /// the result in [-pi..pi].
+    /// Returns a [Lon] whose angle is the [**normalized**](Angle::normalized) sum `self + rhs.angle()`.
     fn add(self, rhs: Lon) -> Self::Output {
         rhs + self
     }
 }
 
 impl AddAssign<Angle> for Lon {
-    /// Modify this longitude by adding `rhs` radians to it and
-    /// [wrapping][Angle::wrapped] the result in [-pi..pi]
+    /// Sets this [Lon] angle to the [**normalized**](Angle::normalized) sum `self.angle() + rhs`.
     fn add_assign(&mut self, rhs: Angle) {
         self.0 = (self.0 + rhs).wrapped();
     }
 }
 
 impl Sub for Lon {
-    type Output = Lon;
+    type Output = Angle;
 
-    /// Subtract two longitudes.
-    /// This is useful to change reference of longitude.
+    /// Returns the angle in (-pi, pi] radians `rhs.angle().diff_to(self.angle())`.
     ///
     /// # Example
     ///
-    /// To compute the longitude wrt a prime meridian of Greenwich longitude `lon_pm`
-    /// from a Greenwich longitude `lon`:
     /// ```
-    /// use geokit::cs::geodetic::Lon;
-    /// use geokit::units::angle::DEG;
-    /// let lon = Lon::new(10. * DEG); // Greenwich longitude
-    /// let lon_pm = Lon::new(-30. * DEG); // Greenwich longitude of new prime meridian
-    /// let converted_lon = lon - lon_pm;
-    /// assert_eq!(converted_lon, Lon::new(40. * DEG));
+    /// # use geokit::cs::geodetic::Lon;
+    /// # use geokit::units::angle::DEG;
+    /// let a = Lon::new(10. * DEG);
+    /// let b = Lon::new(-30. * DEG);
+    /// assert_eq!(a - b, 40. * DEG);
     /// ```
     fn sub(self, rhs: Self) -> Self::Output {
-        Lon::new(self.0 - rhs.0)
+        rhs.0.diff_to(self.0)
     }
 }
 
 impl Sub<Angle> for Lon {
     type Output = Self;
 
-    /// Return a new longitude by subtracting `rhs` radians from this
-    /// longitude and [wrapping][Self::wrapped] the result in [-pi, pi].
+    /// Returns a [Lon] whose angle is the [**normalized**](Angle::normalized) diff `self.angle - rhs`.
     fn sub(self, rhs: Angle) -> Self::Output {
         // Watch out for infinite recursion with self - rhs
         Self::new(self.0 - rhs)
@@ -477,8 +429,7 @@ impl Sub<Angle> for Lon {
 }
 
 impl SubAssign<Angle> for Lon {
-    /// Modify this longitude by subtracting `rhs` radians from it
-    /// and wrapping the result in [-pi, pi]
+    /// Sets this [Lon] angle to the [**normalized**](Angle::normalized) diff `self.angle() - rhs`.
     fn sub_assign(&mut self, rhs: Angle) {
         self.0 = (self.0 - rhs).normalized();
     }
@@ -487,6 +438,8 @@ impl SubAssign<Angle> for Lon {
 impl Mul<Float> for Lon {
     type Output = Lon;
 
+    /// Returns a [Lon] whose angle is the [**normalized**](Angle::normalized) product
+    /// `self.angle() * rhs`.
     fn mul(self, rhs: Float) -> Self::Output {
         Lon::new(self.0 * rhs)
     }
@@ -495,12 +448,16 @@ impl Mul<Float> for Lon {
 impl Mul<Lon> for Float {
     type Output = Lon;
 
+    /// Returns a [Lon] whose angle is the [**normalized**](Angle::normalized) product
+    /// `self * rhs.angle()`.
     fn mul(self, rhs: Lon) -> Self::Output {
         rhs * self
     }
 }
 
 impl MulAssign<Float> for Lon {
+    /// Sets this [Lon] angle to the [**normalized**](Angle::normalized) product
+    /// `self.angle() * rhs`.
     fn mul_assign(&mut self, rhs: Float) {
         self.0 = (self.0 * rhs).wrapped();
     }
@@ -509,12 +466,16 @@ impl MulAssign<Float> for Lon {
 impl Div<Float> for Lon {
     type Output = Lon;
 
+    /// Returns a [Lon] whose angle is the [**normalized**](Angle::normalized) division
+    /// `self.angle() / rhs`.
     fn div(self, rhs: Float) -> Self::Output {
         Lon::new(self.0 / rhs)
     }
 }
 
 impl DivAssign<Float> for Lon {
+    /// Sets this [Lon] angle to the [**normalized**](Angle::normalized) division
+    /// `self.angle() / rhs`.
     fn div_assign(&mut self, rhs: Float) {
         self.0 = (self.0 / rhs).wrapped()
     }
@@ -528,7 +489,7 @@ impl AbsDiffEq for Lon {
     }
 
     fn abs_diff_eq(&self, other: &Self, epsilon: Self::Epsilon) -> bool {
-        (*self - *other).0.abs() <= epsilon
+        (*self - *other).abs() <= epsilon
     }
 }
 
@@ -771,52 +732,6 @@ mod tests {
     }
 
     #[test]
-    fn lon_wrapping() {
-        let input_expected = [
-            ("< -180", -210. * DEG, 150. * DEG),
-            // FIX: Robustness issue
-            // -180. - n * eps < -pi for n >= 65 on my test
-            //(
-            //    "-180 - eps",
-            //    (-180. - Float::EPSILON) * DEG,
-            //    (180. - Float::EPSILON) * DEG,
-            //),
-            (
-                "-180 + eps",
-                (-180. + Float::EPSILON) * DEG,
-                (-180. + Float::EPSILON) * DEG,
-            ),
-            ("-180", -180. * DEG, -180. * DEG),
-            ("-90", -90. * DEG, -90. * DEG),
-            ("0", 0. * DEG, 0. * DEG),
-            ("90", 90. * DEG, 90. * DEG),
-            (
-                "180 - eps",
-                (180. - Float::EPSILON) * DEG,
-                (180. - Float::EPSILON) * DEG,
-            ),
-            ("180", 180. * DEG, 180. * DEG),
-            // FIX: Robustness issue
-            //(
-            //    "180 + eps",
-            //    (180. + Float::EPSILON) * DEG,
-            //    (-180. + Float::EPSILON) * DEG,
-            //),
-        ];
-
-        for (t, a, e) in input_expected {
-            let wrapped = Lon::new(a);
-            assert!(
-                (wrapped.angle() - e).rad().abs() < 1e-15,
-                "case {}: expected {}, got {}",
-                t,
-                e,
-                wrapped
-            );
-        }
-    }
-
-    #[test]
     fn lon_normalization() {
         let input_expected = [
             ("< -180", -210. * DEG, 150. * DEG),
@@ -853,14 +768,8 @@ mod tests {
 
         // normalization
         for (t, a, e) in input_expected {
-            let normalized = Lon::new(a).normalize();
-            assert!(
-                (normalized.angle() - e).rad().abs() < 1e-15,
-                "case {}: expected {}, got {}",
-                t,
-                e,
-                normalized
-            );
+            let lon = Lon::new(a);
+            assert_abs_diff_eq!(lon.angle(), e);
         }
     }
 
@@ -878,7 +787,7 @@ mod tests {
     #[test]
     fn lon_operation() {
         // origins of longitude by Greenwich longitude
-        let a = Lon::new(10. * DEG);
+        let a = 10. * DEG;
 
         // (x, x + a, x - a)
         let data = [

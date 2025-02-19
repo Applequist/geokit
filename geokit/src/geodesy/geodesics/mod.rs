@@ -108,7 +108,7 @@ pub fn check_direct(computed: &Geodesic, expected: &Geodesic, err: &DirectErrors
                 "Longitude error: | {} - {} | = {:e} > {:e}",
                 computed.p2.0,
                 expected.p2.0,
-                (computed.p2.0 - expected.p2.0).angle().abs().deg(),
+                (computed.p2.0 - expected.p2.0).abs().deg(),
                 err.lon.deg()
             );
         } else {
