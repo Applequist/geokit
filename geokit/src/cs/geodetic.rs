@@ -495,26 +495,6 @@ impl AbsDiffEq for Lon {
 
 /// [Lat] represents a geodetic latitude coordinate in [-pi/2..pi/2] radians.
 ///
-/// # Creation
-///
-/// There are 2 ways to create a [Lat]:
-/// - by using [Lat::new] passing an [Angle] value. The
-/// value is **clamped** to [-pi/2 .. pi/2]:
-/// ```
-/// use geokit::cs::geodetic::Lat;
-/// use geokit::units::angle::DEG;
-/// let lat = Lat::new(45. * DEG);
-/// ```
-///
-/// - by using [Lat::dms] passing degrees/minutes/seconds values.
-/// The value is also clamped to [-pi/2..pi/2]:
-/// ```
-/// use geokit::cs::geodetic::Lat;
-/// let n = Lat::dms(44.0, 43., 27.183);
-/// ```
-///
-/// # Operations
-///
 /// [Lat] supports the following operations:
 /// - Negation
 /// - saturating addition and subtraction of [Angle].
@@ -528,19 +508,22 @@ impl Lat {
     pub const ZERO: Lat = Lat(Angle::ZERO);
     pub const MAX: Lat = Lat(Angle::PI_2);
 
-    /// Create a new latitude value.
+    /// Creates a new latitude value.
+    ///
     /// The angle is clamped in [-pi/2..pi/2]
     pub fn new(val: Angle) -> Self {
         Lat(val.clamped(Angle::M_PI_2, Angle::PI_2))
     }
 
-    /// Create a new latitude value with an angle in degrees.
+    /// Creates a new latitude value with an angle in degrees.
+    ///
     /// The angle is clamped in [-pi/2..pi/2]
     pub fn deg(val_deg: Float) -> Self {
         Self::new(Angle::new(val_deg, DEG))
     }
 
-    /// Create a new latitude value from a *dms* angle value.
+    /// Creates a new latitude value from a *dms* angle value.
+    ///
     /// The angle value is converted to radians and clamped into [-pi/2, pi/2].
     ///
     /// # Parameters
@@ -552,7 +535,7 @@ impl Lat {
     /// # Examples
     ///
     /// ```
-    /// use geokit::cs::geodetic::Lat;
+    /// # use geokit::cs::geodetic::Lat;
     /// let a: Lat = Lat::dms(2., 20., 14.02500);
     /// assert!(Lat::dms(-12., 45., 59.1234) < Lat::ZERO);
     /// ```
@@ -604,6 +587,7 @@ impl Lat {
 impl Add<Angle> for Lat {
     type Output = Self;
 
+    /// Returns a [Lat] whose angle is the sum `self.angle() + rhs` **clamped** in [-pi/2, pi/2].
     fn add(self, rhs: Angle) -> Self::Output {
         Self::new(self.0 + rhs)
     }
@@ -612,12 +596,14 @@ impl Add<Angle> for Lat {
 impl Add<Lat> for Angle {
     type Output = Lat;
 
+    /// Returns a [Lat] whose angle is the sum `self + rhs.angle()` **clamped** in [-pi/2, pi/2].
     fn add(self, rhs: Lat) -> Self::Output {
         rhs + self
     }
 }
 
 impl AddAssign<Angle> for Lat {
+    /// Sets this [Lat] angle to the sum `self + rhs.angle()` **clamped** in [-pi/2, pi/2].
     fn add_assign(&mut self, rhs: Angle) {
         self.0 = (self.0 + rhs).clamped(Angle::M_PI_2, Angle::PI_2)
     }
@@ -626,6 +612,7 @@ impl AddAssign<Angle> for Lat {
 impl Sub for Lat {
     type Output = Angle;
 
+    /// Returns the [Angle] `self.angle() - rhs.angle()`.
     fn sub(self, rhs: Self) -> Self::Output {
         self.0 - rhs.0
     }
@@ -634,12 +621,14 @@ impl Sub for Lat {
 impl Sub<Angle> for Lat {
     type Output = Self;
 
+    /// Returns a [Lat] whose angle is the diff `self.angle() - rhs` **clamped** to [-pi/2, pi/2].
     fn sub(self, rhs: Angle) -> Self::Output {
         Self::new(self.0 - rhs)
     }
 }
 
 impl SubAssign<Angle> for Lat {
+    /// Sets this [Lat] angle to the diff `self.angle() - rhs` **clamped** to [-pi/2, pi/2].
     fn sub_assign(&mut self, rhs: Angle) {
         self.0 = (self.0 - rhs).clamped(Angle::M_PI_2, Angle::PI_2);
     }
@@ -648,6 +637,7 @@ impl SubAssign<Angle> for Lat {
 impl Mul<Float> for Lat {
     type Output = Lat;
 
+    /// Returns a [Lat] whose angle is the product `self.angle() * rhs` **clamped** to [-pi/2, pi/2].
     fn mul(self, rhs: Float) -> Self::Output {
         Lat::new(self.0 * rhs)
     }
@@ -656,12 +646,14 @@ impl Mul<Float> for Lat {
 impl Mul<Lat> for Float {
     type Output = Lat;
 
+    /// Returns a [Lat] whose angle is the product `self * rhs.angle()` **clamped** to [-pi/2, pi/2].
     fn mul(self, rhs: Lat) -> Self::Output {
         rhs * self
     }
 }
 
 impl MulAssign<Float> for Lat {
+    /// Sets this [Lat] angle to the product `self.angle() * rhs` **clamped** to [-pi/2, pi/2].
     fn mul_assign(&mut self, rhs: Float) {
         self.0 = (self.0 * rhs).clamped(Angle::M_PI_2, Angle::PI_2);
     }
@@ -670,12 +662,14 @@ impl MulAssign<Float> for Lat {
 impl Div<Float> for Lat {
     type Output = Lat;
 
+    /// Returns a [Lat] whose angle is the division `self.angle() / rhs` **clamped** to [-pi/2, pi/2].
     fn div(self, rhs: Float) -> Self::Output {
         Lat::new(self.0 / rhs)
     }
 }
 
 impl DivAssign<Float> for Lat {
+    /// Sets this [Lat] angle to the division `self.angle() / rhs` **clamped** to [-pi/2, pi/2].
     fn div_assign(&mut self, rhs: Float) {
         self.0 = (self.0 / rhs).clamped(Angle::M_PI_2, Angle::PI_2);
     }
