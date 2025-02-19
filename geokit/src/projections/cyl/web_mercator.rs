@@ -51,7 +51,7 @@ impl WebMercator {
 impl Projection for WebMercator {
     fn proj(&self, input: LLH) -> Result<ENH, ProjectionError> {
         Ok(ENH {
-            easting: self.false_easting + (self.a * (input.lon - self.lon0).angle()).length(),
+            easting: self.false_easting + (self.a * (input.lon - self.lon0)).length(),
             northing: self.false_northing + self.a * (input.lat / 2.0 + PI_4 * RAD).tan().ln(),
             height: input.height,
         })

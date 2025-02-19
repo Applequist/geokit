@@ -2,9 +2,9 @@ use crate::cs::geodetic::Lon;
 use derive_more::derive::Display;
 use smol_str::SmolStr;
 
-/// A `PrimeMeridian` defines the origin of longitudes.
-/// It is defined by its longitude with respect to the Greenwich meridian,
-/// expressed **in radians** and positive eastward.
+/// A [PrimeMeridian] defines the origin of longitudes.
+/// It is represented by its longitude with respect to the Greenwich meridian,
+/// positive eastward.
 #[derive(Debug, Clone, Display)]
 #[display("(name = {}, lon = {})", name, lon.angle().dms())]
 pub struct PrimeMeridian {
@@ -18,7 +18,7 @@ impl PrimeMeridian {
     pub fn new(name: &str, gw_lon: Lon) -> Self {
         Self {
             name: SmolStr::new(name),
-            lon: gw_lon.normalize(),
+            lon: gw_lon.normalized(),
         }
     }
 

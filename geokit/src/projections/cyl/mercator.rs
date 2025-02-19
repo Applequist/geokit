@@ -126,8 +126,7 @@ impl Projection for Mercator {
         let R = ((1.0 - e_sin_lat) / (1.0 + e_sin_lat)).powf(self.e / 2.0);
 
         Ok(ENH {
-            easting: self.false_easting
-                + ((self.a * self.k0) * (input.lon - self.lon0).angle()).length(),
+            easting: self.false_easting + ((self.a * self.k0) * (input.lon - self.lon0)).length(),
             northing: self.false_northing + self.a * self.k0 * (lat1.tan() * R).ln(),
             height: input.height,
         })

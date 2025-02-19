@@ -1,14 +1,13 @@
 //! Geodetic coordinates systems are used to represent points on or near the surface of an ellipsoid
 //! of revolution using longitude, latitude and in the 3D case, ellipsoid height coordinates.
 //!
-//! Points in those spaces are represented using:
-//! - longitude,
-//! - latitude,
-//! - and in the 3D case, ellipsoidal height.
+//! A geodetic coordinates system using the following coordinates in that order:
+//! - longitude in [-pi, pi] radians positive east
+//! - latitude in [-pi/2, pi/2] radians positive north
+//! - height in meters positive up
+//! is said to be normalized.
 //!
-//! A special set of axes is said to be **normalized**.
-//!
-//! This module a [system of axes][GeodeticAxes] for geodetic CS and
+//! This module defines a [system of axes][GeodeticAxes] for geodetic CS and
 //! a set of value types to represent **normalized** geodetic coordinates.
 
 use crate::math::fp::Float;
@@ -74,8 +73,8 @@ pub enum GeodeticAxes {
 }
 
 impl GeodeticAxes {
-    /// Convert coordinates expressed in this system of axes into
-    /// [**normalized** geodetic coordinates][LLH].
+    /// Converts coordinates expressed in this system of axes into
+    /// **normalized** geodetic coordinates.
     pub fn normalize(&self, coords: &[Float]) -> LLH {
         match self {
             GeodeticAxes::EastNorthUp {
@@ -112,7 +111,7 @@ impl GeodeticAxes {
         }
     }
 
-    /// Convert [**normalized geodetic coordinates][LLH] into coordinates
+    /// Converts **normalized geodetic coordinates into coordinates
     /// expressed in this system of axes.
     pub fn denormalize(&self, llh: LLH, coords: &mut [Float]) {
         match self {
@@ -147,7 +146,7 @@ impl GeodeticAxes {
         }
     }
 
-    /// Return the dimension (2D or 3D) of the coordinate system.
+    /// Returns the dimension (2D or 3D) of the coordinate system.
     pub fn dim(&self) -> usize {
         match self {
             GeodeticAxes::EastNorthUp {
@@ -210,10 +209,12 @@ impl Default for GeodeticErrors {
     }
 }
 
-/// [LLH] represents **normalized** geodeetic coordinates:
-/// - longitude in radians, positive east,
-/// - latitude in radians, positive north,
+/// [LLH] represents **normalized** geodetic coordinates:
+/// - longitude in (-pi, pi] radians, positive east,
+/// - latitude in [-pi/2, pi/2] radians, positive north,
 /// - ellipsoidal height in meters, positive upward.
+///
+/// <div class="warning">Note that **normalized** geodetic coordinates does NOT enforce a **normalized** longitude.</div>
 #[derive(Debug, Copy, Clone, PartialEq, Display)]
 #[display("(lon = {}, lat = {}, h = {})", lon, lat, height)]
 pub struct LLH {
@@ -262,7 +263,7 @@ pub fn approx_eq_llh(res: &LLH, exp: &LLH, err: &GeodeticErrors) -> bool {
                 "Longitude error: | {} - {} | = {:e} > {:e}",
                 res.lon,
                 exp.lon,
-                (res.lon - exp.lon).angle().abs().deg(),
+                (res.lon - exp.lon).abs().deg(),
                 err.lon.deg()
             );
         }
@@ -305,15 +306,16 @@ pub fn approx_eq_llh(res: &LLH, exp: &LLH, err: &GeodeticErrors) -> bool {
 
 /// [Lon] represents a longitude coordinate in [-pi..pi] radians.
 ///
-/// # Operations
-///
 /// [Lon] supports the following operations
 /// - Addition and subtraction of [Angle] to yield a new [Lon]
-/// - Addition and subtraction of [Lon] to yield a new [Lon]: used for change or origin of
-/// longitude.
 /// - [Normalization][Self::normalized()] in (-pi..pi].
 /// - [Conversion][Self::val()] to other [AngleUnit]
 /// - Trigonometric operations like sin, cos, tan...
+///
+/// Although with a [-pi, pi] range, points on the ante-meridian have 2 possible
+/// valid longitudes (-pi and pi), `-pi` is still useful in some cases, eg to
+/// represent empty, and full longitude intervals.
+/// To get a unique longitude value, use a [normalized](Lon::normalized) longitude.
 #[derive(Debug, Copy, Clone, PartialEq, PartialOrd, Neg, Display)]
 #[display("{}", _0.deg())]
 pub struct Lon(Angle);
@@ -323,22 +325,33 @@ impl Lon {
     pub const ZERO: Lon = Lon(Angle::ZERO);
     pub const MAX: Lon = Lon(Angle::PI);
 
-    /// Create a new longitude value from a given angle.
+    /// Creates a new longitude value from a given angle.
+    ///
     /// The angle is wrapped into [-pi..pi].
     pub fn new(val: Angle) -> Self {
         Self(val.wrapped())
     }
 
-    /// Create a new longitude value from an [Angle] ***ALREADY*** in [-pi..pi]
+    /// Creates a new longitude value from an [Angle] ***ALREADY*** in [-pi..pi]
     pub const fn const_new(val: Angle) -> Self {
         Self(val)
     }
 
-    pub fn deg(val_deg: Float) -> Self {
-        Self::new(Angle::new(val_deg, DEG))
+    /// Creates a [Lon] value whose angle is given in radians.
+    ///
+    /// The angle is wrapped into [-pi, pi].
+    pub fn rad(val_rad: Float) -> Self {
+        Self::new(val_rad * RAD)
     }
 
-    /// Create a new longitue value from a *dms* angle value.
+    /// Creates a [Lon] value whose angle is given in degrees.
+    ///
+    /// The angle is converted to radians and wrapped into [-pi, pi].
+    pub fn deg(val_deg: Float) -> Self {
+        Self::new(val_deg * DEG)
+    }
+
+    /// Creates a new longitue value from a *dms* angle value.
     /// The angle value is converted to radians and wrapped into [-pi, pi].
     ///
     /// # Parameters
@@ -363,9 +376,9 @@ impl Lon {
         Self::new(f * deg * DEG)
     }
 
-    /// Normalize the longitude into (-pi..pi] such that any point on a parallel
-    /// has a unique *normalized* longitude.
-    pub fn normalize(self) -> Self {
+    /// Returns this longitude **normalized** into (-pi..pi]
+    /// such that any point on a parallel has a unique longitude angle.
+    pub fn normalized(self) -> Self {
         if self <= Self::MIN {
             Self::MAX
         } else {
@@ -373,7 +386,7 @@ impl Lon {
         }
     }
 
-    /// Return the angle of the longitude.
+    /// Returns the angle of the longitude.
     #[inline]
     pub fn angle(self) -> Angle {
         self.0
@@ -404,36 +417,10 @@ impl Lon {
     }
 }
 
-impl Add for Lon {
-    type Output = Lon;
-
-    /// Add two longitudes.
-    /// This is useful to change reference of longitude.
-    ///
-    /// # Example
-    ///
-    /// To compute the longitude wrt Greenwich prime meridian
-    /// from a longitude `lon` wrt a prime meridian of Greenwich longitude `lon_pm`:
-    /// ```
-    /// use geokit::units::angle::{DEG, RAD};
-    /// use approx::assert_abs_diff_eq;
-    /// use geokit::cs::geodetic::Lon;
-    /// let lon_pm = Lon::new(-30. * DEG); // Greenwich longitude of new prime meridian
-    /// let lon = Lon::new(10. * DEG); // longitude wrt prime meridian a Greenwich longitude `lon_pm`
-    /// let converted_lon = lon + lon_pm; // Greenwich longitude
-    /// assert_abs_diff_eq!(converted_lon, Lon::new(-20. * DEG), epsilon = 1e-15 * RAD);
-    /// ```
-    fn add(self, rhs: Self) -> Self::Output {
-        Lon::new(self.0 + rhs.0)
-    }
-}
-
 impl Add<Angle> for Lon {
     type Output = Self;
 
-    /// Return a new longitude `rhs` radians east (rhs > 0) or
-    /// west (rhs < 0) of this longitude.
-    /// The resulting longitude is [wrapped][Angle::wrapped] in [-pi..pi]
+    /// Returns a [Lon] whose angle is the sum `self.angle() + rhs` wrapped in [-pi, pi] radians.
     fn add(self, rhs: Angle) -> Self::Output {
         Self::new(self.0 + rhs)
     }
@@ -442,42 +429,35 @@ impl Add<Angle> for Lon {
 impl Add<Lon> for Angle {
     type Output = Lon;
 
-    /// Return a new longitude by adding `self` radians east (self > 0) or i
-    /// west (self < 0) to this longitude and [wrapping][Angle::wrapped]
-    /// the result in [-pi..pi].
+    /// Returns a [Lon] whose angle is the sum `self + rhs.angle()` wrapped in [-pi, pi] radians.
     fn add(self, rhs: Lon) -> Self::Output {
         rhs + self
     }
 }
 
 impl AddAssign<Angle> for Lon {
-    /// Modify this longitude by adding `rhs` radians to it and
-    /// [wrapping][Angle::wrapped] the result in [-pi..pi]
+    /// Sets this [Lon] angle to the sum of `self.angle() + rhs` wrapped in [-pi, pi] radians.
     fn add_assign(&mut self, rhs: Angle) {
         self.0 = (self.0 + rhs).wrapped();
     }
 }
 
 impl Sub for Lon {
-    type Output = Lon;
+    type Output = Angle;
 
-    /// Subtract two longitudes.
-    /// This is useful to change reference of longitude.
+    /// Returns the angle in [-pi, pi] radians from `rhs` to `self`.
     ///
     /// # Example
     ///
-    /// To compute the longitude wrt a prime meridian of Greenwich longitude `lon_pm`
-    /// from a Greenwich longitude `lon`:
     /// ```
-    /// use geokit::cs::geodetic::Lon;
-    /// use geokit::units::angle::DEG;
-    /// let lon = Lon::new(10. * DEG); // Greenwich longitude
-    /// let lon_pm = Lon::new(-30. * DEG); // Greenwich longitude of new prime meridian
-    /// let converted_lon = lon - lon_pm;
-    /// assert_eq!(converted_lon, Lon::new(40. * DEG));
+    /// # use geokit::cs::geodetic::Lon;
+    /// # use geokit::units::angle::DEG;
+    /// let a = Lon::new(10. * DEG); // Greenwich longitude
+    /// let b = Lon::new(-30. * DEG); // Greenwich longitude of new prime meridian
+    /// assert_eq!(a - b, 40. * DEG);
     /// ```
     fn sub(self, rhs: Self) -> Self::Output {
-        Lon::new(self.0 - rhs.0)
+        rhs.0.diff_to(self.0)
     }
 }
 
@@ -544,7 +524,7 @@ impl AbsDiffEq for Lon {
     }
 
     fn abs_diff_eq(&self, other: &Self, epsilon: Self::Epsilon) -> bool {
-        (*self - *other).0.abs() <= epsilon
+        (*self - *other).abs() <= epsilon
     }
 }
 
@@ -757,8 +737,9 @@ pub type Height = Length;
 mod tests {
     use crate::cs::geodetic::{GeodeticAxes, Height, Lat, Lon, LLH};
     use crate::math::fp::Float;
+    use crate::quantities::angle::Angle;
     use crate::units::angle::{DEG, RAD};
-    use approx::assert_abs_diff_eq;
+    use approx::{assert_abs_diff_eq, AbsDiffEq};
     use std::f64::consts::FRAC_PI_4;
 
     #[test]
@@ -862,8 +843,11 @@ mod tests {
         ];
 
         // normalization
-        for (_t, a, e) in input_expected {
-            let lon = Lon::new(a);
+        for (t, a, e) in input_expected {
+            let lon = Lon::new(a).normalized();
+            if !lon.angle().abs_diff_eq(&e, Angle::default_epsilon()) {
+                println!("case {t} failed");
+            }
             assert_abs_diff_eq!(lon.angle(), e);
         }
     }
@@ -882,7 +866,7 @@ mod tests {
     #[test]
     fn lon_operation() {
         // origins of longitude by Greenwich longitude
-        let a = Lon::new(10. * DEG);
+        let a = 10. * DEG;
 
         // (x, x + a, x - a)
         let data = [
