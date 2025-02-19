@@ -404,12 +404,12 @@ mod tests {
         let a6 = -90. * DEG;
         let a7 = 90. * DEG;
 
-        assert_abs_diff_eq!(a1.diff_to(a2), 70. * DEG);
-        assert_abs_diff_eq!(a1.diff_to(a3), 100. * DEG);
-        assert_abs_diff_eq!(a1.diff_to(a4), -70. * DEG);
-        assert_abs_diff_eq!(a1.diff_to(a5), -20. * DEG);
-        assert_abs_diff_eq!(a7.diff_to(a6), 180. * DEG);
-        assert_abs_diff_eq!(a6.diff_to(a7), 180. * DEG);
+        assert_abs_diff_eq!(a1.diff_to(a2), 70. * DEG, epsilon = Angle(1e-15));
+        assert_abs_diff_eq!(a1.diff_to(a3), 100. * DEG, epsilon = Angle(1e-15));
+        assert_abs_diff_eq!(a1.diff_to(a4), -70. * DEG, epsilon = Angle(1e-15));
+        assert_abs_diff_eq!(a1.diff_to(a5), -20. * DEG, epsilon = Angle(1e-15));
+        assert_abs_diff_eq!(a7.diff_to(a6), -180. * DEG, epsilon = Angle(1e-15));
+        assert_abs_diff_eq!(a6.diff_to(a7), 180. * DEG, epsilon = Angle(1e-15));
     }
 
     #[test]

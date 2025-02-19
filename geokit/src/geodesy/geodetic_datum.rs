@@ -7,6 +7,7 @@ use crate::math::fp::PI_2;
 use crate::units::angle::RAD;
 use crate::units::length::M;
 use derive_more::derive::Display;
+use nalgebra::ComplexField;
 use smol_str::SmolStr;
 use std::fmt::Debug;
 
@@ -73,7 +74,7 @@ impl GeodeticDatum {
     /// meridian.
     pub fn llh_to_xyz(&self, llh: LLH) -> XYZ {
         // change of longitude origin from this datum's prime meridian to the Greenwich meridian.
-        let lon = llh.lon + self.prime_meridian.lon().angle();
+        let lon = llh.lon + self.prime_meridian.lon();
 
         if self.ellipsoid.is_spherical() {
             let (sin_lon, cos_lon) = llh.lon.sin_cos();
@@ -160,7 +161,7 @@ impl GeodeticDatum {
             let mut lon = Lon::new(lon_rad * RAD);
 
             // Change longitude origin from Greenwich meridian to this datum's prime meridian
-            lon = lon - self.prime_meridian().lon().angle();
+            lon = lon - self.prime_meridian().lon();
 
             LLH {
                 lon,
