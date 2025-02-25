@@ -217,7 +217,7 @@ pub fn check_inverse(computed: &Geodesic, expected: &Geodesic, err: &InverseErro
 }
 
 fn print_test_case(computed: &Geodesic, expected: &Geodesic) {
-    println!("---------------------------- FAILURE ---------------------------------------------");
+    println!("------------------------ FAILURE --------------------------------");
     println!("Computed: ");
     println!("{}", computed);
     println!("Expected: ");
