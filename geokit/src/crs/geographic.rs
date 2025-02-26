@@ -1,10 +1,12 @@
-use super::{Crs, ToXYZTransformation, TransformationError};
 use crate::{
     cs::{cartesian::XYZ, geodetic::GeodeticAxes},
     geodesy::GeodeticDatum,
     math::fp::Float,
+    transformations::{ToXYZTransformation, ToXYZTransformationProvider, TransformationError},
 };
 use smol_str::SmolStr;
+
+use super::Crs;
 
 /// A [GeographicCrs] is a **2D or 3D geodetic coordinates reference system** in which
 /// coordinates are made up of longitude, latitude and optionally ellipsoidal height in various order, direction
@@ -20,7 +22,9 @@ impl Crs for GeographicCrs {
     fn id(&self) -> &str {
         &self.id
     }
+}
 
+impl ToXYZTransformationProvider for GeographicCrs {
     fn to_xyz_transformation<'a>(&self) -> Box<dyn ToXYZTransformation + 'a> {
         Box::new(self.clone())
     }

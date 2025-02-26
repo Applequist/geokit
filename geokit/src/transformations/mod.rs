@@ -7,9 +7,18 @@ use crate::math::fp::Float;
 use derive_more::derive::Display;
 use thiserror::Error;
 
-pub trait Crs {
-    fn id(&self) -> &str;
+#[derive(Debug, Error, Display)]
+pub enum TransformationError {
+    OutOfBounds,
+}
 
+/// Trait for coordinates transformation between two [coordinates reference systems](Crs)
+pub trait CrsTransformation {
+    fn src_to_dst(&self, src: &[Float], dst: &mut [Float]) -> Result<(), TransformationError>;
+    fn dst_to_src(&self, dst: &[Float], src: &mut [Float]) -> Result<(), TransformationError>;
+}
+
+pub trait ToXYZTransformationProvider {
     // NOTE: as of v1.84, this doesn't work for our use case:
     // fn to_xyz_transformation(&self) -> impl ToXYZTransformation;
     // `use<...>` precise capturing syntax is currently not allowed in return-position
@@ -18,24 +27,9 @@ pub trait Crs {
     fn to_xyz_transformation<'a>(&self) -> Box<dyn ToXYZTransformation + 'a>;
 }
 
-#[derive(Debug, Error, Display)]
-pub enum TransformationError {
-    OutOfBounds,
-}
-
 pub trait ToXYZTransformation {
     fn to_xyz(&self, coords: &[Float]) -> Result<XYZ, TransformationError>;
     fn from_xyz(&self, xyz: XYZ, coords: &mut [Float]) -> Result<(), TransformationError>;
-}
-
-pub mod geocentric;
-pub mod geographic;
-pub mod projected;
-
-/// Trait for Coordinates transformation between two coordinates reference systems.
-pub trait CrsTransformation {
-    fn src_to_dst(&self, src: &[Float], dst: &mut [Float]) -> Result<(), TransformationError>;
-    fn dst_to_src(&self, dst: &[Float], src: &mut [Float]) -> Result<(), TransformationError>;
 }
 
 /// A trait for ***normalized geocentric coordinates*** transformations.
@@ -44,7 +38,7 @@ pub trait XYZTransformation {
     fn dst_to_src(&self, dst: XYZ) -> XYZ;
 }
 
-/// Coordinates transformation between two CRS via [normalized geocentric coordinates][XYZ].
+/// Coordinates transformation between two CRS via [normalized geocentric coordinates](XYZ).
 pub struct CrsXYZTransformation<'a> {
     src_to_xyz: Box<dyn ToXYZTransformation + 'a>,
     src_xyz_to_ref_xyz: Box<dyn XYZTransformation + 'a>,
@@ -53,7 +47,7 @@ pub struct CrsXYZTransformation<'a> {
 }
 
 impl<'a> CrsXYZTransformation<'a> {
-    pub fn new<S: Crs, D: Crs>(
+    pub fn new<S: ToXYZTransformationProvider, D: ToXYZTransformationProvider>(
         src: S,
         dst: D,
         src_to_ref: impl XYZTransformation + 'a,

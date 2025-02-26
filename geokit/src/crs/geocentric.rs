@@ -1,8 +1,12 @@
-use super::{Crs, ToXYZTransformation, TransformationError};
 use crate::cs::cartesian::{GeocentricAxes, XYZ};
 use crate::geodesy::GeodeticDatum;
 use crate::math::fp::Float;
+use crate::transformations::{
+    ToXYZTransformation, ToXYZTransformationProvider, TransformationError,
+};
 use smol_str::SmolStr;
+
+use super::Crs;
 
 /// A [GeocentricCrs] is a **3D cartesian coordinates reference system** in which
 /// coordinates are given by distance **in meters** along the following axes:
@@ -21,7 +25,9 @@ impl Crs for GeocentricCrs {
     fn id(&self) -> &str {
         &self.id
     }
+}
 
+impl ToXYZTransformationProvider for GeocentricCrs {
     fn to_xyz_transformation<'a>(&self) -> Box<dyn ToXYZTransformation + 'a> {
         Box::new(self.clone())
     }

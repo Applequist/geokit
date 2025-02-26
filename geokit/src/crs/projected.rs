@@ -1,13 +1,15 @@
-use smol_str::SmolStr;
-
+use crate::transformations::{
+    ToXYZTransformation, ToXYZTransformationProvider, TransformationError,
+};
 use crate::{
     cs::cartesian::{ProjectedAxes, XYZ},
     geodesy::GeodeticDatum,
     math::fp::Float,
     projections::{Projection, ProjectionError, ProjectionSpec},
 };
+use smol_str::SmolStr;
 
-use super::{Crs, ToXYZTransformation, TransformationError};
+use super::Crs;
 
 /// A [ProjectedCrs] is a **2D/3D cartesian coordinates reference system** derived from a
 /// 2D or 3D [Geographic] Crs using a projection.
@@ -25,7 +27,9 @@ impl Crs for ProjectedCrs {
     fn id(&self) -> &str {
         &self.id
     }
+}
 
+impl ToXYZTransformationProvider for ProjectedCrs {
     fn to_xyz_transformation<'a>(&self) -> Box<dyn ToXYZTransformation + 'a> {
         Box::new(ProjectedToXYZ {
             datum: self.datum.clone(),
