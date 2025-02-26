@@ -60,7 +60,7 @@ pub enum ProjectionSpec {
 mod cyl;
 
 impl ProjectionSpec {
-    pub fn projection(&self, ellipsoid: &Ellipsoid) -> Box<dyn Projection> {
+    pub fn applied_to(&self, ellipsoid: &Ellipsoid) -> Box<dyn Projection> {
         match *self {
             Self::Mercator1SP {
                 lon0,

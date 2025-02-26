@@ -118,7 +118,7 @@ impl ProvideToXYZTransformation for ProjectedCrs {
         Box::new(ProjectedToXYZ {
             datum: self.datum.clone(),
             axes: self.axes,
-            projection: self.projection.projection(self.datum.ellipsoid()),
+            projection: self.projection.applied_to(self.datum.ellipsoid()),
         })
     }
 }
