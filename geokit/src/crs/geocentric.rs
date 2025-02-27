@@ -1,3 +1,4 @@
+use super::Crs;
 use crate::cs::cartesian::{GeocentricAxes, XYZ};
 use crate::geodesy::GeodeticDatum;
 use crate::math::fp::Float;
@@ -5,8 +6,6 @@ use crate::transformations::{
     ToXYZTransformation, ToXYZTransformationProvider, TransformationError,
 };
 use smol_str::SmolStr;
-
-use super::Crs;
 
 /// A [GeocentricCrs] is a **3D cartesian coordinates reference system** in which
 /// coordinates are given by distance **in meters** along the following axes:

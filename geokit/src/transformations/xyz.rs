@@ -10,11 +10,11 @@ use nalgebra::{Matrix3, Vector3};
 pub struct XYZIdentity;
 
 impl XYZTransformation for XYZIdentity {
-    fn src_to_dst(&self, src: XYZ) -> XYZ {
+    fn to_ref(&self, src: XYZ) -> XYZ {
         src
     }
 
-    fn dst_to_src(&self, dst: XYZ) -> XYZ {
+    fn from_ref(&self, dst: XYZ) -> XYZ {
         dst
     }
 }
@@ -45,7 +45,7 @@ impl GeocentricTranslation {
 }
 
 impl XYZTransformation for GeocentricTranslation {
-    fn src_to_dst(&self, src: XYZ) -> XYZ {
+    fn to_ref(&self, src: XYZ) -> XYZ {
         XYZ {
             x: src.x + self.tx,
             y: src.y + self.ty,
@@ -53,7 +53,7 @@ impl XYZTransformation for GeocentricTranslation {
         }
     }
 
-    fn dst_to_src(&self, dst: XYZ) -> XYZ {
+    fn from_ref(&self, dst: XYZ) -> XYZ {
         XYZ {
             x: dst.x - self.tx,
             y: dst.y - self.ty,
@@ -116,7 +116,7 @@ impl Helmert7Params {
 }
 
 impl XYZTransformation for Helmert7Params {
-    fn src_to_dst(&self, src: XYZ) -> XYZ {
+    fn to_ref(&self, src: XYZ) -> XYZ {
         let s = Vector3::new(src.x.m(), src.y.m(), src.z.m());
         let x = self.rot * self.ppm.factor() * s + self.t;
 
@@ -127,7 +127,7 @@ impl XYZTransformation for Helmert7Params {
         }
     }
 
-    fn dst_to_src(&self, dst: XYZ) -> XYZ {
+    fn from_ref(&self, dst: XYZ) -> XYZ {
         let t = Vector3::new(dst.x.m(), dst.y.m(), dst.z.m());
         let s = self.inv_rot * self.ppm.inv_factor() * t - self.t;
 
@@ -141,16 +141,14 @@ impl XYZTransformation for Helmert7Params {
 
 #[cfg(test)]
 mod tests {
-    use approx::assert_relative_eq;
-
+    use super::GeocentricTranslation;
+    use super::XYZTransformation;
+    use super::{Helmert7Params, RotationConvention};
     use crate::cs::cartesian::XYZ;
     use crate::quantities::scale::PPM;
-    use crate::transformations::XYZTransformation;
     use crate::units::angle::RAD;
     use crate::units::length::M;
-
-    use super::GeocentricTranslation;
-    use super::{Helmert7Params, RotationConvention};
+    use approx::assert_relative_eq;
 
     #[test]
     fn geocentric_translation_fwd() {
@@ -160,7 +158,7 @@ mod tests {
             y: 140_253.34 * M,
             z: 5_124_304.35 * M,
         };
-        let dst = t.src_to_dst(src);
+        let dst = t.to_ref(src);
 
         let expected_dst = XYZ {
             x: 3_771_878.84 * M,
@@ -180,7 +178,7 @@ mod tests {
             y: 140_349.83 * M,
             z: 5_124_421.30 * M,
         };
-        let src = t.dst_to_src(dst);
+        let src = t.from_ref(dst);
 
         let expected_src = XYZ {
             x: 3_771_793.97 * M,
@@ -205,7 +203,7 @@ mod tests {
             y: 255_768.55 * M,
             z: 5_201_382.11 * M,
         };
-        let dst = t.src_to_dst(src);
+        let dst = t.to_ref(src);
 
         let expected_dst = XYZ {
             x: 3_657_660.78 * M,
@@ -230,7 +228,7 @@ mod tests {
             y: 255_778.43 * M,
             z: 5_201_387.75 * M,
         };
-        let src = t.dst_to_src(dst);
+        let src = t.from_ref(dst);
 
         let expected_src = XYZ {
             x: 3_657_660.66 * M,

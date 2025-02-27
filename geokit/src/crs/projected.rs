@@ -1,3 +1,4 @@
+use super::Crs;
 use crate::transformations::{
     ToXYZTransformation, ToXYZTransformationProvider, TransformationError,
 };
@@ -8,8 +9,6 @@ use crate::{
     projections::{Projection, ProjectionError, ProjectionSpec},
 };
 use smol_str::SmolStr;
-
-use super::Crs;
 
 /// A [ProjectedCrs] is a **2D/3D cartesian coordinates reference system** derived from a
 /// 2D or 3D [Geographic] Crs using a projection.

@@ -1,7 +1,3 @@
-//! This module defines [Crs](Coordinates Reference Systems).
-//! A [Crs] ties a coordinates system to the Earth using a [GeodeticDatum](datum) and allows to
-//! unambiguously assign coordinates to location on Earth.
-
 use crate::cs::cartesian::XYZ;
 use crate::math::fp::Float;
 use derive_more::derive::Display;
@@ -12,10 +8,13 @@ pub enum TransformationError {
     OutOfBounds,
 }
 
-/// Trait for coordinates transformation between two [coordinates reference systems](Crs)
+/// Trait for coordinates transformation between a *source* and a *destination* [coordinates reference systems](crate::crs::Crs)
 pub trait CrsTransformation {
-    fn src_to_dst(&self, src: &[Float], dst: &mut [Float]) -> Result<(), TransformationError>;
-    fn dst_to_src(&self, dst: &[Float], src: &mut [Float]) -> Result<(), TransformationError>;
+    /// Transforms *source* coordinates from `src` into *destination* coordinates in `dst`.
+    fn fwd(&self, src: &[Float], dst: &mut [Float]) -> Result<(), TransformationError>;
+
+    /// Transforms *destination* coordinates from `dst` into *source* coordinates in `src`.
+    fn bwd(&self, dst: &[Float], src: &mut [Float]) -> Result<(), TransformationError>;
 }
 
 pub trait ToXYZTransformationProvider {
@@ -34,8 +33,8 @@ pub trait ToXYZTransformation {
 
 /// A trait for ***normalized geocentric coordinates*** transformations.
 pub trait XYZTransformation {
-    fn src_to_dst(&self, src: XYZ) -> XYZ;
-    fn dst_to_src(&self, dst: XYZ) -> XYZ;
+    fn to_ref(&self, src: XYZ) -> XYZ;
+    fn from_ref(&self, dst: XYZ) -> XYZ;
 }
 
 /// Coordinates transformation between two CRS via [normalized geocentric coordinates](XYZ).
@@ -63,17 +62,17 @@ impl<'a> CrsXYZTransformation<'a> {
 }
 
 impl<'a> CrsTransformation for CrsXYZTransformation<'a> {
-    fn src_to_dst(&self, src: &[Float], dst: &mut [Float]) -> Result<(), TransformationError> {
+    fn fwd(&self, src: &[Float], dst: &mut [Float]) -> Result<(), TransformationError> {
         let src_xyz = self.src_to_xyz.to_xyz(src)?;
-        let ref_xyz = self.src_xyz_to_ref_xyz.src_to_dst(src_xyz);
-        let dst_xyz = self.dst_xyz_to_ref_xyz.dst_to_src(ref_xyz);
+        let ref_xyz = self.src_xyz_to_ref_xyz.to_ref(src_xyz);
+        let dst_xyz = self.dst_xyz_to_ref_xyz.from_ref(ref_xyz);
         self.dst_to_xyz.from_xyz(dst_xyz, dst)
     }
 
-    fn dst_to_src(&self, dst: &[Float], src: &mut [Float]) -> Result<(), TransformationError> {
+    fn bwd(&self, dst: &[Float], src: &mut [Float]) -> Result<(), TransformationError> {
         let dst_xyz = self.dst_to_xyz.to_xyz(dst)?;
-        let ref_xyz = self.dst_xyz_to_ref_xyz.src_to_dst(dst_xyz);
-        let src_xyz = self.src_xyz_to_ref_xyz.dst_to_src(ref_xyz);
+        let ref_xyz = self.dst_xyz_to_ref_xyz.to_ref(dst_xyz);
+        let src_xyz = self.src_xyz_to_ref_xyz.from_ref(ref_xyz);
         self.src_to_xyz.from_xyz(src_xyz, src)
     }
 }

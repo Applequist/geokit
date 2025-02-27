@@ -45,9 +45,9 @@ fn main() {
 
     let mut src_pt = [-10.0, -90.0, 0.0];
     let mut dst_pt = [0.0; 2];
-    tx.src_to_dst(&src_pt, &mut dst_pt).unwrap();
+    tx.fwd(&src_pt, &mut dst_pt).unwrap();
     println!("{src_pt:?} --- src_to_dst ---> {dst_pt:?}");
 
-    tx.dst_to_src(&dst_pt, &mut src_pt).unwrap();
+    tx.bwd(&dst_pt, &mut src_pt).unwrap();
     println!("{dst_pt:?} --- dst_to_src ---> {src_pt:?}");
 }
