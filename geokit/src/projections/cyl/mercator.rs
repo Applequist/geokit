@@ -1,6 +1,6 @@
 #![allow(non_snake_case)]
 
-use crate::cs::cartesian::ENH;
+use crate::cs::cartesian::projected::ENH;
 use crate::cs::geodetic::{Lat, Lon, LLH};
 use crate::geodesy::Ellipsoid;
 use crate::math::fp::{Float, PI_2, PI_4};
@@ -161,7 +161,7 @@ mod test {
     use super::Mercator;
     use crate::{
         cs::{
-            cartesian::ENH,
+            cartesian::projected::ENH,
             geodetic::{Lat, Lon, LLH},
         },
         geodesy::ellipsoid,

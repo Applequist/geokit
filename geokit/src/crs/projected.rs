@@ -1,14 +1,16 @@
 use super::Crs;
-use crate::cs::cartesian::CartesianErrors;
+use crate::cs::cartesian::geocentric::XYZ;
+use crate::cs::cartesian::projected::{ProjectedAxes, ProjectedErrors};
 use crate::transformations::{
     ToXYZTransformation, ToXYZTransformationProvider, TransformationError,
 };
+use crate::units::length::M;
 use crate::{
-    cs::cartesian::{ProjectedAxes, XYZ},
     geodesy::GeodeticDatum,
     math::fp::Float,
     projections::{Projection, ProjectionError, ProjectionSpec},
 };
+use approx::AbsDiffEq;
 use smol_str::SmolStr;
 
 /// A [ProjectedCrs] is a **2D/3D cartesian coordinates reference system** derived from a
@@ -24,8 +26,44 @@ pub struct ProjectedCrs {
 }
 
 impl Crs for ProjectedCrs {
+    type Tolerance = ProjectedErrors;
+
     fn id(&self) -> &str {
         &self.id
+    }
+
+    fn dim(&self) -> usize {
+        self.axes.dim()
+    }
+
+    fn approx_eq(&self, a: &[Float], b: &[Float], err: Self::Tolerance) -> bool {
+        let [east_err, north_err, height_err] = match self.axes {
+            ProjectedAxes::EastNorthUp {
+                horiz_unit,
+                height_unit,
+            } => err.convert_to(horiz_unit, height_unit),
+            ProjectedAxes::EastNorth { horiz_unit } => err.convert_to(horiz_unit, M),
+        };
+
+        match self.axes {
+            ProjectedAxes::EastNorthUp {
+                horiz_unit: _,
+                height_unit: _,
+            } => {
+                a[0].abs_diff_eq(&b[0], east_err)
+                    && a[1].abs_diff_eq(&b[1], north_err)
+                    && a[2].abs_diff_eq(&b[2], height_err)
+            }
+            ProjectedAxes::EastNorth { horiz_unit: _ } => {
+                a[0].abs_diff_eq(&b[0], east_err) && a[1].abs_diff_eq(&b[1], north_err)
+            }
+        }
+    }
+
+    fn dist(&self, a: &[Float], b: &[Float]) -> crate::quantities::length::Length {
+        let na = self.axes.normalize(a);
+        let nb = self.axes.normalize(b);
+        na.dist_to(nb)
     }
 }
 
@@ -70,6 +108,7 @@ impl<'a> ToXYZTransformation for ProjectedToXYZ<'a> {
 mod tests {
     use super::ProjectedCrs;
     use crate::{
+        cs::cartesian::projected::ProjectedAxes,
         geodesy::{ellipsoid::consts::WGS84, prime_meridian::consts::GREENWICH, GeodeticDatum},
         units::length::M,
     };
@@ -80,7 +119,7 @@ mod tests {
         let crs: &dyn Any = &ProjectedCrs {
             id: "UTM zone1".into(),
             datum: GeodeticDatum::new("WGS84", WGS84, GREENWICH),
-            axes: crate::cs::cartesian::ProjectedAxes::EastNorthUp {
+            axes: ProjectedAxes::EastNorthUp {
                 horiz_unit: M,
                 height_unit: M,
             },

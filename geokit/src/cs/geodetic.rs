@@ -177,29 +177,64 @@ impl Default for GeodeticAxes {
 /// Errors bounds used to check approximate equality between geodetic coordinates.
 ///
 /// See [LLH::approx_eq].
+#[derive(Copy, Clone, Debug)]
 pub struct GeodeticErrors {
-    pub lon: Angle,
-    pub lat: Angle,
-    pub height: Length,
+    pub lon: (Float, AngleUnit),
+    pub lat: (Float, AngleUnit),
+    pub height: (Float, LengthUnit),
 }
 
 impl GeodeticErrors {
     /// Tiny geodetic errors.
     pub const fn tiny() -> Self {
         GeodeticErrors {
-            lon: Angle::tiny(),
-            lat: Angle::tiny(),
-            height: Length::tiny(),
+            lon: (1e-12, RAD),
+            lat: (1e-12, RAD),
+            height: (1e-4, M),
         }
     }
 
     /// Small geodetic errors.
     pub const fn small() -> Self {
         GeodeticErrors {
-            lon: Angle::small(),
-            lat: Angle::small(),
-            height: Length::small(),
+            lon: (1e-9, RAD),
+            lat: (1e-9, RAD),
+            height: (1e-2, M),
         }
+    }
+
+    #[inline]
+    pub fn lon(&self) -> Angle {
+        self.lon.0 * self.lon.1
+    }
+
+    #[inline]
+    pub fn lat(&self) -> Angle {
+        self.lat.0 * self.lat.1
+    }
+
+    #[inline]
+    pub fn height(&self) -> Length {
+        self.height.0 * self.height.1
+    }
+
+    pub(crate) fn convert_to(&self, angle_unit: AngleUnit, height_unit: LengthUnit) -> [Float; 3] {
+        let lon_err = if self.lon.1 == angle_unit {
+            self.lon.0
+        } else {
+            self.lon().val(angle_unit)
+        };
+        let lat_err = if self.lat.1 == angle_unit {
+            self.lat.0
+        } else {
+            self.lat().val(angle_unit)
+        };
+        let height_err = if self.height.1 == height_unit {
+            self.height.0
+        } else {
+            self.height().val(height_unit)
+        };
+        [lon_err, lat_err, height_err]
     }
 }
 
@@ -233,9 +268,9 @@ impl LLH {
     /// - `(self.lat - other.lat).abs() <= err.lat`
     /// - `(self.height - other.height).abs() <= err.height`
     pub fn approx_eq(&self, other: &LLH, err: GeodeticErrors) -> bool {
-        self.lon.abs_diff_eq(&other.lon, err.lon)
-            && self.lat.abs_diff_eq(&other.lat, err.lat)
-            && self.height.abs_diff_eq(&other.height, err.height)
+        self.lon.abs_diff_eq(&other.lon, err.lon())
+            && self.lat.abs_diff_eq(&other.lat, err.lat())
+            && self.height.abs_diff_eq(&other.height, err.height())
     }
 }
 
@@ -243,10 +278,10 @@ impl LLH {
 /// bounds, printing information about the coordinates when not equal.
 ///
 /// Use only in tests.
-pub fn approx_eq_llh(res: &LLH, exp: &LLH, err: &GeodeticErrors) -> bool {
-    let lon_ok = res.lon.abs_diff_eq(&exp.lon, err.lon);
-    let lat_ok = res.lat.abs_diff_eq(&exp.lat, err.lat);
-    let height_ok = res.height.abs_diff_eq(&exp.height, err.height);
+pub fn approx_eq_llh(res: LLH, exp: LLH, err: GeodeticErrors) -> bool {
+    let lon_ok = res.lon.abs_diff_eq(&exp.lon, err.lon());
+    let lat_ok = res.lat.abs_diff_eq(&exp.lat, err.lat());
+    let height_ok = res.height.abs_diff_eq(&exp.height, err.height());
     let is_approx_eq = lon_ok && lat_ok && height_ok;
 
     if !is_approx_eq {
@@ -256,7 +291,7 @@ pub fn approx_eq_llh(res: &LLH, exp: &LLH, err: &GeodeticErrors) -> bool {
                 "Longitude ok:      {} = {} +/- {:e}",
                 res.lon,
                 exp.lon,
-                err.lon.deg()
+                err.lon().deg()
             );
         } else {
             println!(
@@ -264,7 +299,7 @@ pub fn approx_eq_llh(res: &LLH, exp: &LLH, err: &GeodeticErrors) -> bool {
                 res.lon,
                 exp.lon,
                 (res.lon - exp.lon).abs().deg(),
-                err.lon.deg()
+                err.lon().deg()
             );
         }
         if lat_ok {
@@ -272,7 +307,7 @@ pub fn approx_eq_llh(res: &LLH, exp: &LLH, err: &GeodeticErrors) -> bool {
                 "Latitude ok:      {} = {} +/- {:e}",
                 res.lat,
                 exp.lat,
-                err.lat.deg()
+                err.lat().deg()
             );
         } else {
             println!(
@@ -280,7 +315,7 @@ pub fn approx_eq_llh(res: &LLH, exp: &LLH, err: &GeodeticErrors) -> bool {
                 res.lat,
                 exp.lat,
                 (res.lat - exp.lat).abs().deg(),
-                err.lat.deg()
+                err.lat().deg()
             );
         }
         if height_ok {
@@ -288,7 +323,7 @@ pub fn approx_eq_llh(res: &LLH, exp: &LLH, err: &GeodeticErrors) -> bool {
                 "Height ok      {} = {} +/- {:e} m",
                 res.height,
                 exp.height,
-                err.height.m()
+                err.height().m()
             );
         } else {
             println!(
@@ -296,7 +331,7 @@ pub fn approx_eq_llh(res: &LLH, exp: &LLH, err: &GeodeticErrors) -> bool {
                 res.height,
                 exp.height,
                 (res.height - exp.height).abs().m(),
-                err.height.m()
+                err.height().m()
             );
         }
         println!("");
@@ -482,7 +517,9 @@ impl Sub<Angle> for Lon {
 impl SubAssign<Angle> for Lon {
     /// Sets this [Lon] angle to the difference `self.angle() - rhs`
     /// [wrapped](Angle::wrapped) in [-pi, pi]
-    fn sub_assign(&mut self, rhs: Angle) {}
+    fn sub_assign(&mut self, rhs: Angle) {
+        self.0 = (self.0 - rhs).wrapped()
+    }
 }
 
 impl Mul<Float> for Lon {

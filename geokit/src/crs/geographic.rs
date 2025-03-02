@@ -1,13 +1,18 @@
 use super::Crs;
 use crate::{
     cs::{
-        cartesian::XYZ,
+        cartesian::geocentric::XYZ,
         geodetic::{GeodeticAxes, GeodeticErrors},
     },
-    geodesy::GeodeticDatum,
+    geodesy::{
+        geodesics::{vincenty::VincentyGeodesicSolver, GeodesicSolver},
+        GeodeticDatum,
+    },
     math::fp::Float,
     transformations::{ToXYZTransformation, ToXYZTransformationProvider, TransformationError},
+    units::length::M,
 };
+use approx::AbsDiffEq;
 use smol_str::SmolStr;
 
 /// A [GeographicCrs] is a **2D or 3D geodetic coordinates reference system** in which
@@ -21,8 +26,82 @@ pub struct GeographicCrs {
 }
 
 impl Crs for GeographicCrs {
+    type Tolerance = GeodeticErrors;
+
     fn id(&self) -> &str {
         &self.id
+    }
+
+    fn dim(&self) -> usize {
+        self.axes.dim()
+    }
+
+    fn approx_eq(&self, a: &[Float], b: &[Float], err: Self::Tolerance) -> bool {
+        // Convert the errors margin into this CRS units.
+        let [lon_err, lat_err, height_err] = match self.axes {
+            GeodeticAxes::EastNorthUp {
+                angle_unit,
+                height_unit,
+            }
+            | GeodeticAxes::NorthEastUp {
+                angle_unit,
+                height_unit,
+            } => err.convert_to(angle_unit, height_unit),
+            GeodeticAxes::EastNorth { angle_unit }
+            | GeodeticAxes::NorthEast { angle_unit }
+            | GeodeticAxes::NorthWest { angle_unit } => err.convert_to(angle_unit, M),
+        };
+
+        // Take coordinates order into account
+        let var_name = match self.axes {
+            GeodeticAxes::EastNorthUp {
+                angle_unit: _,
+                height_unit: _,
+            } => {
+                a[0].abs_diff_eq(&b[0], lon_err)
+                    && a[1].abs_diff_eq(&b[1], lat_err)
+                    && a[2].abs_diff_eq(&b[2], height_err)
+            }
+            GeodeticAxes::NorthEastUp {
+                angle_unit: _,
+                height_unit: _,
+            } => {
+                a[0].abs_diff_eq(&b[0], lat_err)
+                    && a[1].abs_diff_eq(&b[1], lon_err)
+                    && a[2].abs_diff_eq(&b[2], height_err)
+            }
+            GeodeticAxes::EastNorth { angle_unit: _ } => {
+                a[0].abs_diff_eq(&b[0], lon_err) && a[1].abs_diff_eq(&b[1], lat_err)
+            }
+            GeodeticAxes::NorthEast { angle_unit: _ } => {
+                a[0].abs_diff_eq(&b[0], lat_err) && a[1].abs_diff_eq(&b[1], lon_err)
+            }
+            GeodeticAxes::NorthWest { angle_unit: _ } => {
+                a[0].abs_diff_eq(&b[0], lat_err) && a[1].abs_diff_eq(&b[1], lon_err)
+            }
+        };
+        var_name
+    }
+
+    /// Computes a distance between the 2 given coordinates.
+    ///
+    /// When `self.dim() == 2`, this method computes the **geodesic distance** between the 2 points.
+    /// when `self.dim() == 3`, this method computes the **cartesian distance** between the 2
+    /// points.
+    fn dist(&self, a: &[Float], b: &[Float]) -> crate::quantities::length::Length {
+        let llha = self.axes.normalize(a);
+        let llhb = self.axes.normalize(b);
+        if self.dim() == 2 {
+            let solver = VincentyGeodesicSolver::new(self.datum.ellipsoid());
+            solver
+                .solve_inverse((llha.lon, llha.lat), (llhb.lon, llhb.lat))
+                .expect("Cannot compute geodesic distance")
+                .s
+        } else {
+            let xyza = self.datum.llh_to_xyz(llha);
+            let xyzb = self.datum.llh_to_xyz(llhb);
+            xyza.dist_to(xyzb)
+        }
     }
 }
 

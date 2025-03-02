@@ -1,6 +1,6 @@
 use super::XYZTransformation;
 use crate::{
-    cs::cartesian::XYZ,
+    cs::cartesian::geocentric::XYZ,
     math::fp::Float,
     quantities::{angle::Angle, length::Length, scale::PPM},
     units::length::M,
@@ -144,7 +144,7 @@ mod tests {
     use super::GeocentricTranslation;
     use super::XYZTransformation;
     use super::{Helmert7Params, RotationConvention};
-    use crate::cs::cartesian::XYZ;
+    use crate::cs::cartesian::geocentric::XYZ;
     use crate::quantities::scale::PPM;
     use crate::units::angle::RAD;
     use crate::units::length::M;

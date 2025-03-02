@@ -1,6 +1,9 @@
 use geokit::{
     cs::{
-        cartesian::{approx_eq_xyz, CartesianErrors, XYZ},
+        cartesian::{
+            geocentric::{approx_eq_xyz, XYZ},
+            CartesianErrors,
+        },
         geodetic::{approx_eq_llh, GeodeticErrors, Lat, Lon, LLH},
     },
     geodesy::geodetic_datum::consts::WGS84,
@@ -41,16 +44,8 @@ fn xyz_to_llh_10_000() {
 
     for (xyz, llh) in read_conversions() {
         let computed_xyz = datum.llh_to_xyz(llh);
-        assert!(approx_eq_xyz(
-            &computed_xyz,
-            &xyz,
-            &CartesianErrors::default()
-        ));
+        assert!(approx_eq_xyz(computed_xyz, xyz, CartesianErrors::default()));
         let computed_llh = datum.xyz_to_llh(xyz);
-        assert!(approx_eq_llh(
-            &computed_llh,
-            &llh,
-            &GeodeticErrors::default()
-        ));
+        assert!(approx_eq_llh(computed_llh, llh, GeodeticErrors::default()));
     }
 }

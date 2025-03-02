@@ -2,7 +2,7 @@
 
 use crate::{
     cs::{
-        cartesian::ENH,
+        cartesian::projected::ENH,
         geodetic::{Lat, Lon, LLH},
     },
     geodesy::Ellipsoid,
@@ -244,7 +244,7 @@ mod test {
     use super::TransverseMercator;
     use crate::{
         cs::{
-            cartesian::ENH,
+            cartesian::projected::ENH,
             geodetic::{GeodeticErrors, Lat, Lon, LLH},
         },
         geodesy::ellipsoid,

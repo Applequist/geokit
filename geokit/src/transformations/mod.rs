@@ -1,4 +1,4 @@
-use crate::cs::cartesian::XYZ;
+use crate::cs::cartesian::geocentric::XYZ;
 use crate::math::fp::Float;
 use derive_more::derive::Display;
 use thiserror::Error;

@@ -1,5 +1,5 @@
 use geokit::crs::{geographic::GeographicCrs, projected::ProjectedCrs};
-use geokit::cs::cartesian::ProjectedAxes;
+use geokit::cs::cartesian::projected::ProjectedAxes;
 use geokit::cs::geodetic::{GeodeticAxes, Lat, Lon};
 use geokit::geodesy::{ellipsoid, prime_meridian, GeodeticDatum};
 use geokit::projections::ProjectionSpec;

@@ -1,6 +1,6 @@
 use crate::{
     cs::{
-        cartesian::ENH,
+        cartesian::projected::ENH,
         geodetic::{Lat, Lon, LLH},
     },
     geodesy::Ellipsoid,
@@ -72,7 +72,7 @@ impl Projection for WebMercator {
 mod tests {
     use super::Projection;
     use super::WebMercator;
-    use crate::cs::cartesian::ENH;
+    use crate::cs::cartesian::projected::ENH;
     use crate::cs::geodetic::Lat;
     use crate::cs::geodetic::Lon;
     use crate::cs::geodetic::LLH;
