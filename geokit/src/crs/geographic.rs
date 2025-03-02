@@ -1,6 +1,9 @@
 use super::Crs;
 use crate::{
-    cs::{cartesian::XYZ, geodetic::GeodeticAxes},
+    cs::{
+        cartesian::XYZ,
+        geodetic::{GeodeticAxes, GeodeticErrors},
+    },
     geodesy::GeodeticDatum,
     math::fp::Float,
     transformations::{ToXYZTransformation, ToXYZTransformationProvider, TransformationError},
@@ -17,7 +20,11 @@ pub struct GeographicCrs {
     pub axes: GeodeticAxes,
 }
 
-impl Crs for GeographicCrs {}
+impl Crs for GeographicCrs {
+    fn id(&self) -> &str {
+        &self.id
+    }
+}
 
 impl ToXYZTransformationProvider for GeographicCrs {
     fn to_xyz_transformation<'a>(&self) -> Box<dyn ToXYZTransformation + 'a> {

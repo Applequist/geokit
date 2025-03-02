@@ -6,7 +6,10 @@ use std::any::Any;
 
 /// [Crs] is a marker trait that must be implemented by Coordinates reference systems.
 /// It guarantees that CRS implement Any.
-pub trait Crs: Any {}
+pub trait Crs: Any {
+    /// Returns the unique id of the CRS.
+    fn id(&self) -> &str;
+}
 
 pub mod geocentric;
 pub mod geographic;

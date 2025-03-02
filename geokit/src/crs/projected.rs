@@ -1,4 +1,5 @@
 use super::Crs;
+use crate::cs::cartesian::CartesianErrors;
 use crate::transformations::{
     ToXYZTransformation, ToXYZTransformationProvider, TransformationError,
 };
@@ -22,7 +23,11 @@ pub struct ProjectedCrs {
     pub projection: ProjectionSpec,
 }
 
-impl Crs for ProjectedCrs {}
+impl Crs for ProjectedCrs {
+    fn id(&self) -> &str {
+        &self.id
+    }
+}
 
 impl ToXYZTransformationProvider for ProjectedCrs {
     fn to_xyz_transformation<'a>(&self) -> Box<dyn ToXYZTransformation + 'a> {

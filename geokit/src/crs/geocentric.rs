@@ -1,5 +1,5 @@
 use super::Crs;
-use crate::cs::cartesian::{GeocentricAxes, XYZ};
+use crate::cs::cartesian::{CartesianErrors, GeocentricAxes, XYZ};
 use crate::geodesy::GeodeticDatum;
 use crate::math::fp::Float;
 use crate::transformations::{
@@ -20,7 +20,11 @@ pub struct GeocentricCrs {
     pub axes: GeocentricAxes,
 }
 
-impl Crs for GeocentricCrs {}
+impl Crs for GeocentricCrs {
+    fn id(&self) -> &str {
+        &self.id
+    }
+}
 
 impl ToXYZTransformationProvider for GeocentricCrs {
     fn to_xyz_transformation<'a>(&self) -> Box<dyn ToXYZTransformation + 'a> {
