@@ -22,11 +22,7 @@ pub struct ProjectedCrs {
     pub projection: ProjectionSpec,
 }
 
-impl Crs for ProjectedCrs {
-    fn id(&self) -> &str {
-        &self.id
-    }
-}
+impl Crs for ProjectedCrs {}
 
 impl ToXYZTransformationProvider for ProjectedCrs {
     fn to_xyz_transformation<'a>(&self) -> Box<dyn ToXYZTransformation + 'a> {
@@ -62,5 +58,31 @@ impl<'a> ToXYZTransformation for ProjectedToXYZ<'a> {
         let llh = self.datum.xyz_to_llh(xyz);
         let enh = self.projection.proj(llh)?;
         Ok(self.axes.denormalize(enh, coords))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::ProjectedCrs;
+    use crate::{
+        geodesy::{ellipsoid::consts::WGS84, prime_meridian::consts::GREENWICH, GeodeticDatum},
+        units::length::M,
+    };
+    use std::any::{Any, TypeId};
+
+    #[test]
+    fn test_any() {
+        let crs: &dyn Any = &ProjectedCrs {
+            id: "UTM zone1".into(),
+            datum: GeodeticDatum::new("WGS84", WGS84, GREENWICH),
+            axes: crate::cs::cartesian::ProjectedAxes::EastNorthUp {
+                horiz_unit: M,
+                height_unit: M,
+            },
+            projection: crate::projections::ProjectionSpec::UTMNorth { zone: 1 },
+        };
+
+        assert_eq!(crs.type_id(), TypeId::of::<ProjectedCrs>());
+        assert!(crs.is::<ProjectedCrs>());
     }
 }

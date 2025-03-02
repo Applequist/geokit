@@ -20,11 +20,7 @@ pub struct GeocentricCrs {
     pub axes: GeocentricAxes,
 }
 
-impl Crs for GeocentricCrs {
-    fn id(&self) -> &str {
-        &self.id
-    }
-}
+impl Crs for GeocentricCrs {}
 
 impl ToXYZTransformationProvider for GeocentricCrs {
     fn to_xyz_transformation<'a>(&self) -> Box<dyn ToXYZTransformation + 'a> {
@@ -39,5 +35,25 @@ impl ToXYZTransformation for GeocentricCrs {
 
     fn from_xyz(&self, xyz: XYZ, coords: &mut [Float]) -> Result<(), TransformationError> {
         Ok(self.axes.denormalize(xyz, coords))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::GeocentricCrs;
+    use crate::geodesy::{
+        ellipsoid::consts::WGS84, prime_meridian::consts::GREENWICH, GeodeticDatum,
+    };
+    use std::any::{Any, TypeId};
+
+    #[test]
+    fn test_any() {
+        let crs: &dyn Any = &GeocentricCrs {
+            id: "WGS84".into(),
+            datum: GeodeticDatum::new("WGS84", WGS84, GREENWICH),
+            axes: crate::cs::cartesian::GeocentricAxes::XYZ,
+        };
+        assert_eq!(crs.type_id(), TypeId::of::<GeocentricCrs>());
+        assert!(crs.is::<GeocentricCrs>());
     }
 }

@@ -17,11 +17,7 @@ pub struct GeographicCrs {
     pub axes: GeodeticAxes,
 }
 
-impl Crs for GeographicCrs {
-    fn id(&self) -> &str {
-        &self.id
-    }
-}
+impl Crs for GeographicCrs {}
 
 impl ToXYZTransformationProvider for GeographicCrs {
     fn to_xyz_transformation<'a>(&self) -> Box<dyn ToXYZTransformation + 'a> {
@@ -38,5 +34,30 @@ impl ToXYZTransformation for GeographicCrs {
     fn from_xyz(&self, xyz: XYZ, coords: &mut [Float]) -> Result<(), TransformationError> {
         let llh = self.datum.xyz_to_llh(xyz);
         Ok(self.axes.denormalize(llh, coords))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::GeographicCrs;
+    use crate::{
+        geodesy::{ellipsoid::consts::WGS84, prime_meridian::consts::GREENWICH, GeodeticDatum},
+        units::{angle::DEG, length::M},
+    };
+    use std::any::{Any, TypeId};
+
+    #[test]
+    fn test_any() {
+        let crs: &dyn Any = &GeographicCrs {
+            id: "WGS84".into(),
+            datum: GeodeticDatum::new("WGS84", WGS84, GREENWICH),
+            axes: crate::cs::geodetic::GeodeticAxes::EastNorthUp {
+                angle_unit: DEG,
+                height_unit: M,
+            },
+        };
+
+        assert_eq!(crs.type_id(), TypeId::of::<GeographicCrs>());
+        assert!(crs.is::<GeographicCrs>());
     }
 }
