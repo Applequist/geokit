@@ -17,17 +17,17 @@ pub trait Crs: Any {
     /// Returns the dimension of the CRS, either 1, 2 or 3.
     fn dim(&self) -> usize;
 
-    /// Returns whether the `a` and `b` coordinates are all equal within the given error margins.
+    /// Returns whether the `a` and `b` coordinates are all equal within the given tolerance.
     ///
-    /// This method checks that each ordinates are approximately equal and does NOT rely
-    /// on the notion of distance.
+    /// `a` and `b` are approximately equal if the absolute difference of coordinates on
+    /// each axis is less or equal to the tolerance for that axis.
     fn approx_eq(&self, a: &[Float], b: &[Float], err: Self::Tolerance) -> bool;
 
     /// Returns the distance between the 2 given coordinates
     ///
     /// The computed distance depends on the type and dimension of the CRS.
     /// See each implementation for details.
-    fn dist(&self, a: &[Float], b: &[Float]) -> Length;
+    fn dist(&self, a: &[Float], b: &[Float]) -> Result<Length, &'static str>;
 }
 
 pub mod geocentric;

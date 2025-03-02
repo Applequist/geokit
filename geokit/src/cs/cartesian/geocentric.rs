@@ -8,6 +8,7 @@
 //! - [GeocentricAxes] for geocentric cartesian CS.
 //! - [ProjectedAxes] for projected cartesian CS.
 
+use super::CartesianTolerance;
 use crate::{
     math::fp::Float,
     quantities::length::Length,
@@ -15,8 +16,6 @@ use crate::{
 };
 use approx::AbsDiffEq;
 use derive_more::derive::Display;
-
-use super::CartesianErrors;
 
 /// [GeocentricAxes] defines the possible set of axes used in **geocentric** 3D cartesion CS.
 /// Geocentric CS uses [meter](crate::units::length::M) unit by default for all axes.
@@ -31,6 +30,10 @@ pub enum GeocentricAxes {
 }
 
 impl GeocentricAxes {
+    pub fn dim(&self) -> usize {
+        3
+    }
+
     pub fn normalize(&self, coords: &[Float]) -> XYZ {
         XYZ {
             x: Length::new(coords[0], M),
@@ -43,10 +46,6 @@ impl GeocentricAxes {
         coords[0] = xyz.x.m();
         coords[1] = xyz.y.m();
         coords[2] = xyz.z.m();
-    }
-
-    pub fn dim(&self) -> usize {
-        3
     }
 }
 
@@ -75,8 +74,8 @@ impl XYZ {
     /// - `self.dist_to(other) <= err.0`
     /// FIX: This is not the same as Crs::approx_eq.
     ///
-    pub fn approx_eq(self, other: Self, err: CartesianErrors) -> bool {
-        self.dist_to(other) <= err.length()
+    pub fn approx_eq(self, other: Self, tol: CartesianTolerance) -> bool {
+        self.dist_to(other) <= tol.length()
     }
 }
 
@@ -84,7 +83,7 @@ impl XYZ {
 /// bounds, printing information about the coordinates when not equal.
 ///
 /// Use only in tests.
-pub fn approx_eq_xyz(res: XYZ, exp: XYZ, err: CartesianErrors) -> bool {
+pub fn approx_eq_xyz(res: XYZ, exp: XYZ, err: CartesianTolerance) -> bool {
     let d = res.dist_to(exp);
     let is_approx_eq = d <= err.length();
     if !is_approx_eq {

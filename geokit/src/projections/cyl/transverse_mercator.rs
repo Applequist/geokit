@@ -245,7 +245,7 @@ mod test {
     use crate::{
         cs::{
             cartesian::projected::ENH,
-            geodetic::{GeodeticErrors, Lat, Lon, LLH},
+            geodetic::{GeodeticTolerance, Lat, Lon, LLH},
         },
         geodesy::ellipsoid,
         projections::Projection,
@@ -354,7 +354,7 @@ mod test {
         let north_pole_llh = proj.unproj(north_pole_enh).unwrap();
         println!("north_pole (llh)= {north_pole_llh:?}");
 
-        north_pole_llh.approx_eq(&north_pole, GeodeticErrors::default());
+        north_pole_llh.approx_eq(&north_pole, GeodeticTolerance::default());
 
         let south_pole = LLH {
             lon: Lon::new(-10. * DEG),
@@ -367,6 +367,6 @@ mod test {
         let south_pole_llh = proj.unproj(south_pole_enh).unwrap();
         println!("south_pole (llh)= {south_pole_llh:?}");
 
-        south_pole_llh.approx_eq(&south_pole, GeodeticErrors::default());
+        south_pole_llh.approx_eq(&south_pole, GeodeticTolerance::default());
     }
 }

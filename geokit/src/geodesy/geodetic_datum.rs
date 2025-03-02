@@ -215,8 +215,8 @@ mod tests {
 
     use super::GeodeticDatum;
     use crate::cs::cartesian::geocentric::{approx_eq_xyz, XYZ};
-    use crate::cs::cartesian::CartesianErrors;
-    use crate::cs::geodetic::{approx_eq_llh, GeodeticErrors, Lat, Lon, LLH};
+    use crate::cs::cartesian::CartesianTolerance;
+    use crate::cs::geodetic::{approx_eq_llh, GeodeticTolerance, Lat, Lon, LLH};
     use crate::geodesy::ellipsoid::consts::WGS84;
     use crate::geodesy::prime_meridian::consts::GREENWICH;
     use crate::geodesy::{ellipsoid, geodetic_datum, prime_meridian, Ellipsoid, PrimeMeridian};
@@ -289,7 +289,7 @@ mod tests {
         assert!(approx_eq_xyz(
             computed,
             expected,
-            CartesianErrors::default()
+            CartesianTolerance::default()
         ));
     }
 
@@ -315,7 +315,7 @@ mod tests {
         assert!(approx_eq_xyz(
             computed,
             expected,
-            CartesianErrors::default()
+            CartesianTolerance::default()
         ));
     }
 
@@ -334,7 +334,11 @@ mod tests {
             lat: Lat::new(44.0 * DEG),
             height: 100. * M,
         };
-        assert!(approx_eq_llh(computed, expected, GeodeticErrors::small()));
+        assert!(approx_eq_llh(
+            computed,
+            expected,
+            GeodeticTolerance::small()
+        ));
     }
 
     #[test]
@@ -356,6 +360,10 @@ mod tests {
             lat: Lat::new(45.3935192042 * DEG),
             height: 133.12 * M,
         };
-        assert!(approx_eq_llh(computed, expected, GeodeticErrors::small()));
+        assert!(approx_eq_llh(
+            computed,
+            expected,
+            GeodeticTolerance::small()
+        ));
     }
 }

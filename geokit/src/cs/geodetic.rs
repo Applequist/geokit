@@ -177,29 +177,32 @@ impl Default for GeodeticAxes {
 /// Errors bounds used to check approximate equality between geodetic coordinates.
 ///
 /// See [LLH::approx_eq].
+/// TODO: Consider using a single `horiz_unit` angle unit for both longitude and latitude tolerance
 #[derive(Copy, Clone, Debug)]
-pub struct GeodeticErrors {
+pub struct GeodeticTolerance {
     pub lon: (Float, AngleUnit),
     pub lat: (Float, AngleUnit),
     pub height: (Float, LengthUnit),
 }
 
-impl GeodeticErrors {
-    /// Tiny geodetic errors.
+impl GeodeticTolerance {
+    /// [GeodeticTolerance::tiny()] allows `1e-12 rad` maximum errors on longitude and latitude axes
+    /// and `1e-4 m` on the height axis.
     pub const fn tiny() -> Self {
-        GeodeticErrors {
+        GeodeticTolerance {
             lon: (1e-12, RAD),
             lat: (1e-12, RAD),
             height: (1e-4, M),
         }
     }
 
-    /// Small geodetic errors.
+    /// [GeodeticTolerance::small()] allows `1e-9 rad` maximum errors on the longitude and latitude
+    /// axes and `1e-3 m` on the height axis.
     pub const fn small() -> Self {
-        GeodeticErrors {
+        GeodeticTolerance {
             lon: (1e-9, RAD),
             lat: (1e-9, RAD),
-            height: (1e-2, M),
+            height: (1e-3, M),
         }
     }
 
@@ -218,27 +221,28 @@ impl GeodeticErrors {
         self.height.0 * self.height.1
     }
 
-    pub(crate) fn convert_to(&self, angle_unit: AngleUnit, height_unit: LengthUnit) -> [Float; 3] {
-        let lon_err = if self.lon.1 == angle_unit {
-            self.lon.0
+    /// Converts this [GeodeticTolerance] into the given units.
+    pub(crate) fn convert_to(&self, angle_unit: AngleUnit, height_unit: LengthUnit) -> Self {
+        let lon = if self.lon.1 == angle_unit {
+            self.lon
         } else {
-            self.lon().val(angle_unit)
+            (self.lon().val(angle_unit), angle_unit)
         };
-        let lat_err = if self.lat.1 == angle_unit {
-            self.lat.0
+        let lat = if self.lat.1 == angle_unit {
+            self.lat
         } else {
-            self.lat().val(angle_unit)
+            (self.lat().val(angle_unit), angle_unit)
         };
-        let height_err = if self.height.1 == height_unit {
-            self.height.0
+        let height = if self.height.1 == height_unit {
+            self.height
         } else {
-            self.height().val(height_unit)
+            (self.height().val(height_unit), height_unit)
         };
-        [lon_err, lat_err, height_err]
+        Self { lon, lat, height }
     }
 }
 
-impl Default for GeodeticErrors {
+impl Default for GeodeticTolerance {
     fn default() -> Self {
         Self::tiny()
     }
@@ -264,13 +268,13 @@ impl LLH {
     ///
     /// `self` and `other` are approximately equal if the following conditions are
     /// all satisfied:
-    /// - `(self.lon - other.lon).abs() <= err.lon`
-    /// - `(self.lat - other.lat).abs() <= err.lat`
-    /// - `(self.height - other.height).abs() <= err.height`
-    pub fn approx_eq(&self, other: &LLH, err: GeodeticErrors) -> bool {
-        self.lon.abs_diff_eq(&other.lon, err.lon())
-            && self.lat.abs_diff_eq(&other.lat, err.lat())
-            && self.height.abs_diff_eq(&other.height, err.height())
+    /// - `(self.lon - other.lon).abs() <= tol.lon`
+    /// - `(self.lat - other.lat).abs() <= tol.lat`
+    /// - `(self.height - other.height).abs() <= tol.height`
+    pub fn approx_eq(&self, other: &LLH, tol: GeodeticTolerance) -> bool {
+        self.lon.abs_diff_eq(&other.lon, tol.lon())
+            && self.lat.abs_diff_eq(&other.lat, tol.lat())
+            && self.height.abs_diff_eq(&other.height, tol.height())
     }
 }
 
@@ -278,10 +282,10 @@ impl LLH {
 /// bounds, printing information about the coordinates when not equal.
 ///
 /// Use only in tests.
-pub fn approx_eq_llh(res: LLH, exp: LLH, err: GeodeticErrors) -> bool {
-    let lon_ok = res.lon.abs_diff_eq(&exp.lon, err.lon());
-    let lat_ok = res.lat.abs_diff_eq(&exp.lat, err.lat());
-    let height_ok = res.height.abs_diff_eq(&exp.height, err.height());
+pub fn approx_eq_llh(res: LLH, exp: LLH, tol: GeodeticTolerance) -> bool {
+    let lon_ok = res.lon.abs_diff_eq(&exp.lon, tol.lon());
+    let lat_ok = res.lat.abs_diff_eq(&exp.lat, tol.lat());
+    let height_ok = res.height.abs_diff_eq(&exp.height, tol.height());
     let is_approx_eq = lon_ok && lat_ok && height_ok;
 
     if !is_approx_eq {
@@ -291,7 +295,7 @@ pub fn approx_eq_llh(res: LLH, exp: LLH, err: GeodeticErrors) -> bool {
                 "Longitude ok:      {} = {} +/- {:e}",
                 res.lon,
                 exp.lon,
-                err.lon().deg()
+                tol.lon().deg()
             );
         } else {
             println!(
@@ -299,7 +303,7 @@ pub fn approx_eq_llh(res: LLH, exp: LLH, err: GeodeticErrors) -> bool {
                 res.lon,
                 exp.lon,
                 (res.lon - exp.lon).abs().deg(),
-                err.lon().deg()
+                tol.lon().deg()
             );
         }
         if lat_ok {
@@ -307,7 +311,7 @@ pub fn approx_eq_llh(res: LLH, exp: LLH, err: GeodeticErrors) -> bool {
                 "Latitude ok:      {} = {} +/- {:e}",
                 res.lat,
                 exp.lat,
-                err.lat().deg()
+                tol.lat().deg()
             );
         } else {
             println!(
@@ -315,7 +319,7 @@ pub fn approx_eq_llh(res: LLH, exp: LLH, err: GeodeticErrors) -> bool {
                 res.lat,
                 exp.lat,
                 (res.lat - exp.lat).abs().deg(),
-                err.lat().deg()
+                tol.lat().deg()
             );
         }
         if height_ok {
@@ -323,7 +327,7 @@ pub fn approx_eq_llh(res: LLH, exp: LLH, err: GeodeticErrors) -> bool {
                 "Height ok      {} = {} +/- {:e} m",
                 res.height,
                 exp.height,
-                err.height().m()
+                tol.height().m()
             );
         } else {
             println!(
@@ -331,7 +335,7 @@ pub fn approx_eq_llh(res: LLH, exp: LLH, err: GeodeticErrors) -> bool {
                 res.height,
                 exp.height,
                 (res.height - exp.height).abs().m(),
-                err.height().m()
+                tol.height().m()
             );
         }
         println!("");

@@ -1,12 +1,13 @@
 use super::Crs;
 use crate::cs::cartesian::geocentric::{GeocentricAxes, XYZ};
-use crate::cs::cartesian::CartesianErrors;
+use crate::cs::cartesian::CartesianTolerance;
 use crate::geodesy::GeodeticDatum;
 use crate::math::fp::Float;
 use crate::quantities::length::Length;
 use crate::transformations::{
     ToXYZTransformation, ToXYZTransformationProvider, TransformationError,
 };
+use crate::units::length::M;
 use approx::AbsDiffEq;
 use smol_str::SmolStr;
 
@@ -24,7 +25,7 @@ pub struct GeocentricCrs {
 }
 
 impl Crs for GeocentricCrs {
-    type Tolerance = CartesianErrors;
+    type Tolerance = CartesianTolerance;
 
     fn id(&self) -> &str {
         &self.id
@@ -34,18 +35,20 @@ impl Crs for GeocentricCrs {
         self.axes.dim()
     }
 
-    fn approx_eq(&self, a: &[Float], b: &[Float], err: Self::Tolerance) -> bool {
-        let err_m = err.length().m();
+    fn approx_eq(&self, a: &[Float], b: &[Float], tol: Self::Tolerance) -> bool {
+        // All geocentric CRS use meters for now
+        let converted_tol = tol.convert_to(M);
+        let err_m = converted_tol.all.0;
         a[0].abs_diff_eq(&b[0], err_m)
             && a[1].abs_diff_eq(&b[1], err_m)
             && a[2].abs_diff_eq(&b[2], err_m)
     }
 
     /// Returns the cartesian distance between the 2 points.
-    fn dist(&self, a: &[Float], b: &[Float]) -> Length {
+    fn dist(&self, a: &[Float], b: &[Float]) -> Result<Length, &'static str> {
         let na = self.axes.normalize(a);
         let nb = self.axes.normalize(b);
-        na.dist_to(nb)
+        Ok(na.dist_to(nb))
     }
 }
 
@@ -67,14 +70,19 @@ impl ToXYZTransformation for GeocentricCrs {
 
 #[cfg(test)]
 mod tests {
+    use approx::assert_abs_diff_eq;
+
     use super::GeocentricCrs;
-    use crate::geodesy::{
-        ellipsoid::consts::WGS84, prime_meridian::consts::GREENWICH, GeodeticDatum,
+    use crate::{
+        crs::Crs,
+        cs::cartesian::CartesianTolerance,
+        geodesy::{ellipsoid::consts::WGS84, prime_meridian::consts::GREENWICH, GeodeticDatum},
+        units::length::M,
     };
     use std::any::{Any, TypeId};
 
     #[test]
-    fn test_any() {
+    fn type_id() {
         let crs: &dyn Any = &GeocentricCrs {
             id: "WGS84".into(),
             datum: GeodeticDatum::new("WGS84", WGS84, GREENWICH),
@@ -82,5 +90,37 @@ mod tests {
         };
         assert_eq!(crs.type_id(), TypeId::of::<GeocentricCrs>());
         assert!(crs.is::<GeocentricCrs>());
+    }
+
+    #[test]
+    fn approx_eq() {
+        let crs = GeocentricCrs {
+            id: "WGS84".into(),
+            datum: GeodeticDatum::new("WGS84", WGS84, GREENWICH),
+            axes: crate::cs::cartesian::geocentric::GeocentricAxes::XYZ,
+        };
+
+        assert!(crs.approx_eq(
+            &[1., 1., 1. + 1e-3],
+            &[1., 1., 1.],
+            CartesianTolerance::small()
+        ));
+        assert!(!crs.approx_eq(
+            &[1., 1., 1. + 1e-1],
+            &[1., 1., 1.],
+            CartesianTolerance::small()
+        ));
+    }
+
+    #[test]
+    fn dist() {
+        let crs = GeocentricCrs {
+            id: "WGS84".into(),
+            datum: GeodeticDatum::new("WGS84", WGS84, GREENWICH),
+            axes: crate::cs::cartesian::geocentric::GeocentricAxes::XYZ,
+        };
+        let d = crs.dist(&[0., 0., 0.], &[1., 1., 1.]);
+        assert!(d.is_ok());
+        assert_abs_diff_eq!(d.unwrap(), 3.0f64.sqrt() * M);
     }
 }
