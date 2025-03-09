@@ -1,16 +1,8 @@
 use super::Crs;
-use crate::cs::cartesian::geocentric::XYZ;
 use crate::cs::cartesian::projected::{ProjectedAxes, ProjectedTolerance};
 use crate::quantities::length::Length;
-use crate::transformations::{
-    ToXYZTransformation, ToXYZTransformationProvider, TransformationError,
-};
 use crate::units::length::M;
-use crate::{
-    geodesy::GeodeticDatum,
-    math::fp::Float,
-    projections::{Projection, ProjectionError, ProjectionSpec},
-};
+use crate::{geodesy::GeodeticDatum, math::fp::Float, projections::ProjectionSpec};
 use approx::AbsDiffEq;
 use smol_str::SmolStr;
 
@@ -67,43 +59,6 @@ impl Crs for ProjectedCrs {
         let na = self.axes.normalize(a);
         let nb = self.axes.normalize(b);
         Ok(na.dist_to(nb))
-    }
-}
-
-impl ToXYZTransformationProvider for ProjectedCrs {
-    fn to_xyz_transformation<'a>(&self) -> Box<dyn ToXYZTransformation + 'a> {
-        Box::new(ProjectedToXYZ {
-            datum: self.datum.clone(),
-            axes: self.axes,
-            projection: self.projection.applied_to(self.datum.ellipsoid()),
-        })
-    }
-}
-
-struct ProjectedToXYZ<'a> {
-    pub datum: GeodeticDatum,
-    pub axes: ProjectedAxes,
-    pub projection: Box<dyn Projection + 'a>,
-}
-
-impl From<ProjectionError> for TransformationError {
-    fn from(_err: ProjectionError) -> Self {
-        // TODO: do proper error conversion
-        Self::OutOfBounds
-    }
-}
-
-impl<'a> ToXYZTransformation for ProjectedToXYZ<'a> {
-    fn to_xyz(&self, coords: &[Float]) -> Result<XYZ, TransformationError> {
-        let enh = self.axes.normalize(coords);
-        let llh = self.projection.unproj(enh)?;
-        Ok(self.datum.llh_to_xyz(llh))
-    }
-
-    fn from_xyz(&self, xyz: XYZ, coords: &mut [Float]) -> Result<(), TransformationError> {
-        let llh = self.datum.xyz_to_llh(xyz);
-        let enh = self.projection.proj(llh)?;
-        Ok(self.axes.denormalize(enh, coords))
     }
 }
 

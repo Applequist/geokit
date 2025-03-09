@@ -1,16 +1,12 @@
 use super::Crs;
 use crate::{
-    cs::{
-        cartesian::geocentric::XYZ,
-        geodetic::{GeodeticAxes, GeodeticTolerance},
-    },
+    cs::geodetic::{GeodeticAxes, GeodeticTolerance},
     geodesy::{
-        geodesics::{vincenty::VincentyGeodesicSolver, GeodesicSolver},
         GeodeticDatum,
+        geodesics::{GeodesicSolver, vincenty::VincentyGeodesicSolver},
     },
     math::fp::Float,
     quantities::length::Length,
-    transformations::{ToXYZTransformation, ToXYZTransformationProvider, TransformationError},
     units::length::M,
 };
 use approx::AbsDiffEq;
@@ -108,24 +104,6 @@ impl Crs for GeographicCrs {
     }
 }
 
-impl ToXYZTransformationProvider for GeographicCrs {
-    fn to_xyz_transformation<'a>(&self) -> Box<dyn ToXYZTransformation + 'a> {
-        Box::new(self.clone())
-    }
-}
-
-impl ToXYZTransformation for GeographicCrs {
-    fn to_xyz(&self, coords: &[Float]) -> Result<XYZ, TransformationError> {
-        let llh = self.axes.normalize(coords);
-        Ok(self.datum.llh_to_xyz(llh))
-    }
-
-    fn from_xyz(&self, xyz: XYZ, coords: &mut [Float]) -> Result<(), TransformationError> {
-        let llh = self.datum.xyz_to_llh(xyz);
-        Ok(self.axes.denormalize(llh, coords))
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use approx::assert_abs_diff_eq;
@@ -134,7 +112,7 @@ mod tests {
     use crate::{
         crs::Crs,
         cs::geodetic::GeodeticTolerance,
-        geodesy::{ellipsoid::consts::WGS84, prime_meridian::consts::GREENWICH, GeodeticDatum},
+        geodesy::{GeodeticDatum, ellipsoid::consts::WGS84, prime_meridian::consts::GREENWICH},
         units::{angle::DEG, length::M},
     };
     use std::any::{Any, TypeId};

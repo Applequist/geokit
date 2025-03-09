@@ -9,11 +9,7 @@
 //! - [ProjectedAxes] for projected cartesian CS.
 
 use super::CartesianTolerance;
-use crate::{
-    math::fp::Float,
-    quantities::length::Length,
-    units::length::{LengthUnit, M},
-};
+use crate::{math::fp::Float, quantities::length::Length, units::length::M};
 use approx::AbsDiffEq;
 use derive_more::derive::Display;
 

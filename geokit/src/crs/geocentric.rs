@@ -1,12 +1,9 @@
 use super::Crs;
-use crate::cs::cartesian::geocentric::{GeocentricAxes, XYZ};
 use crate::cs::cartesian::CartesianTolerance;
+use crate::cs::cartesian::geocentric::GeocentricAxes;
 use crate::geodesy::GeodeticDatum;
 use crate::math::fp::Float;
 use crate::quantities::length::Length;
-use crate::transformations::{
-    ToXYZTransformation, ToXYZTransformationProvider, TransformationError,
-};
 use crate::units::length::M;
 use approx::AbsDiffEq;
 use smol_str::SmolStr;
@@ -52,22 +49,6 @@ impl Crs for GeocentricCrs {
     }
 }
 
-impl ToXYZTransformationProvider for GeocentricCrs {
-    fn to_xyz_transformation<'a>(&self) -> Box<dyn ToXYZTransformation + 'a> {
-        Box::new(self.clone())
-    }
-}
-
-impl ToXYZTransformation for GeocentricCrs {
-    fn to_xyz(&self, coords: &[Float]) -> Result<XYZ, TransformationError> {
-        Ok(self.axes.normalize(coords))
-    }
-
-    fn from_xyz(&self, xyz: XYZ, coords: &mut [Float]) -> Result<(), TransformationError> {
-        Ok(self.axes.denormalize(xyz, coords))
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use approx::assert_abs_diff_eq;
@@ -76,7 +57,7 @@ mod tests {
     use crate::{
         crs::Crs,
         cs::cartesian::CartesianTolerance,
-        geodesy::{ellipsoid::consts::WGS84, prime_meridian::consts::GREENWICH, GeodeticDatum},
+        geodesy::{GeodeticDatum, ellipsoid::consts::WGS84, prime_meridian::consts::GREENWICH},
         units::length::M,
     };
     use std::any::{Any, TypeId};

@@ -1,12 +1,163 @@
-use super::XYZTransformation;
+//! This module defines types to perform coordinates transformation through normalized geocentric
+//! coordinates.
+
+use super::{CrsTransformation, TransformationError};
 use crate::{
-    cs::cartesian::geocentric::XYZ,
+    crs::{geocentric::GeocentricCrs, geographic::GeographicCrs, projected::ProjectedCrs},
+    cs::cartesian::{geocentric::XYZ, projected::ProjectedAxes},
+    geodesy::GeodeticDatum,
     math::fp::Float,
+    projections::{Projection, ProjectionError},
     quantities::{angle::Angle, length::Length, scale::PPM},
     units::length::M,
 };
 use nalgebra::{Matrix3, Vector3};
 
+/// Coordinates transformation between two CRS via [normalized geocentric coordinates](XYZ).
+///
+/// A [CrsXYZTransformation] from CRS A to CRS B happens in 4 steps:
+/// - convert coordinates from CRS A to [XYZ] coordinates in CRS A's datum using
+///   a [ToXYZ] transformation provided by CRS A.
+/// - transform the [XYZ] coordinates in CRS A's datum to a [XYZ] coordinates in a reference datum
+///   using a [XYZTransformation].
+/// - transform the [XYZ] coordinates in the reference datum to [XYZ] coordinates in CRS B's datum
+///   using another [XYZTransformation].
+/// - finally convert the [XYZ] coordinates in CRS B's datum into coordinates in CRS B using the
+///   [ToXYZ] transformation provided by CRS B.
+pub struct CrsXYZTransformation<'a> {
+    src_to_xyz: Box<dyn ToXYZ + 'a>,
+    src_xyz_to_ref_xyz: Box<dyn XYZTransformation + 'a>,
+    dst_xyz_to_ref_xyz: Box<dyn XYZTransformation + 'a>,
+    dst_to_xyz: Box<dyn ToXYZ + 'a>,
+}
+
+impl<'a> CrsXYZTransformation<'a> {
+    pub fn new<S: ToXYZProvider, D: ToXYZProvider>(
+        src: S,
+        dst: D,
+        src_to_ref: impl XYZTransformation + 'a,
+        dst_to_ref: impl XYZTransformation + 'a,
+    ) -> Self {
+        CrsXYZTransformation {
+            src_to_xyz: src.to_xyz_transformation(),
+            src_xyz_to_ref_xyz: Box::new(src_to_ref),
+            dst_xyz_to_ref_xyz: Box::new(dst_to_ref),
+            dst_to_xyz: dst.to_xyz_transformation(),
+        }
+    }
+}
+
+impl<'a> CrsTransformation for CrsXYZTransformation<'a> {
+    fn fwd(&self, src: &[Float], dst: &mut [Float]) -> Result<(), TransformationError> {
+        let src_xyz = self.src_to_xyz.to_xyz(src)?;
+        let ref_xyz = self.src_xyz_to_ref_xyz.to_ref(src_xyz);
+        let dst_xyz = self.dst_xyz_to_ref_xyz.from_ref(ref_xyz);
+        self.dst_to_xyz.from_xyz(dst_xyz, dst)
+    }
+
+    fn bwd(&self, dst: &[Float], src: &mut [Float]) -> Result<(), TransformationError> {
+        let dst_xyz = self.dst_to_xyz.to_xyz(dst)?;
+        let ref_xyz = self.dst_xyz_to_ref_xyz.to_ref(dst_xyz);
+        let src_xyz = self.src_xyz_to_ref_xyz.from_ref(ref_xyz);
+        self.src_to_xyz.from_xyz(src_xyz, src)
+    }
+}
+
+/// Trait implemented by transformation from Crs coordinates to
+/// [normalized geocentric coordinates](crate::cs::cartesian::geocentric::XYZ).
+pub trait ToXYZ {
+    fn to_xyz(&self, coords: &[Float]) -> Result<XYZ, TransformationError>;
+    fn from_xyz(&self, xyz: XYZ, coords: &mut [Float]) -> Result<(), TransformationError>;
+}
+
+/// Trait implemented by [Crs](crate::crs::Crs) to provide a [ToXYZ] transformation.
+pub trait ToXYZProvider {
+    // NOTE: as of v1.84, this doesn't work for our use case:
+    // fn to_xyz_transformation(&self) -> impl ToXYZTransformation;
+    // `use<...>` precise capturing syntax is currently not allowed in return-position
+    // `impl Trait` in traits
+    // See issue #130044 <https://github.com/rust-lang/rust/issues/130044>
+    fn to_xyz_transformation<'a>(&self) -> Box<dyn ToXYZ + 'a>;
+}
+
+impl ToXYZProvider for GeocentricCrs {
+    fn to_xyz_transformation<'a>(&self) -> Box<dyn ToXYZ + 'a> {
+        Box::new(self.clone())
+    }
+}
+
+impl ToXYZ for GeocentricCrs {
+    fn to_xyz(&self, coords: &[Float]) -> Result<XYZ, TransformationError> {
+        Ok(self.axes.normalize(coords))
+    }
+
+    fn from_xyz(&self, xyz: XYZ, coords: &mut [Float]) -> Result<(), TransformationError> {
+        Ok(self.axes.denormalize(xyz, coords))
+    }
+}
+
+impl ToXYZProvider for GeographicCrs {
+    fn to_xyz_transformation<'a>(&self) -> Box<dyn ToXYZ + 'a> {
+        Box::new(self.clone())
+    }
+}
+
+impl ToXYZ for GeographicCrs {
+    fn to_xyz(&self, coords: &[Float]) -> Result<XYZ, TransformationError> {
+        let llh = self.axes.normalize(coords);
+        Ok(self.datum.llh_to_xyz(llh))
+    }
+
+    fn from_xyz(&self, xyz: XYZ, coords: &mut [Float]) -> Result<(), TransformationError> {
+        let llh = self.datum.xyz_to_llh(xyz);
+        Ok(self.axes.denormalize(llh, coords))
+    }
+}
+
+impl ToXYZProvider for ProjectedCrs {
+    fn to_xyz_transformation<'a>(&self) -> Box<dyn ToXYZ + 'a> {
+        Box::new(ProjectedToXYZ {
+            datum: self.datum.clone(),
+            axes: self.axes,
+            projection: self.projection.applied_to(self.datum.ellipsoid()),
+        })
+    }
+}
+
+struct ProjectedToXYZ<'a> {
+    pub datum: GeodeticDatum,
+    pub axes: ProjectedAxes,
+    pub projection: Box<dyn Projection + 'a>,
+}
+
+impl From<ProjectionError> for TransformationError {
+    fn from(_err: ProjectionError) -> Self {
+        // TODO: do proper error conversion
+        Self::OutOfBounds
+    }
+}
+
+impl<'a> ToXYZ for ProjectedToXYZ<'a> {
+    fn to_xyz(&self, coords: &[Float]) -> Result<XYZ, TransformationError> {
+        let enh = self.axes.normalize(coords);
+        let llh = self.projection.unproj(enh)?;
+        Ok(self.datum.llh_to_xyz(llh))
+    }
+
+    fn from_xyz(&self, xyz: XYZ, coords: &mut [Float]) -> Result<(), TransformationError> {
+        let llh = self.datum.xyz_to_llh(xyz);
+        let enh = self.projection.proj(llh)?;
+        Ok(self.axes.denormalize(enh, coords))
+    }
+}
+
+/// A trait for transformations between ***normalized geocentric coordinates***.
+pub trait XYZTransformation {
+    fn to_ref(&self, src: XYZ) -> XYZ;
+    fn from_ref(&self, dst: XYZ) -> XYZ;
+}
+
+/// The identity [XYZTransformation]
 pub struct XYZIdentity;
 
 impl XYZTransformation for XYZIdentity {
