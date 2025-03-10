@@ -1,6 +1,6 @@
 use crate::{
-    math::fp::{remainder, Float, PI, PI_2, TAU},
-    units::angle::{AngleUnit, DEG},
+    math::fp::{Float, PI, PI_2, TAU, remainder},
+    units::angle::{AngleUnit, DEG, RAD},
 };
 use approx::AbsDiffEq;
 use derive_more::derive::{Add, AddAssign, Display, Neg, Sub, SubAssign};
@@ -32,6 +32,14 @@ use std::{
 pub struct Angle(Float);
 
 impl Angle {
+    /// A tiny 1e-12 rad angle used in tolerance.
+    /// This represents an arc less than 7e-6 m at the equator (WGS84 ellipsoid).
+    pub const TINY: Angle = Angle::new(1e-12, RAD);
+
+    /// A (very) small 1e-9 rad angle used in tolerance.
+    /// This represents an arc less than 7e-3 m at the equator (WGS84ellipsoid)
+    pub const SMALL: Angle = Angle::new(1e-9, RAD);
+
     pub const ZERO: Angle = Angle(0.0);
     pub const PI_2: Angle = Angle(PI_2);
     pub const PI: Angle = Angle(PI);
@@ -39,23 +47,9 @@ impl Angle {
     pub const M_PI_2: Angle = Angle(-PI_2);
     pub const M_PI: Angle = Angle(-PI);
 
-    /// A tiny 1e-12 rad angle.
-    /// This represents an arc less than 7e-6 m at the equator (WGS84 ellipsoid).
-    #[inline]
-    pub const fn tiny() -> Angle {
-        Angle(1e-12)
-    }
-
-    /// A (very) small 1e-9 rad angle.
-    /// This represents an arc less than 7e-3 m at the equator (WGS84ellipsoid)
-    #[inline]
-    pub const fn small() -> Angle {
-        Angle(1e-9)
-    }
-
     /// Default to `Self::tiny`.
     pub const fn default_epsilon() -> Angle {
-        Self::tiny()
+        Self::TINY
     }
 
     /// Creates an angle value whose `qty` is given in `unit`.
@@ -130,7 +124,7 @@ impl Angle {
 
     /// Returns this angle value in radians.
     #[inline]
-    pub fn rad(self) -> Float {
+    pub const fn rad(self) -> Float {
         self.0
     }
 

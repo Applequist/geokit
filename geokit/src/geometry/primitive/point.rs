@@ -1,15 +1,16 @@
 use crate::{geometry::Geometry, math::fp::Float};
 
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Point {
     dim: usize,
-    coords: [Float; 3],
+    pos: [Float; 3],
 }
 
 impl Point {
     pub fn new(buf: &[Float], dim: usize) -> Self {
-        let mut coords = [0.0; 3];
-        coords[..dim].clone_from_slice(&buf[..dim]);
-        Self { dim, coords }
+        let mut pos = [0.0; 3];
+        pos[..dim].clone_from_slice(&buf[..dim]);
+        Self { dim, pos }
     }
 }
 

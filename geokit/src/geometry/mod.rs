@@ -44,4 +44,5 @@ pub trait Geometry: Any {
     fn boundary(&self) -> Option<Box<dyn Geometry>>;
 }
 
+pub mod complex;
 pub mod primitive;

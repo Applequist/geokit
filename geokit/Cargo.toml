@@ -13,6 +13,7 @@ derive_more = { workspace = true }
 rand_distr = { workspace = true }
 rand = { workspace = true }
 clap = { workspace = true }
+smallvec = { workspace = true }
 
 [dev-dependencies]
 regex = { workspace = true }

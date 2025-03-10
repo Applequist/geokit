@@ -9,9 +9,10 @@
 //! - [ProjectedAxes] for projected cartesian CS.
 
 use super::CartesianTolerance;
-use crate::{math::fp::Float, quantities::length::Length, units::length::M};
+use crate::{cs::Tolerance, math::fp::Float, quantities::length::Length, units::length::M};
 use approx::AbsDiffEq;
 use derive_more::derive::Display;
+use smallvec::smallvec;
 
 /// [GeocentricAxes] defines the possible set of axes used in **geocentric** 3D cartesion CS.
 /// Geocentric CS uses [meter](crate::units::length::M) unit by default for all axes.
@@ -43,6 +44,10 @@ impl GeocentricAxes {
         coords[1] = xyz.y.m();
         coords[2] = xyz.z.m();
     }
+
+    pub fn denormalize_tol(&self, tol: CartesianTolerance) -> Tolerance {
+        smallvec![tol.all.m(); 3]
+    }
 }
 
 /// [XYZ] represents **normalized** geocentric coordinates.
@@ -64,14 +69,10 @@ impl XYZ {
 
     /// Checks whether this [XYZ] is approximately equal to the `other` [XYZ]
     /// within the given [CartesianErrors] bounds.
-    ///
-    /// `self` and `other` are approximately equal if the following conditions are
-    /// all satisfied:
-    /// - `self.dist_to(other) <= err.0`
-    /// FIX: This is not the same as Crs::approx_eq.
-    ///
     pub fn approx_eq(self, other: Self, tol: CartesianTolerance) -> bool {
-        self.dist_to(other) <= tol.length()
+        self.x.abs_diff_eq(&other.x, tol.all)
+            && self.y.abs_diff_eq(&other.y, tol.all)
+            && self.z.abs_diff_eq(&other.z, tol.all)
     }
 }
 
@@ -79,64 +80,42 @@ impl XYZ {
 /// bounds, printing information about the coordinates when not equal.
 ///
 /// Use only in tests.
-pub fn approx_eq_xyz(res: XYZ, exp: XYZ, err: CartesianTolerance) -> bool {
-    let d = res.dist_to(exp);
-    let is_approx_eq = d <= err.length();
+pub fn approx_eq_xyz(res: XYZ, exp: XYZ, tol: CartesianTolerance) -> bool {
+    let is_approx_eq = res.approx_eq(exp, tol);
     if !is_approx_eq {
-        println!(
-            "d({}, {}) = {:e} m > {:e} m",
-            res,
-            exp,
-            d.m(),
-            err.length().m()
-        );
-        if !res.x.abs_diff_eq(&exp.x, err.length()) {
+        println!("{} !~= {} (tol = {:e} m)", res, exp, tol.all.m());
+        if !res.x.abs_diff_eq(&exp.x, tol.all) {
             println!(
                 "X error: | {} - {} | = {:e} m > {:e} m",
                 res.x,
                 exp.x,
                 (res.x - exp.x).abs().m(),
-                err.length().m()
+                tol.all.m()
             );
         } else {
-            println!(
-                "X ok      {} = {} +/- {:e} m",
-                res.x,
-                exp.x,
-                err.length().m()
-            );
+            println!("X ok      {} = {} +/- {:e} m", res.x, exp.x, tol.all.m());
         }
-        if !res.y.abs_diff_eq(&exp.y, err.length()) {
+        if !res.y.abs_diff_eq(&exp.y, tol.all) {
             println!(
                 "Y error: | {} - {} | = {:e} m > {:e} m",
                 res.y,
                 exp.y,
                 (res.y - exp.y).abs().m(),
-                err.length().m()
+                tol.all.m()
             );
         } else {
-            println!(
-                "Y ok      {} = {} +/- {:e} m",
-                res.y,
-                exp.y,
-                err.length().m()
-            );
+            println!("Y ok      {} = {} +/- {:e} m", res.y, exp.y, tol.all.m());
         }
-        if !res.z.abs_diff_eq(&exp.z, err.length()) {
+        if !res.z.abs_diff_eq(&exp.z, tol.all) {
             println!(
                 "Z error: | {} - {} | = {:e} m > {:e} m",
                 res.z,
                 exp.z,
                 (res.z - exp.z).abs().m(),
-                err.length().m()
+                tol.all.m()
             );
         } else {
-            println!(
-                "Z ok      {} = {} +/- {:e} m",
-                res.z,
-                exp.z,
-                err.length().m()
-            );
+            println!("Z ok      {} = {} +/- {:e} m", res.z, exp.z, tol.all.m());
         }
     }
     is_approx_eq

@@ -19,40 +19,12 @@ pub struct ProjectedCrs {
 }
 
 impl Crs for ProjectedCrs {
-    type Tolerance = ProjectedTolerance;
-
     fn id(&self) -> &str {
         &self.id
     }
 
     fn dim(&self) -> usize {
         self.axes.dim()
-    }
-
-    fn approx_eq(&self, a: &[Float], b: &[Float], err: Self::Tolerance) -> bool {
-        let (horiz_unit, height_unit) = match self.axes {
-            ProjectedAxes::EastNorthUp {
-                horiz_unit,
-                height_unit,
-            } => (horiz_unit, height_unit),
-            ProjectedAxes::EastNorth { horiz_unit } => (horiz_unit, M),
-        };
-        let converted_tol = err.convert_to(horiz_unit, height_unit);
-
-        match self.axes {
-            ProjectedAxes::EastNorthUp {
-                horiz_unit: _,
-                height_unit: _,
-            } => {
-                a[0].abs_diff_eq(&b[0], converted_tol.horiz.0)
-                    && a[1].abs_diff_eq(&b[1], converted_tol.horiz.0)
-                    && a[2].abs_diff_eq(&b[2], converted_tol.height.0)
-            }
-            ProjectedAxes::EastNorth { horiz_unit: _ } => {
-                a[0].abs_diff_eq(&b[0], converted_tol.horiz.0)
-                    && a[1].abs_diff_eq(&b[1], converted_tol.horiz.0)
-            }
-        }
     }
 
     fn dist(&self, a: &[Float], b: &[Float]) -> Result<Length, &'static str> {
@@ -98,8 +70,9 @@ mod tests {
             projection: crate::projections::ProjectionSpec::UTMNorth { zone: 1 },
         };
 
-        assert!(crs.approx_eq(&[1., 1. + 1e-3], &[1., 1.], ProjectedTolerance::small()));
-        assert!(!crs.approx_eq(&[1., 1. + 1e-1], &[1., 1.], ProjectedTolerance::small()));
+        let tol = crs.axes.denormalize_tol(ProjectedTolerance::small());
+        assert!(crs.approx_eq(&[1., 1. + 1e-3], &[1., 1.], &tol));
+        assert!(!crs.approx_eq(&[1., 1. + 1e-1], &[1., 1.], &tol));
     }
 
     #[test]

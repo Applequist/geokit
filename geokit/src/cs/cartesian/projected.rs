@@ -1,11 +1,12 @@
 use crate::{
-    cs::geodetic::Height,
+    cs::{Tolerance, geodetic::Height},
     math::fp::Float,
     quantities::length::Length,
-    units::length::{LengthUnit, M},
+    units::length::LengthUnit,
 };
 use approx::AbsDiffEq;
 use derive_more::derive::Display;
+use smallvec::smallvec;
 
 /// [ProjectedAxes] defines the possible set of axes used in 2D or 3D **projected** cartesian CS.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -77,62 +78,51 @@ impl ProjectedAxes {
             }
         }
     }
+
+    pub fn denormalize_tol(&self, tol: ProjectedTolerance) -> Tolerance {
+        match self {
+            ProjectedAxes::EastNorthUp {
+                horiz_unit,
+                height_unit,
+            } => {
+                smallvec![
+                    tol.horiz.val(*horiz_unit),
+                    tol.horiz.val(*horiz_unit),
+                    tol.height.val(*height_unit),
+                ]
+            }
+            ProjectedAxes::EastNorth { horiz_unit } => {
+                smallvec![tol.horiz.val(*horiz_unit); 2]
+            }
+        }
+    }
 }
 
 #[derive(Copy, Clone, Debug)]
 pub struct ProjectedTolerance {
-    pub horiz: (Float, LengthUnit),
-    pub height: (Float, LengthUnit),
+    pub horiz: Length,
+    pub height: Length,
 }
 
 impl ProjectedTolerance {
     /// [ProjectedTolerancee::tiny()] allows a `1e-4 m` error on both the
     /// horizontal and the vertical axes.
     /// This translates to a positional (distance) error less than a millimeter.
-    pub fn tiny() -> Self {
+    pub const fn tiny() -> Self {
         ProjectedTolerance {
-            horiz: (1e-4, M),
-            height: (1e-4, M),
+            horiz: Length::TINY,
+            height: Length::TINY,
         }
     }
 
     /// [ProjectedTolerancee::small()] allows a `1e-3 m` maximum error on both the
     /// horizontal and vertial axes.
     /// This translates to a positional (distance) error less than a centimeter.
-    pub fn small() -> Self {
+    pub const fn small() -> Self {
         ProjectedTolerance {
-            horiz: (1e-3, M),
-            height: (1e-3, M),
+            horiz: Length::SMALL,
+            height: Length::SMALL,
         }
-    }
-
-    /// Returns the maximum error on horizontal axes.
-    pub fn horiz(&self) -> Length {
-        self.horiz.0 * self.horiz.1
-    }
-
-    /// Returns the maximum error on the vertical axis.
-    pub fn height(&self) -> Length {
-        self.height.0 * self.height.1
-    }
-
-    /// Converts the given [ProjectedTolerancee] to the given units.
-    pub(crate) fn convert_to(
-        &self,
-        horiz_unit: LengthUnit,
-        height_unit: LengthUnit,
-    ) -> ProjectedTolerance {
-        let horiz = if self.horiz.1 == horiz_unit {
-            self.horiz
-        } else {
-            (self.horiz().val(horiz_unit), horiz_unit)
-        };
-        let height = if self.height.1 == height_unit {
-            self.height
-        } else {
-            (self.height().val(height_unit), height_unit)
-        };
-        ProjectedTolerance { horiz, height }
     }
 }
 
@@ -156,8 +146,8 @@ impl ENH {
     /// Checks whether this [ENH] is approximately equal to the `other` [ENH]
     /// within the given [ProjectedErrors] bounds.
     pub fn approx_eq(self, other: Self, tol: ProjectedTolerance) -> bool {
-        self.easting.abs_diff_eq(&other.easting, tol.horiz())
-            && self.northing.abs_diff_eq(&other.northing, tol.horiz())
-            && self.height.abs_diff_eq(&other.height, tol.height())
+        self.easting.abs_diff_eq(&other.easting, tol.horiz)
+            && self.northing.abs_diff_eq(&other.northing, tol.horiz)
+            && self.height.abs_diff_eq(&other.height, tol.height)
     }
 }

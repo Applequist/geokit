@@ -1,15 +1,13 @@
 use super::Crs;
 use crate::{
-    cs::geodetic::{GeodeticAxes, GeodeticTolerance},
+    cs::geodetic::GeodeticAxes,
     geodesy::{
         GeodeticDatum,
         geodesics::{GeodesicSolver, vincenty::VincentyGeodesicSolver},
     },
     math::fp::Float,
     quantities::length::Length,
-    units::length::M,
 };
-use approx::AbsDiffEq;
 use smol_str::SmolStr;
 
 /// A [GeographicCrs] is a **2D or 3D geodetic coordinates reference system** in which
@@ -23,64 +21,12 @@ pub struct GeographicCrs {
 }
 
 impl Crs for GeographicCrs {
-    type Tolerance = GeodeticTolerance;
-
     fn id(&self) -> &str {
         &self.id
     }
 
     fn dim(&self) -> usize {
         self.axes.dim()
-    }
-
-    fn approx_eq(&self, a: &[Float], b: &[Float], tol: Self::Tolerance) -> bool {
-        // Convert the errors margin into this CRS units.
-        let (angle_unit, height_unit) = match self.axes {
-            GeodeticAxes::EastNorthUp {
-                angle_unit,
-                height_unit,
-            }
-            | GeodeticAxes::NorthEastUp {
-                angle_unit,
-                height_unit,
-            } => (angle_unit, height_unit),
-            GeodeticAxes::EastNorth { angle_unit }
-            | GeodeticAxes::NorthEast { angle_unit }
-            | GeodeticAxes::NorthWest { angle_unit } => (angle_unit, M),
-        };
-        let converted_tol = tol.convert_to(angle_unit, height_unit);
-
-        // Take coordinates order into account
-        match self.axes {
-            GeodeticAxes::EastNorthUp {
-                angle_unit: _,
-                height_unit: _,
-            } => {
-                a[0].abs_diff_eq(&b[0], converted_tol.lon.0)
-                    && a[1].abs_diff_eq(&b[1], converted_tol.lat.0)
-                    && a[2].abs_diff_eq(&b[2], converted_tol.height.0)
-            }
-            GeodeticAxes::NorthEastUp {
-                angle_unit: _,
-                height_unit: _,
-            } => {
-                a[0].abs_diff_eq(&b[0], converted_tol.lat.0)
-                    && a[1].abs_diff_eq(&b[1], converted_tol.lon.0)
-                    && a[2].abs_diff_eq(&b[2], converted_tol.height.0)
-            }
-            GeodeticAxes::EastNorth { angle_unit: _ } => {
-                a[0].abs_diff_eq(&b[0], converted_tol.lon.0)
-                    && a[1].abs_diff_eq(&b[1], converted_tol.lat.0)
-            }
-            GeodeticAxes::NorthEast { angle_unit: _ } => {
-                a[0].abs_diff_eq(&b[0], converted_tol.lat.0)
-                    && a[1].abs_diff_eq(&b[1], converted_tol.lon.0)
-            }
-            GeodeticAxes::NorthWest { angle_unit: _ } => {
-                a[0].abs_diff_eq(&b[0], converted_tol.lat.0)
-                    && a[1].abs_diff_eq(&b[1], converted_tol.lon.0)
-            }
-        }
     }
 
     /// Computes a distance between the 2 given coordinates.
@@ -143,18 +89,11 @@ mod tests {
             },
         };
 
-        assert!(crs.approx_eq(
-            &[0., 0., 0.],
-            &[0., 1e-13f64.to_degrees(), 0.],
-            GeodeticTolerance::tiny()
-        ));
+        let tol = crs.axes.denormalize_tol(GeodeticTolerance::tiny());
 
-        assert!(!crs.approx_eq(
-            &[0., 0., 0.],
-            &[0., 1e-10f64.to_degrees(), 0.],
-            GeodeticTolerance::tiny()
-        ));
-        assert!(!crs.approx_eq(&[0., 0., 0.], &[0., 0., 1e-3], GeodeticTolerance::tiny()));
+        assert!(crs.approx_eq(&[0., 0., 0.], &[0., 1e-13f64.to_degrees(), 0.], &tol));
+        assert!(!crs.approx_eq(&[0., 0., 0.], &[0., 1e-10f64.to_degrees(), 0.], &tol));
+        assert!(!crs.approx_eq(&[0., 0., 0.], &[0., 0., 1e-3], &tol));
     }
 
     #[test]

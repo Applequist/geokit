@@ -10,6 +10,7 @@
 //! This module defines a [system of axes][GeodeticAxes] for geodetic CS and
 //! a set of value types to represent **normalized** geodetic coordinates.
 
+use super::Tolerance;
 use crate::math::fp::Float;
 use crate::quantities::angle::Angle;
 use crate::quantities::length::Length;
@@ -17,6 +18,7 @@ use crate::units::angle::{AngleUnit, DEG, RAD};
 use crate::units::length::{LengthUnit, M};
 use approx::AbsDiffEq;
 use derive_more::derive::{Display, Neg};
+use smallvec::smallvec;
 use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
 
 /// A [GeodeticAxes] defines the possible set of axes used in **geodetic** CS.
@@ -73,6 +75,23 @@ pub enum GeodeticAxes {
 }
 
 impl GeodeticAxes {
+    /// Returns the dimension (2D or 3D) of the coordinate system.
+    pub fn dim(&self) -> usize {
+        match self {
+            GeodeticAxes::EastNorthUp {
+                angle_unit: _,
+                height_unit: _,
+            }
+            | GeodeticAxes::NorthEastUp {
+                angle_unit: _,
+                height_unit: _,
+            } => 3,
+            GeodeticAxes::EastNorth { angle_unit: _ }
+            | GeodeticAxes::NorthEast { angle_unit: _ }
+            | GeodeticAxes::NorthWest { angle_unit: _ } => 2,
+        }
+    }
+
     /// Converts coordinates expressed in this system of axes into
     /// **normalized** geodetic coordinates.
     pub fn normalize(&self, coords: &[Float]) -> LLH {
@@ -146,20 +165,34 @@ impl GeodeticAxes {
         }
     }
 
-    /// Returns the dimension (2D or 3D) of the coordinate system.
-    pub fn dim(&self) -> usize {
+    pub fn denormalize_tol(&self, tol: GeodeticTolerance) -> Tolerance {
         match self {
             GeodeticAxes::EastNorthUp {
-                angle_unit: _,
-                height_unit: _,
+                angle_unit,
+                height_unit,
+            } => {
+                smallvec![
+                    tol.lon.val(*angle_unit),
+                    tol.lat.val(*angle_unit),
+                    tol.height.val(*height_unit),
+                ]
             }
-            | GeodeticAxes::NorthEastUp {
-                angle_unit: _,
-                height_unit: _,
-            } => 3,
-            GeodeticAxes::EastNorth { angle_unit: _ }
-            | GeodeticAxes::NorthEast { angle_unit: _ }
-            | GeodeticAxes::NorthWest { angle_unit: _ } => 2,
+            GeodeticAxes::EastNorth { angle_unit } => {
+                smallvec![tol.lon.val(*angle_unit), tol.lat.val(*angle_unit),]
+            }
+            GeodeticAxes::NorthEastUp {
+                angle_unit,
+                height_unit,
+            } => {
+                smallvec![
+                    tol.lat.val(*angle_unit),
+                    tol.lon.val(*angle_unit),
+                    tol.height.val(*height_unit),
+                ]
+            }
+            GeodeticAxes::NorthEast { angle_unit } | GeodeticAxes::NorthWest { angle_unit } => {
+                smallvec![tol.lat.val(*angle_unit), tol.lon.val(*angle_unit),]
+            }
         }
     }
 }
@@ -174,15 +207,14 @@ impl Default for GeodeticAxes {
     }
 }
 
-/// Errors bounds used to check approximate equality between geodetic coordinates.
+/// Errors bounds used to check approximate equality between normalized geodetic coordinates.
 ///
 /// See [LLH::approx_eq].
-/// TODO: Consider using a single `horiz_unit` angle unit for both longitude and latitude tolerance
 #[derive(Copy, Clone, Debug)]
 pub struct GeodeticTolerance {
-    pub lon: (Float, AngleUnit),
-    pub lat: (Float, AngleUnit),
-    pub height: (Float, LengthUnit),
+    pub lon: Angle,
+    pub lat: Angle,
+    pub height: Length,
 }
 
 impl GeodeticTolerance {
@@ -190,9 +222,9 @@ impl GeodeticTolerance {
     /// and `1e-4 m` on the height axis.
     pub const fn tiny() -> Self {
         GeodeticTolerance {
-            lon: (1e-12, RAD),
-            lat: (1e-12, RAD),
-            height: (1e-4, M),
+            lon: Angle::TINY,
+            lat: Angle::TINY,
+            height: Length::TINY,
         }
     }
 
@@ -200,45 +232,10 @@ impl GeodeticTolerance {
     /// axes and `1e-3 m` on the height axis.
     pub const fn small() -> Self {
         GeodeticTolerance {
-            lon: (1e-9, RAD),
-            lat: (1e-9, RAD),
-            height: (1e-3, M),
+            lon: Angle::SMALL,
+            lat: Angle::SMALL,
+            height: Length::TINY,
         }
-    }
-
-    #[inline]
-    pub fn lon(&self) -> Angle {
-        self.lon.0 * self.lon.1
-    }
-
-    #[inline]
-    pub fn lat(&self) -> Angle {
-        self.lat.0 * self.lat.1
-    }
-
-    #[inline]
-    pub fn height(&self) -> Length {
-        self.height.0 * self.height.1
-    }
-
-    /// Converts this [GeodeticTolerance] into the given units.
-    pub(crate) fn convert_to(&self, angle_unit: AngleUnit, height_unit: LengthUnit) -> Self {
-        let lon = if self.lon.1 == angle_unit {
-            self.lon
-        } else {
-            (self.lon().val(angle_unit), angle_unit)
-        };
-        let lat = if self.lat.1 == angle_unit {
-            self.lat
-        } else {
-            (self.lat().val(angle_unit), angle_unit)
-        };
-        let height = if self.height.1 == height_unit {
-            self.height
-        } else {
-            (self.height().val(height_unit), height_unit)
-        };
-        Self { lon, lat, height }
     }
 }
 
@@ -272,9 +269,9 @@ impl LLH {
     /// - `(self.lat - other.lat).abs() <= tol.lat`
     /// - `(self.height - other.height).abs() <= tol.height`
     pub fn approx_eq(&self, other: &LLH, tol: GeodeticTolerance) -> bool {
-        self.lon.abs_diff_eq(&other.lon, tol.lon())
-            && self.lat.abs_diff_eq(&other.lat, tol.lat())
-            && self.height.abs_diff_eq(&other.height, tol.height())
+        self.lon.abs_diff_eq(&other.lon, tol.lon)
+            && self.lat.abs_diff_eq(&other.lat, tol.lat)
+            && self.height.abs_diff_eq(&other.height, tol.height)
     }
 }
 
@@ -283,9 +280,9 @@ impl LLH {
 ///
 /// Use only in tests.
 pub fn approx_eq_llh(res: LLH, exp: LLH, tol: GeodeticTolerance) -> bool {
-    let lon_ok = res.lon.abs_diff_eq(&exp.lon, tol.lon());
-    let lat_ok = res.lat.abs_diff_eq(&exp.lat, tol.lat());
-    let height_ok = res.height.abs_diff_eq(&exp.height, tol.height());
+    let lon_ok = res.lon.abs_diff_eq(&exp.lon, tol.lon);
+    let lat_ok = res.lat.abs_diff_eq(&exp.lat, tol.lat);
+    let height_ok = res.height.abs_diff_eq(&exp.height, tol.height);
     let is_approx_eq = lon_ok && lat_ok && height_ok;
 
     if !is_approx_eq {
@@ -295,7 +292,7 @@ pub fn approx_eq_llh(res: LLH, exp: LLH, tol: GeodeticTolerance) -> bool {
                 "Longitude ok:      {} = {} +/- {:e}",
                 res.lon,
                 exp.lon,
-                tol.lon().deg()
+                tol.lon.deg()
             );
         } else {
             println!(
@@ -303,7 +300,7 @@ pub fn approx_eq_llh(res: LLH, exp: LLH, tol: GeodeticTolerance) -> bool {
                 res.lon,
                 exp.lon,
                 (res.lon - exp.lon).abs().deg(),
-                tol.lon().deg()
+                tol.lon.deg()
             );
         }
         if lat_ok {
@@ -311,7 +308,7 @@ pub fn approx_eq_llh(res: LLH, exp: LLH, tol: GeodeticTolerance) -> bool {
                 "Latitude ok:      {} = {} +/- {:e}",
                 res.lat,
                 exp.lat,
-                tol.lat().deg()
+                tol.lat.deg()
             );
         } else {
             println!(
@@ -319,7 +316,7 @@ pub fn approx_eq_llh(res: LLH, exp: LLH, tol: GeodeticTolerance) -> bool {
                 res.lat,
                 exp.lat,
                 (res.lat - exp.lat).abs().deg(),
-                tol.lat().deg()
+                tol.lat.deg()
             );
         }
         if height_ok {
@@ -327,7 +324,7 @@ pub fn approx_eq_llh(res: LLH, exp: LLH, tol: GeodeticTolerance) -> bool {
                 "Height ok      {} = {} +/- {:e} m",
                 res.height,
                 exp.height,
-                tol.height().m()
+                tol.height.m()
             );
         } else {
             println!(
@@ -335,7 +332,7 @@ pub fn approx_eq_llh(res: LLH, exp: LLH, tol: GeodeticTolerance) -> bool {
                 res.height,
                 exp.height,
                 (res.height - exp.height).abs().m(),
-                tol.height().m()
+                tol.height.m()
             );
         }
         println!("");
@@ -420,11 +417,7 @@ impl Lon {
     /// Returns this longitude **normalized** into (-pi..pi]
     /// such that any point on a parallel has a unique longitude angle.
     pub fn normalized(self) -> Self {
-        if self <= Self::MIN {
-            Self::MAX
-        } else {
-            self
-        }
+        if self <= Self::MIN { Self::MAX } else { self }
     }
 
     /// Returns the angle of the longitude.
@@ -801,11 +794,11 @@ pub type Height = Length;
 
 #[cfg(test)]
 mod tests {
-    use crate::cs::geodetic::{GeodeticAxes, Height, Lat, Lon, LLH};
+    use crate::cs::geodetic::{GeodeticAxes, Height, LLH, Lat, Lon};
     use crate::math::fp::Float;
     use crate::quantities::angle::Angle;
     use crate::units::angle::{DEG, RAD};
-    use approx::{assert_abs_diff_eq, AbsDiffEq};
+    use approx::{AbsDiffEq, assert_abs_diff_eq};
     use std::f64::consts::FRAC_PI_4;
 
     #[test]

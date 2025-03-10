@@ -1,6 +1,9 @@
 use crate::{
     math::fp::Float,
-    units::{angle::RAD, length::LengthUnit},
+    units::{
+        angle::RAD,
+        length::{LengthUnit, M},
+    },
 };
 use approx::AbsDiffEq;
 use derive_more::derive::{Add, AddAssign, Display, Sub, SubAssign};
@@ -45,22 +48,15 @@ use super::angle::Angle;
 pub struct Length(Float);
 
 impl Length {
+    /// Tiny length in meters (1e-4 m) used in tolerance.
+    pub const TINY: Length = Length::new(1e-4, M);
+    /// Small length in meters (1e-3 m) used in tolerance.
+    pub const SMALL: Length = Length::new(1e-3, M);
+
     pub const ZERO: Length = Length(0.0);
 
-    /// 1e-4 m is considered *tiny*
-    #[inline]
-    pub const fn tiny() -> Length {
-        Length(1e-4)
-    }
-
-    /// 1e-2 m is considered *small*
-    #[inline]
-    pub const fn small() -> Length {
-        Length(1e-2)
-    }
-
     pub const fn default_epsilon() -> Length {
-        Self::tiny()
+        Self::TINY
     }
 
     /// Create a length value whose `qty` is given in `unit`.
@@ -82,8 +78,10 @@ impl Length {
     pub fn val(self, unit: LengthUnit) -> Float {
         self.0 / unit.m_per_unit()
     }
+
     /// Return this length value in meters.
-    pub fn m(self) -> Float {
+    #[inline]
+    pub const fn m(self) -> Float {
         self.0
     }
 

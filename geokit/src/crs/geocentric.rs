@@ -1,11 +1,8 @@
 use super::Crs;
-use crate::cs::cartesian::CartesianTolerance;
 use crate::cs::cartesian::geocentric::GeocentricAxes;
 use crate::geodesy::GeodeticDatum;
 use crate::math::fp::Float;
 use crate::quantities::length::Length;
-use crate::units::length::M;
-use approx::AbsDiffEq;
 use smol_str::SmolStr;
 
 /// A [GeocentricCrs] is a **3D cartesian coordinates reference system** in which
@@ -22,23 +19,12 @@ pub struct GeocentricCrs {
 }
 
 impl Crs for GeocentricCrs {
-    type Tolerance = CartesianTolerance;
-
     fn id(&self) -> &str {
         &self.id
     }
 
     fn dim(&self) -> usize {
         self.axes.dim()
-    }
-
-    fn approx_eq(&self, a: &[Float], b: &[Float], tol: Self::Tolerance) -> bool {
-        // All geocentric CRS use meters for now
-        let converted_tol = tol.convert_to(M);
-        let err_m = converted_tol.all.0;
-        a[0].abs_diff_eq(&b[0], err_m)
-            && a[1].abs_diff_eq(&b[1], err_m)
-            && a[2].abs_diff_eq(&b[2], err_m)
     }
 
     /// Returns the cartesian distance between the 2 points.
@@ -81,16 +67,10 @@ mod tests {
             axes: crate::cs::cartesian::geocentric::GeocentricAxes::XYZ,
         };
 
-        assert!(crs.approx_eq(
-            &[1., 1., 1. + 1e-3],
-            &[1., 1., 1.],
-            CartesianTolerance::small()
-        ));
-        assert!(!crs.approx_eq(
-            &[1., 1., 1. + 1e-1],
-            &[1., 1., 1.],
-            CartesianTolerance::small()
-        ));
+        let tol = crs.axes.denormalize_tol(CartesianTolerance::small());
+
+        assert!(crs.approx_eq(&[1., 1., 1. + 1e-3], &[1., 1., 1.], &tol));
+        assert!(!crs.approx_eq(&[1., 1., 1. + 1e-1], &[1., 1., 1.], &tol));
     }
 
     #[test]

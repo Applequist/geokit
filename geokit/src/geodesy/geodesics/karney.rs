@@ -2,11 +2,11 @@
 
 use crate::cs::azimuth::Azimuth;
 use crate::cs::geodetic::{Lat, Lon};
-use crate::geodesy::geodesics::{Geodesic, GeodesicSolver};
 use crate::geodesy::Ellipsoid;
+use crate::geodesy::geodesics::{Geodesic, GeodesicSolver};
 use crate::math::complex::Complex;
-use crate::math::fp::clenshaw_sin_sum;
 use crate::math::fp::Float;
+use crate::math::fp::clenshaw_sin_sum;
 use crate::math::polynomial::Polynomial;
 use crate::quantities::angle::Angle;
 use crate::quantities::length::{ArcLength, Length};
@@ -295,11 +295,11 @@ mod tests {
     use crate::geodesy::ellipsoid::consts::{self};
     use crate::geodesy::geodesics::karney::KarneyGeodesicSolver;
     use crate::geodesy::geodesics::tests::{
-        antipodal_lines, equatorial_lines, geographiclib_lines, meridional_lines, standard_lines,
-        LineData,
+        LineData, antipodal_lines, equatorial_lines, geographiclib_lines, meridional_lines,
+        standard_lines,
     };
     use crate::geodesy::geodesics::{
-        check_direct, check_inverse, DirectErrors, Geodesic, GeodesicSolver, InverseErrors,
+        DirectErrors, Geodesic, GeodesicSolver, InverseErrors, check_direct, check_inverse,
     };
     use crate::quantities::angle::Angle;
     use crate::quantities::length::Length;
@@ -383,17 +383,17 @@ mod tests {
         assert_abs_diff_eq!(
             computed.p2.0,
             Lon::new(137.844_900_043_77 * DEG),
-            epsilon = Angle::tiny()
+            epsilon = Angle::TINY
         );
         assert_abs_diff_eq!(
             computed.p2.1,
             Lat::new(41.793_310_205_06 * DEG),
-            epsilon = Angle::tiny()
+            epsilon = Angle::TINY
         );
         assert_abs_diff_eq!(
             computed.alpha2,
             Azimuth::new(149.090_169_318_07 * DEG),
-            epsilon = Angle::tiny()
+            epsilon = Angle::TINY
         );
     }
 
