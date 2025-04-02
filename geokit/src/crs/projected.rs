@@ -1,9 +1,8 @@
 use super::Crs;
-use crate::cs::cartesian::projected::{ProjectedAxes, ProjectedTolerance};
+use crate::cs::Coord;
+use crate::cs::cartesian::projected::ProjectedAxes;
 use crate::quantities::length::Length;
-use crate::units::length::M;
-use crate::{geodesy::GeodeticDatum, math::fp::Float, projections::ProjectionSpec};
-use approx::AbsDiffEq;
+use crate::{geodesy::GeodeticDatum, projections::ProjectionSpec};
 use smol_str::SmolStr;
 
 /// A [ProjectedCrs] is a **2D/3D cartesian coordinates reference system** derived from a
@@ -27,7 +26,9 @@ impl Crs for ProjectedCrs {
         self.axes.dim()
     }
 
-    fn dist(&self, a: &[Float], b: &[Float]) -> Result<Length, &'static str> {
+    fn dist(&self, a: &Coord, b: &Coord) -> Result<Length, &'static str> {
+        assert_eq!(a.len(), self.dim());
+        assert_eq!(b.len(), self.dim());
         let na = self.axes.normalize(a);
         let nb = self.axes.normalize(b);
         Ok(na.dist_to(nb))
@@ -41,8 +42,10 @@ mod tests {
         crs::Crs,
         cs::cartesian::projected::{ProjectedAxes, ProjectedTolerance},
         geodesy::geodetic_datum::consts::WGS84,
+        projections::ProjectionSpec,
         units::length::M,
     };
+    use approx::assert_abs_diff_eq;
     use std::any::{Any, TypeId};
 
     #[test]
@@ -54,7 +57,7 @@ mod tests {
                 horiz_unit: M,
                 height_unit: M,
             },
-            projection: crate::projections::ProjectionSpec::UTMNorth { zone: 1 },
+            projection: ProjectionSpec::UTMNorth { zone: 1 },
         };
 
         assert_eq!(crs.type_id(), TypeId::of::<ProjectedCrs>());
@@ -67,7 +70,7 @@ mod tests {
             id: "UTM Zon1".into(),
             datum: WGS84,
             axes: ProjectedAxes::EastNorth { horiz_unit: M },
-            projection: crate::projections::ProjectionSpec::UTMNorth { zone: 1 },
+            projection: ProjectionSpec::UTMNorth { zone: 1 },
         };
 
         let tol = crs.axes.denormalize_tol(ProjectedTolerance::small());
@@ -77,6 +80,15 @@ mod tests {
 
     #[test]
     fn dist() {
-        todo!()
+        let crs = ProjectedCrs {
+            id: "UTM 1".into(),
+            datum: WGS84,
+            axes: ProjectedAxes::EastNorth { horiz_unit: M },
+            projection: ProjectionSpec::UTMNorth { zone: 1 },
+        };
+
+        let d = crs.dist(&[0., 0.], &[1., 1.]);
+        assert!(d.is_ok());
+        assert_abs_diff_eq!(d.unwrap(), 2.0f64.sqrt() * M);
     }
 }

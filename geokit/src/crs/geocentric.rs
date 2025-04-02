@@ -1,7 +1,7 @@
 use super::Crs;
+use crate::cs::Coord;
 use crate::cs::cartesian::geocentric::GeocentricAxes;
 use crate::geodesy::GeodeticDatum;
-use crate::math::fp::Float;
 use crate::quantities::length::Length;
 use smol_str::SmolStr;
 
@@ -19,16 +19,20 @@ pub struct GeocentricCrs {
 }
 
 impl Crs for GeocentricCrs {
+    #[inline]
     fn id(&self) -> &str {
         &self.id
     }
 
+    #[inline]
     fn dim(&self) -> usize {
         self.axes.dim()
     }
 
     /// Returns the cartesian distance between the 2 points.
-    fn dist(&self, a: &[Float], b: &[Float]) -> Result<Length, &'static str> {
+    fn dist(&self, a: &Coord, b: &Coord) -> Result<Length, &'static str> {
+        assert_eq!(a.len(), self.dim());
+        assert_eq!(b.len(), self.dim());
         let na = self.axes.normalize(a);
         let nb = self.axes.normalize(b);
         Ok(na.dist_to(nb))
@@ -37,8 +41,6 @@ impl Crs for GeocentricCrs {
 
 #[cfg(test)]
 mod tests {
-    use approx::assert_abs_diff_eq;
-
     use super::GeocentricCrs;
     use crate::{
         crs::Crs,
@@ -46,6 +48,7 @@ mod tests {
         geodesy::{GeodeticDatum, ellipsoid::consts::WGS84, prime_meridian::consts::GREENWICH},
         units::length::M,
     };
+    use approx::assert_abs_diff_eq;
     use std::any::{Any, TypeId};
 
     #[test]

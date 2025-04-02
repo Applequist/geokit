@@ -5,6 +5,8 @@
 use crate::math::fp::Float;
 use smallvec::SmallVec;
 
+pub type Coord = [Float];
+
 /// The type for (denormalized) tolerance.
 type Tolerance = SmallVec<[Float; 3]>;
 

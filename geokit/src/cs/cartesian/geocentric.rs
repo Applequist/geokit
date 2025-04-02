@@ -9,7 +9,8 @@
 //! - [ProjectedAxes] for projected cartesian CS.
 
 use super::CartesianTolerance;
-use crate::{cs::Tolerance, math::fp::Float, quantities::length::Length, units::length::M};
+use crate::cs::{Coord, Tolerance};
+use crate::{quantities::length::Length, units::length::M};
 use approx::AbsDiffEq;
 use derive_more::derive::Display;
 use smallvec::smallvec;
@@ -27,11 +28,12 @@ pub enum GeocentricAxes {
 }
 
 impl GeocentricAxes {
+    #[inline]
     pub fn dim(&self) -> usize {
         3
     }
 
-    pub fn normalize(&self, coords: &[Float]) -> XYZ {
+    pub fn normalize(&self, coords: &Coord) -> XYZ {
         XYZ {
             x: Length::new(coords[0], M),
             y: Length::new(coords[1], M),
@@ -39,7 +41,7 @@ impl GeocentricAxes {
         }
     }
 
-    pub fn denormalize(&self, xyz: XYZ, coords: &mut [Float]) {
+    pub fn denormalize(&self, xyz: XYZ, coords: &mut Coord) {
         coords[0] = xyz.x.m();
         coords[1] = xyz.y.m();
         coords[2] = xyz.z.m();

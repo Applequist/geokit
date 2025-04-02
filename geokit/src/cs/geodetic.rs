@@ -10,7 +10,7 @@
 //! This module defines a [system of axes][GeodeticAxes] for geodetic CS and
 //! a set of value types to represent **normalized** geodetic coordinates.
 
-use super::Tolerance;
+use super::{Coord, Tolerance};
 use crate::math::fp::Float;
 use crate::quantities::angle::Angle;
 use crate::quantities::length::Length;
@@ -94,7 +94,7 @@ impl GeodeticAxes {
 
     /// Converts coordinates expressed in this system of axes into
     /// **normalized** geodetic coordinates.
-    pub fn normalize(&self, coords: &[Float]) -> LLH {
+    pub fn normalize(&self, coords: &Coord) -> LLH {
         match self {
             GeodeticAxes::EastNorthUp {
                 angle_unit,
@@ -132,7 +132,7 @@ impl GeodeticAxes {
 
     /// Converts **normalized geodetic coordinates into coordinates
     /// expressed in this system of axes.
-    pub fn denormalize(&self, llh: LLH, coords: &mut [Float]) {
+    pub fn denormalize(&self, llh: LLH, coords: &mut Coord) {
         match self {
             GeodeticAxes::EastNorthUp {
                 angle_unit,

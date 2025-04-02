@@ -1,11 +1,10 @@
 use super::Crs;
 use crate::{
-    cs::geodetic::GeodeticAxes,
+    cs::{Coord, geodetic::GeodeticAxes},
     geodesy::{
         GeodeticDatum,
         geodesics::{GeodesicSolver, vincenty::VincentyGeodesicSolver},
     },
-    math::fp::Float,
     quantities::length::Length,
 };
 use smol_str::SmolStr;
@@ -34,7 +33,9 @@ impl Crs for GeographicCrs {
     /// When `self.dim() == 2`, this method computes the **geodesic distance** between the 2 points.
     /// when `self.dim() == 3`, this method computes the **cartesian distance** between the 2
     /// points.
-    fn dist(&self, a: &[Float], b: &[Float]) -> Result<Length, &'static str> {
+    fn dist(&self, a: &Coord, b: &Coord) -> Result<Length, &'static str> {
+        assert_eq!(a.len(), self.dim());
+        assert_eq!(b.len(), self.dim());
         let llha = self.axes.normalize(a);
         let llhb = self.axes.normalize(b);
         if self.dim() == 2 {
@@ -52,23 +53,22 @@ impl Crs for GeographicCrs {
 
 #[cfg(test)]
 mod tests {
-    use approx::assert_abs_diff_eq;
-
     use super::GeographicCrs;
     use crate::{
         crs::Crs,
-        cs::geodetic::GeodeticTolerance,
-        geodesy::{GeodeticDatum, ellipsoid::consts::WGS84, prime_meridian::consts::GREENWICH},
+        cs::geodetic::{GeodeticAxes, GeodeticTolerance},
+        geodesy::geodetic_datum::consts::WGS84,
         units::{angle::DEG, length::M},
     };
+    use approx::assert_abs_diff_eq;
     use std::any::{Any, TypeId};
 
     #[test]
     fn type_id() {
         let crs: &dyn Any = &GeographicCrs {
             id: "WGS84".into(),
-            datum: GeodeticDatum::new("WGS84", WGS84, GREENWICH),
-            axes: crate::cs::geodetic::GeodeticAxes::EastNorthUp {
+            datum: WGS84,
+            axes: GeodeticAxes::EastNorthUp {
                 angle_unit: DEG,
                 height_unit: M,
             },
@@ -82,8 +82,8 @@ mod tests {
     fn approx_eq() {
         let crs = GeographicCrs {
             id: "WGS84".into(),
-            datum: GeodeticDatum::new("WGS84", WGS84, GREENWICH),
-            axes: crate::cs::geodetic::GeodeticAxes::EastNorthUp {
+            datum: WGS84,
+            axes: GeodeticAxes::EastNorthUp {
                 angle_unit: DEG,
                 height_unit: M,
             },
@@ -101,8 +101,8 @@ mod tests {
         // Compute linear cartesian distance
         let crs3d = GeographicCrs {
             id: "WGS84".into(),
-            datum: GeodeticDatum::new("WGS84", WGS84, GREENWICH),
-            axes: crate::cs::geodetic::GeodeticAxes::EastNorthUp {
+            datum: WGS84,
+            axes: GeodeticAxes::EastNorthUp {
                 angle_unit: DEG,
                 height_unit: M,
             },
@@ -115,8 +115,8 @@ mod tests {
         // Compute geodesic distance on the ellipsoid
         let crs2d = GeographicCrs {
             id: "WGS84".into(),
-            datum: GeodeticDatum::new("WGS84", WGS84, GREENWICH),
-            axes: crate::cs::geodetic::GeodeticAxes::EastNorth { angle_unit: DEG },
+            datum: WGS84,
+            axes: GeodeticAxes::EastNorth { angle_unit: DEG },
         };
 
         let d = crs2d.dist(&[0., 0.], &[0.01, 0.01]);

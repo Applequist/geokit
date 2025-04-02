@@ -1,6 +1,5 @@
 use crate::{
-    cs::{Tolerance, geodetic::Height},
-    math::fp::Float,
+    cs::{Coord, Tolerance, geodetic::Height},
     quantities::length::Length,
     units::length::LengthUnit,
 };
@@ -44,7 +43,7 @@ impl ProjectedAxes {
         }
     }
 
-    pub fn normalize(&self, coords: &[Float]) -> ENH {
+    pub fn normalize(&self, coords: &Coord) -> ENH {
         match self {
             ProjectedAxes::EastNorthUp {
                 horiz_unit,
@@ -62,7 +61,7 @@ impl ProjectedAxes {
         }
     }
 
-    pub fn denormalize(&self, enh: ENH, coords: &mut [Float]) {
+    pub fn denormalize(&self, enh: ENH, coords: &mut Coord) {
         match self {
             ProjectedAxes::EastNorthUp {
                 horiz_unit,
