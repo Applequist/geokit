@@ -9,7 +9,6 @@ use crate::{
             curve::{CurveSegment, ParameterizedCurve},
         },
     },
-    math::fp::Float,
     quantities::length::Length,
     units::length::M,
 };
@@ -98,7 +97,7 @@ impl ParameterizedCurve for Curve {
             .fold(0. * M, |acc, l| acc + l)
     }
 
-    fn param(&self, s: Length) -> Vec<Float> {
+    fn param(&self, crs: &dyn Crs, s: Length) -> Box<Pos> {
         assert!(s <= self.length(), "Invalid curvilinear parameter `s`");
         let mut seg_iter = self.seg.iter();
         let mut res_len = s;
@@ -112,7 +111,7 @@ impl ParameterizedCurve for Curve {
             seg_ix += 1;
         }
         let seg = &self.seg[seg_ix];
-        seg.param(res_len)
+        seg.param(crs, res_len)
     }
 
     fn as_line_string(

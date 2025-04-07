@@ -1,7 +1,4 @@
-use crate::{
-    crs::Crs, geometry::primitive::curve::CurveBoundary, math::fp::Float,
-    quantities::length::Length,
-};
+use crate::{crs::Crs, geometry::primitive::curve::CurveBoundary, quantities::length::Length};
 use dyn_clone::DynClone;
 use line_string::LineString;
 use std::fmt::Debug;
@@ -27,7 +24,7 @@ pub trait ParameterizedCurve {
     /// The following must hold:
     /// - `c.param(0) == c.start()`
     /// - `c.param(c.length()) == c.end()`
-    fn param(&self, s: Length) -> Vec<Float>;
+    fn param(&self, crs: &dyn Crs, s: Length) -> Box<Pos>;
 
     /// Constructs a [LineString] approximation of the curve where the control points are
     /// no more that `max_distance` apart and/or points on the line string are less than
