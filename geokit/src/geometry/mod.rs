@@ -8,6 +8,7 @@ use std::fmt::Debug;
 /// geometric dimension and coordinate dimension.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum GeometryType {
+    /// *Special* empty geometry.
     Empty,
     Point(usize),
     Curve(usize),
@@ -68,8 +69,10 @@ pub trait Geometry: Any + Debug {
     fn is_cycle(&self) -> bool;
 
     /// Returns a geometry that contains all the points on the boundary
-    /// of this geometry if it has one.
-    fn boundary(&self) -> Option<Box<dyn Boundary>>;
+    /// of this geometry.
+    /// For geometry without boundary, the special [empty geometry](crate::geometry::empty::Empty)
+    /// is returned.
+    fn boundary(&self) -> Box<dyn Boundary>;
 }
 
 pub mod complex;

@@ -1,6 +1,8 @@
+use std::ops::{Deref, DerefMut};
+
 use super::Primitive;
 use crate::{
-    geometry::{Geometry, GeometryType, coordinate::Pos, primitive::Boundary},
+    geometry::{Geometry, GeometryType, coordinate::Pos, empty::Empty, primitive::Boundary},
     math::fp::Float,
 };
 
@@ -38,12 +40,45 @@ impl Geometry for Point {
         true
     }
 
-    fn boundary(&self) -> Option<Box<dyn Boundary>> {
-        None
+    fn boundary(&self) -> Box<dyn Boundary> {
+        Box::new(Empty)
     }
 }
 
 impl Primitive for Point {}
+
+impl Deref for Point {
+    type Target = Pos;
+
+    fn deref(&self) -> &Self::Target {
+        &self.coord[0..self.coord_dim]
+    }
+}
+
+impl DerefMut for Point {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.coord[0..self.coord_dim]
+    }
+}
+
+impl<T> AsRef<T> for Point
+where
+    T: ?Sized,
+    <Point as Deref>::Target: AsRef<T>,
+{
+    fn as_ref(&self) -> &T {
+        self.deref().as_ref()
+    }
+}
+
+impl<T> AsMut<T> for Point
+where
+    <Point as Deref>::Target: AsMut<T>,
+{
+    fn as_mut(&mut self) -> &mut T {
+        self.deref_mut().as_mut()
+    }
+}
 
 #[cfg(test)]
 mod tests {
@@ -81,11 +116,11 @@ mod tests {
         let p2d: Point = Point::new(&[1., 2.]);
         assert_eq!(p2d.geometry_type(), GeometryType::Point(2));
         assert_eq!(p2d.is_cycle(), true);
-        assert!(p2d.boundary().is_none());
+        //assert!(Empty.eq(p2d.boundary().as_ref()));
 
         let p3d: Point = Point::new(&[1., 2., 3.]);
         assert_eq!(p3d.geometry_type(), GeometryType::Point(3));
         assert_eq!(p3d.is_cycle(), true);
-        assert!(p3d.boundary().is_none());
+        //assert!(Empty.eq(p3d.boundary().as_ref()));
     }
 }

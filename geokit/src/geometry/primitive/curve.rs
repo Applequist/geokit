@@ -8,15 +8,16 @@ use crate::{
             Pos,
             curve::{CurveSegment, ParameterizedCurve},
         },
+        empty::Empty,
     },
     quantities::length::Length,
     units::length::M,
 };
 use dyn_clone::clone_box;
-use std::fmt::Debug;
+use std::{any::Any, fmt::Debug};
 
 /// A [Boundary] used to describe a [Curve](crate::geometry::primitive::curve)'s boundary if any.
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub struct CurveBoundary {
     pub start: Point,
     pub end: Point,
@@ -31,8 +32,8 @@ impl Geometry for CurveBoundary {
         true
     }
 
-    fn boundary(&self) -> Option<Box<dyn Boundary>> {
-        None
+    fn boundary(&self) -> Box<dyn Boundary> {
+        Box::new(Empty)
     }
 }
 
@@ -65,14 +66,14 @@ impl Geometry for Curve {
         self.start() == self.end()
     }
 
-    fn boundary(&self) -> Option<Box<dyn Boundary>> {
+    fn boundary(&self) -> Box<dyn Boundary> {
         if self.is_cycle() {
-            None
+            Box::new(Empty)
         } else {
-            Some(Box::new(CurveBoundary {
+            Box::new(CurveBoundary {
                 start: Point::new(self.start()),
                 end: Point::new(self.end()),
-            }))
+            })
         }
     }
 }
@@ -140,14 +141,25 @@ impl<'a> CurveBuilder<'a> {
         }
     }
 
-    pub fn with_seg<C: CurveSegment + 'static>(crs: &'a dyn Crs, seg: C) -> Self {
-        Self::new(crs, vec![clone_box(&seg)])
+    pub fn with_seg<C: CurveSegment + 'static>(
+        crs: &'a dyn Crs,
+        seg: C,
+    ) -> Result<Self, &'static str> {
+        Ok(Self::new(crs, vec![clone_box(&seg)]))
     }
 
-    pub fn append_segment<C: CurveSegment + 'static>(mut self, seg: C) -> Self {
-        assert_eq!(self.coord_dim, seg.coord_dim());
-        self.seg.push(clone_box(&seg));
-        self
+    pub fn append_segment<C: CurveSegment + 'static>(
+        mut self,
+        seg: C,
+    ) -> Result<Self, &'static str> {
+        if self.coord_dim != seg.coord_dim() {
+            Err("Invalid coordinate dimension")
+        } else if self.seg.last().unwrap().end() != seg.start() {
+            Err("Disconnected segment")
+        } else {
+            self.seg.push(clone_box(&seg));
+            Ok(self)
+        }
     }
 
     pub fn build(self) -> Curve {
@@ -155,5 +167,50 @@ impl<'a> CurveBuilder<'a> {
             coord_dim: self.coord_dim,
             seg: self.seg,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{
+        crs::projected::ProjectedCrs,
+        cs::cartesian::projected::ProjectedAxes,
+        geodesy::geodetic_datum::consts::WGS84,
+        geometry::{Geometry, GeometryType, coordinate::curve::line_string::LineStringBuilder},
+        projections::ProjectionSpec,
+        units::length::M,
+    };
+
+    use super::CurveBuilder;
+
+    #[test]
+    fn curve() -> Result<(), &'static str> {
+        let crs = ProjectedCrs {
+            id: "UTM Zone 1".into(),
+            datum: WGS84,
+            axes: ProjectedAxes::EastNorth { horiz_unit: M },
+            projection: ProjectionSpec::UTMNorth { zone: 1 },
+        };
+
+        let curve = CurveBuilder::with_seg(
+            &crs,
+            LineStringBuilder::with_line(&crs, &[0., 0.], &[1., 0.])?
+                .line_to([1., 1.])?
+                .build(),
+        )?
+        .build();
+
+        assert_eq!(curve.geometry_type(), GeometryType::Curve(2));
+
+        //assert!(
+        //    (CurveBoundary {
+        //        start: Point::new(curve.start()),
+        //        end: Point::new(curve.end()),
+        //    } as Boundary)
+        //        .eq(curve.boundary().as_ref())
+        //);
+        assert!(!curve.is_cycle());
+
+        Ok(())
     }
 }

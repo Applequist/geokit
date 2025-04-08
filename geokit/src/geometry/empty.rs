@@ -1,3 +1,5 @@
+use std::any::Any;
+
 use super::complex::Complex;
 use crate::geometry::{Geometry, GeometryType, primitive::Boundary};
 
@@ -14,8 +16,8 @@ impl Geometry for Empty {
         true
     }
 
-    fn boundary(&self) -> Option<Box<dyn Boundary>> {
-        None
+    fn boundary(&self) -> Box<dyn Boundary> {
+        Box::new(Empty)
     }
 }
 

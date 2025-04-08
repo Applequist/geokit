@@ -54,6 +54,31 @@ impl LineString {
     pub(crate) fn pos(&self, n: usize) -> &Pos {
         &self.pos[self.pos_start(n)..self.pos_start(n + 1)]
     }
+
+    pub(crate) fn pos_iter(&self) -> impl Iterator<Item = &Pos> {
+        PosIter {
+            ls: self,
+            current: 0,
+        }
+    }
+}
+
+struct PosIter<'a> {
+    ls: &'a LineString,
+    current: usize,
+}
+
+impl<'a> Iterator for PosIter<'a> {
+    type Item = &'a Pos;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.current < self.ls.len() {
+            self.current += 1;
+            Some(self.ls.pos(self.current - 1))
+        } else {
+            None
+        }
+    }
 }
 
 impl ParameterizedCurve for LineString {
@@ -162,11 +187,17 @@ impl<'a> LineStringBuilder<'a> {
 
     /// Creates a new [LineStringBuilder] with the initial line
     /// segment from `start` to `to`.
-    pub fn with_line(crs: &'a dyn Crs, from: &Pos, to: &Pos) -> Result<Self, &'static str> {
+    pub fn with_line<P: AsRef<Pos>>(
+        crs: &'a dyn Crs,
+        from: P,
+        to: P,
+    ) -> Result<Self, &'static str> {
         let mut pos = vec![];
-        pos.extend(from);
-        pos.extend(to);
-        let len = vec![crs.dist(from, to)?];
+        let from_pos = from.as_ref();
+        let to_pos = to.as_ref();
+        pos.extend(from_pos);
+        pos.extend(to_pos);
+        let len = vec![crs.dist(from_pos, to_pos)?];
         Self::new(crs, pos, len)
     }
 
@@ -226,7 +257,7 @@ mod tests {
     use super::LineStringBuilder;
 
     #[test]
-    fn line_string() -> Result<(), &'static str> {
+    fn line_string_pos() -> Result<(), &'static str> {
         let crs = ProjectedCrs {
             id: "UTM Zone 1".into(),
             datum: WGS84,
@@ -244,6 +275,31 @@ mod tests {
         assert_eq!(line_string.pos(0), [0., 0.]);
         assert_eq!(line_string.pos(2), [1., 1.]);
         assert_eq!(line_string.pos(4), [0., 0.]);
+
+        Ok(())
+    }
+
+    #[test]
+    fn line_string_pos_iter() -> Result<(), &'static str> {
+        let crs = ProjectedCrs {
+            id: "UTM Zone 1".into(),
+            datum: WGS84,
+            axes: ProjectedAxes::EastNorth { horiz_unit: M },
+            projection: ProjectionSpec::UTMNorth { zone: 1 },
+        };
+
+        let line_string = LineStringBuilder::with_line(&crs, &[0., 0.], &[1., 0.])?
+            .line_to([1., 1.])?
+            .line_to(vec![0., 1.])?
+            .close()?;
+
+        let mut pos_iter = line_string.pos_iter();
+        assert_eq!(pos_iter.next(), Some(&[0., 0.][..]));
+        pos_iter.next();
+        assert_eq!(pos_iter.next(), Some(&[1., 1.][..]));
+        pos_iter.next();
+        assert_eq!(pos_iter.next(), Some(&[0., 0.][..]));
+        assert_eq!(pos_iter.next(), None);
 
         Ok(())
     }
