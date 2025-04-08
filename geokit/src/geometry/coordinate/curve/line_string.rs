@@ -94,12 +94,12 @@ impl ParameterizedCurve for LineString {
         self.pos(self.len() - 1)
     }
 
-    fn length(&self) -> Length {
+    fn length(&self, _crs: &dyn Crs) -> Length {
         self.len.iter().fold(0. * M, |acc, l| acc + *l)
     }
 
     fn param(&self, _crs: &dyn Crs, s: Length) -> Box<Pos> {
-        assert!(s <= self.length(), "Invalid curvilinear parameter `s`");
+        assert!(s <= self.length(_crs), "Invalid curvilinear parameter `s`");
         let mut len_iter = self.len.iter();
         let mut res_len = s;
         let mut start_pos_ix = 0;
@@ -321,7 +321,7 @@ mod tests {
         assert_eq!(line_string.coord_dim(), 2);
         assert_eq!(line_string.start(), [0., 0.]);
         assert_eq!(line_string.end(), [0., 0.]);
-        assert_eq!(line_string.length(), 4. * M);
+        assert_eq!(line_string.length(&crs), 4. * M);
         assert_eq!(
             line_string.param(&crs, 0.5 * M),
             vec![0.5, 0.].into_boxed_slice()

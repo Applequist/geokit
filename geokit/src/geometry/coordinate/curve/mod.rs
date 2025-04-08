@@ -6,6 +6,9 @@ use std::fmt::Debug;
 use super::Pos;
 
 /// A [ParameterizedCurve] defines a curve parameterization.
+/// FIXME: Every operations involving distance computation may fail in the geodesic case
+/// But it is because of the algorithm shortcoming more that a theoretical one. So should
+/// the signature of these operations return a Result<??, E> instead of panicing?
 pub trait ParameterizedCurve {
     fn coord_dim(&self) -> usize;
 
@@ -16,14 +19,14 @@ pub trait ParameterizedCurve {
     fn end(&self) -> &Pos;
 
     /// Returns the length of this curve.
-    fn length(&self) -> Length;
+    fn length(&self, crs: &dyn Crs) -> Length;
 
     /// Returns the [position](Pos) on this curve at the given distance from the [Self::start()].
     ///
     /// This represents the curve parameterization by arc length.
     /// The following must hold:
-    /// - `c.param(0) == c.start()`
-    /// - `c.param(c.length()) == c.end()`
+    /// - `c.param(&crs, 0) == c.start()`
+    /// - `c.param(&crs, c.length(&crs)) == c.end()`
     fn param(&self, crs: &dyn Crs, s: Length) -> Box<Pos>;
 
     /// Constructs a [LineString] approximation of the curve where the control points are

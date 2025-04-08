@@ -6,7 +6,7 @@ use crate::{
         complex::Complex,
         coordinate::{
             Pos,
-            curve::{CurveSegment, ParameterizedCurve},
+            curve::{CurveSegment, ParameterizedCurve, line_string::LineString},
         },
     },
     quantities::length::Length,
@@ -90,20 +90,20 @@ impl ParameterizedCurve for Curve {
         self.seg.last().unwrap().end()
     }
 
-    fn length(&self) -> Length {
+    fn length(&self, crs: &dyn Crs) -> Length {
         self.seg
             .iter()
-            .map(|s| s.length())
+            .map(|s| s.length(crs))
             .fold(0. * M, |acc, l| acc + l)
     }
 
     fn param(&self, crs: &dyn Crs, s: Length) -> Box<Pos> {
-        assert!(s <= self.length(), "Invalid curvilinear parameter `s`");
+        assert!(s <= self.length(crs), "Invalid curvilinear parameter `s`");
         let mut seg_iter = self.seg.iter();
         let mut res_len = s;
         let mut seg_ix = 0;
         while let Some(s) = seg_iter.next() {
-            let seg_len = s.length();
+            let seg_len = s.length(crs);
             if seg_len >= res_len {
                 break;
             }
@@ -116,10 +116,10 @@ impl ParameterizedCurve for Curve {
 
     fn as_line_string(
         &self,
-        crs: &dyn crate::crs::Crs,
-        max_distance: Option<crate::quantities::length::Length>,
-        max_offset: Option<crate::quantities::length::Length>,
-    ) -> crate::geometry::coordinate::curve::line_string::LineString {
+        crs: &dyn Crs,
+        max_distance: Option<Length>,
+        max_offset: Option<Length>,
+    ) -> LineString {
         todo!()
     }
 }
@@ -175,7 +175,10 @@ mod tests {
         crs::projected::ProjectedCrs,
         cs::cartesian::projected::ProjectedAxes,
         geodesy::geodetic_datum::consts::WGS84,
-        geometry::{Geometry, GeometryType, coordinate::curve::line_string::LineStringBuilder},
+        geometry::{
+            Geometry, GeometryType,
+            coordinate::curve::{ParameterizedCurve, line_string::LineStringBuilder},
+        },
         projections::ProjectionSpec,
         units::length::M,
     };
@@ -197,6 +200,11 @@ mod tests {
                 .line_to([1., 1.])?
                 .build(),
         )?
+        .append_segment(
+            LineStringBuilder::with_line(&crs, &[1., 1.], &[0., 1.])?
+                .line_to([0., 0.])?
+                .build(),
+        )?
         .build();
 
         assert_eq!(curve.geometry_type(), GeometryType::Curve(2));
@@ -208,7 +216,8 @@ mod tests {
         //    } as Boundary)
         //        .eq(curve.boundary().as_ref())
         //);
-        assert!(!curve.is_cycle());
+        assert!(curve.is_cycle());
+        assert_eq!(curve.length(&crs), 4. * M);
 
         Ok(())
     }
