@@ -8,8 +8,6 @@ use std::fmt::Debug;
 /// geometric dimension and coordinate dimension.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum GeometryType {
-    /// *Special* empty geometry.
-    Empty,
     Point(usize),
     Curve(usize),
     Surface(usize),
@@ -18,22 +16,20 @@ pub enum GeometryType {
 
 impl GeometryType {
     /// Returns the geometric dimension of a geometry type.
-    fn dim(&self) -> Option<usize> {
+    fn dim(&self) -> usize {
         match self {
-            GeometryType::Empty => None,
-            GeometryType::Point(_) => Some(0),
-            GeometryType::Curve(_) => Some(1),
-            GeometryType::Surface(_) => Some(2),
-            GeometryType::Solid => Some(3),
+            GeometryType::Point(_) => 0,
+            GeometryType::Curve(_) => 1,
+            GeometryType::Surface(_) => 2,
+            GeometryType::Solid => 3,
         }
     }
 
     /// Returns the coordinate dimension of a geometry type.
-    fn coord_dim(&self) -> Option<usize> {
+    fn coord_dim(&self) -> usize {
         match self {
-            GeometryType::Empty => None,
-            GeometryType::Point(d) | GeometryType::Curve(d) | GeometryType::Surface(d) => Some(*d),
-            GeometryType::Solid => Some(3),
+            GeometryType::Point(d) | GeometryType::Curve(d) | GeometryType::Surface(d) => *d,
+            GeometryType::Solid => 3,
         }
     }
 }
@@ -70,12 +66,9 @@ pub trait Geometry: Any + Debug {
 
     /// Returns a geometry that contains all the points on the boundary
     /// of this geometry.
-    /// For geometry without boundary, the special [empty geometry](crate::geometry::empty::Empty)
-    /// is returned.
-    fn boundary(&self) -> Box<dyn Boundary>;
+    fn boundary(&self) -> Option<Box<dyn Boundary>>;
 }
 
 pub mod complex;
 pub mod coordinate;
-pub mod empty;
 pub mod primitive;

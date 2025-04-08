@@ -8,13 +8,12 @@ use crate::{
             Pos,
             curve::{CurveSegment, ParameterizedCurve},
         },
-        empty::Empty,
     },
     quantities::length::Length,
     units::length::M,
 };
 use dyn_clone::clone_box;
-use std::{any::Any, fmt::Debug};
+use std::fmt::Debug;
 
 /// A [Boundary] used to describe a [Curve](crate::geometry::primitive::curve)'s boundary if any.
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -32,8 +31,8 @@ impl Geometry for CurveBoundary {
         true
     }
 
-    fn boundary(&self) -> Box<dyn Boundary> {
-        Box::new(Empty)
+    fn boundary(&self) -> Option<Box<dyn Boundary>> {
+        None
     }
 }
 
@@ -66,14 +65,14 @@ impl Geometry for Curve {
         self.start() == self.end()
     }
 
-    fn boundary(&self) -> Box<dyn Boundary> {
+    fn boundary(&self) -> Option<Box<dyn Boundary>> {
         if self.is_cycle() {
-            Box::new(Empty)
+            None
         } else {
-            Box::new(CurveBoundary {
+            Some(Box::new(CurveBoundary {
                 start: Point::new(self.start()),
                 end: Point::new(self.end()),
-            })
+            }))
         }
     }
 }

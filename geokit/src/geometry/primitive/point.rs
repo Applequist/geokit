@@ -2,7 +2,7 @@ use std::ops::{Deref, DerefMut};
 
 use super::Primitive;
 use crate::{
-    geometry::{Geometry, GeometryType, coordinate::Pos, empty::Empty, primitive::Boundary},
+    geometry::{Geometry, GeometryType, coordinate::Pos, primitive::Boundary},
     math::fp::Float,
 };
 
@@ -40,8 +40,8 @@ impl Geometry for Point {
         true
     }
 
-    fn boundary(&self) -> Box<dyn Boundary> {
-        Box::new(Empty)
+    fn boundary(&self) -> Option<Box<dyn Boundary>> {
+        None
     }
 }
 
@@ -116,11 +116,11 @@ mod tests {
         let p2d: Point = Point::new(&[1., 2.]);
         assert_eq!(p2d.geometry_type(), GeometryType::Point(2));
         assert_eq!(p2d.is_cycle(), true);
-        //assert!(Empty.eq(p2d.boundary().as_ref()));
+        assert!(p2d.boundary().is_none());
 
         let p3d: Point = Point::new(&[1., 2., 3.]);
         assert_eq!(p3d.geometry_type(), GeometryType::Point(3));
         assert_eq!(p3d.is_cycle(), true);
-        //assert!(Empty.eq(p3d.boundary().as_ref()));
+        assert!(p3d.boundary().is_none());
     }
 }
