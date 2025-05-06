@@ -10,7 +10,6 @@ pub mod crs;
 pub mod cs;
 pub mod geodesy;
 pub mod geometry;
-pub mod operations;
 pub mod projections;
 pub mod quantities;
 pub mod transformations;
