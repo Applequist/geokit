@@ -19,11 +19,11 @@ pub struct LineString {
 }
 
 impl LineString {
-    /// Creates new line string.
+    /// Creates a new line string.
     ///
     /// The following must hold true:
-    /// - `pos.len() % coord_dim == 0`, i.e all control point positions must be *complete*.
-    /// - `pos.len() >= 2 * coord_dim`, i.e at least 2 control points must be given.
+    /// - `pos.len() % coord_dim == 0`, i.e., all control point positions must be *complete*.
+    /// - `pos.len() >= 2 * coord_dim`, i.e., at least 2 control points must be given.
     pub(crate) fn new(coord_dim: usize, pos: Vec<Float>, len: Vec<Length>) -> Self {
         assert!(pos.len() % coord_dim == 0, "Incomplete position in `pos`");
         assert!(
@@ -41,7 +41,7 @@ impl LineString {
         }
     }
 
-    /// Returns the number of control position of this line string.
+    /// Returns the number of control positions of this line string.
     pub(crate) fn len(&self) -> usize {
         self.pos.len() / self.coord_dim
     }
@@ -56,28 +56,7 @@ impl LineString {
     }
 
     pub(crate) fn pos_iter(&self) -> impl Iterator<Item = &Pos> {
-        PosIter {
-            ls: self,
-            current: 0,
-        }
-    }
-}
-
-struct PosIter<'a> {
-    ls: &'a LineString,
-    current: usize,
-}
-
-impl<'a> Iterator for PosIter<'a> {
-    type Item = &'a Pos;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.current < self.ls.len() {
-            self.current += 1;
-            Some(self.ls.pos(self.current - 1))
-        } else {
-            None
-        }
+        self.pos.chunks_exact(self.coord_dim)
     }
 }
 
